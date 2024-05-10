@@ -26,7 +26,6 @@ dependencies = [
     "numpy",
     "pandas",
     "tables",
-    "pytest"
 ]
 
 [project.urls]
