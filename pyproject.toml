@@ -25,7 +25,8 @@ dependencies = [
     "openmc",
     "numpy",
     "pandas",
-    "tables"
+    "tables",
+    "pytest"
 ]
 
 [project.urls]
