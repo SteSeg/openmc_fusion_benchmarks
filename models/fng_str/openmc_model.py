@@ -2343,7 +2343,7 @@ def main():
 
     model.settings = settings
 
-    return model.run(cwd=cwd, geometry_debug=True, threads=args.threads)
+    return model.run(cwd=cwd, threads=args.threads)
 
 
 if __name__ == "__main__":
