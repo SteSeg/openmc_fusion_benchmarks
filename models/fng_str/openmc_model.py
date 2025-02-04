@@ -62,6 +62,7 @@ def main():
     water.add_element('H', 2, 'ao')
     water.add_element('O', 1, 'ao')
     water.set_density('g/cm3', 1.0)
+    water.add_s_alpha_beta('c_H_in_H2O')
     # m3 Copper
     copper = openmc.Material(material_id=3, name='cu')
     copper.add_element('Cu', 1.0, 'ao')
@@ -82,6 +83,7 @@ def main():
     ch2.add_element('H', 2, 'ao')
     ch2.add_element('C', 1, 'ao')
     ch2.set_density('g/cm3', 0.94)
+    ch2.add_s_alpha_beta('c_H_in_CH2')
     # m8 Concrete + 5% Fe  dens. 2.6  # we are at 0.897043 fo weight composition
     concrete = openmc.Material(material_id=8, name='concrete')
     concrete.add_element('H', 0.005358, 'wo')
