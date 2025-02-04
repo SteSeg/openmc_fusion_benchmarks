@@ -75,6 +75,7 @@ def main():
     mat_2.set_density('g/cm3', 1.0)
     mat_2.add_nuclide('H1', 2.0, 'ao')
     mat_2.add_nuclide('O16', 1.0, 'ao')
+    mat_2.add_s_alpha_beta('c_H_in_H2O')
     #
     mat_3 = openmc.Material(material_id=3)
     mat_3.set_density('g/cm3', 8.94)

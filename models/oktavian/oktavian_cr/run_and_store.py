@@ -46,7 +46,7 @@ def main():
     p.wait()
 
     # read statepoint file
-    openmc_file = ofb.ResultsFromOpenmc('statepoint.100.h5', 'results')
+    openmc_file = ofb.ResultsFromOpenmc('results/statepoint.100.h5')
 
     xaxis_name = 'energy low [eV]'
     openmc_file.tally_to_hdf(tally_name=f'nspectrum',
