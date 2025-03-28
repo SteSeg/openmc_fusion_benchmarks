@@ -128,6 +128,11 @@ components:
         temperature:
           type: number
 
+# SOURCE
+# Future Extensions
+# - Support for time dependence (e.g., pulsed fusion sources)
+# - Correlated angle-energy distributions
+# - Multiple sources in a list (for composite sources)
     Source:
       type: object
       required: [particle, geometry]
@@ -159,6 +164,11 @@ components:
                     probability:
                       type: number
 
+# IRRADIATION SCHEDULE
+# Future-Proof Ideas
+# - Add repeat: N to repeat a phase N times (e.g. pulsed operation)
+# - Add time_profile: file.csv to support arbitrary time-dependent flux
+# - Add cooling_only: true as a shortcut for pure decay phases
     IrradiationSchedule:
       type: object
       required: [steps]
@@ -176,6 +186,15 @@ components:
                 type: string
                 enum: [s, h, d]
 
+# RESULTS
+# domain.type can be cell, surface, mesh, volume_detector, etc.
+# values can be:
+# Inline scalars or vectors
+# Referenced file (e.g., HDF5 mesh data)
+# You can optionally include:
+# validation_type: absolute | relative | spectral shape
+# reference_result_id for comparing to other results
+# location for point detectors
     Result:
       type: object
       required: [type, target, quantity]
@@ -192,6 +211,12 @@ components:
           items:
             type: number
 
+# UNCERTAINTY QUANTIFICATION
+# Extensions To Add Later
+# Perturbation correlation groups (e.g., tied isotopes or material sets)
+# Experimental uncertainty models (e.g., detector efficiency)
+# UQ-specific output storage (e.g., full distributions, quantiles, Sobol plots)
+# Surrogate modeling or reduced-order model integration
     UQ:
       type: object
       properties:
