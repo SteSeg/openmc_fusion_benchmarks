@@ -58,9 +58,3 @@ dist/
 
 # Visual Studio Code configuration files
 .vscode/
-
-# Python pickle files
-*.pkl
-
-# built html docs
-**_build
