@@ -1,3 +1,0 @@
-# FNG general infomation
-
-TODO
