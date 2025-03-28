@@ -1,76 +1,86 @@
 """Module for defining and managing benchmarks"""
-import openmc
-from .cloud_interface import download_geometry
-# from openmc_fusion_benchmarks import StatePoint
-# from openmc_fusion_benchmarks import get_statepoint_path
-from functools import wraps
+import yaml
+import os
+# from .geometry import Geometry
+# from .material import Material
+# from .source import Source
+# from .tally import Tally
 
 
 class Benchmark:
+    """Main class representing a neutron transport benchmark."""
+
     def __init__(self, name: str):
-        self.name = name
+        self.benchmark_name = name
+        base_dir = os.path.dirname(__file__)
+        benchmark_dir = os.path.join(base_dir, 'benchmarks', name)
 
-    def get_model(self, geometry_type: str) -> openmc.Model:
-        """Dynamically import and return the model object from benchmarks/{benchmark_name}/model.py"""
+        with open(os.path.join(benchmark_dir, 'benchmark_specs.yaml'), 'r') as f:
+            data = yaml.safe_load(f)
 
-        if geometry_type not in ['csg', 'cad']:
-            raise ValueError(
-                'Invalid geometry type can be either "csg" or "cad"')
+        self.metadata = data.get("metadata", {})
+        self.geometry = Geometry(data["geometry"], benchmark_dir)
+        self.materials = [Material(m) for m in data.get("materials", [])]
+        self.source = Source(data["source"])
+        self.tallies = [Tally(t) for t in data.get("tallies", [])]
 
-        try:
-            module_path = f"openmc_fusion_benchmarks.benchmarks.{self.name}.benchmark_module"
-            benchmark_module = __import__(module_path, fromlist=['model'])
-            # Retrieve the model function or class from the module
-            benchmark_func = benchmark_module.model
-
-            model = (
-                benchmark_func(geometry_type=geometry_type,
-                               run_option=self.run_option)
-                if hasattr(self, "run_option")
-                else benchmark_func(geometry_type=geometry_type)
-            )
-
-            # Wrap `run()` only if geometry_type == 'cad'
-            if geometry_type == "cad" and hasattr(model, "run") and callable(model.run):
-                model.run = _wrap_run(self.download_h5m_file, model.run)
-
-            return model
-
-        except ModuleNotFoundError:
-            raise ValueError(
-                f"Model {self.model_name} not found in myrepo.models")
-
-    # def statepoint(self) -> StatePoint:
-    #     sp_path = get_statepoint_path(self.geometry_type)
-
-    def download_step_file(self, cwd: str = None):
-        download_geometry(self.name, 'step', self.run_option, cwd)
-
-    def download_rtt_file(self, cwd: str = None):
-        download_geometry(self.name, 'rtt', self.run_option, cwd)
-
-    def download_h5m_file(self, cwd: str = None):
-        download_geometry(self.name, 'h5m', self.run_option, cwd)
-
-    def download_weight_windows(self, cwd: str = None):
-        # file needs to go on drive with the rest
-
-        # download ww file:
-        # return openmc.wwinp_to_wws(path/to/ww_file)
-        pass
-
-    def _run_and_store(self):
-        pass
+    def __repr__(self):
+        return (f"<Benchmark(name={self.benchmark_name}, "
+                f"geometry={self.geometry.geometry_type}, "
+                f"materials={len(self.materials)}, "
+                f"tallies={len(self.tallies)})>")
 
 
-def _wrap_run(download_files_func, original_run):
-    """Standalone function to wrap `run()` and ensure files are downloaded first."""
-    @wraps(original_run)
-    def wrapped_run(*args, **kwargs):
-        cwd = kwargs.get("cwd", ".")  # Extract cwd argument (default: ".")
-        download_files_func(cwd)  # Ensure files are downloaded
-        return original_run(*args, **kwargs)  # Call the original method
-    return wrapped_run
+class Geometry:
+    def __init__(self, geometry_data: dict, benchmark_dir: str):
+        self.geometry_type = geometry_data.get("geometry_type")
+        self.units = geometry_data.get("units", "cm")
+        self.cad = geometry_data.get("cad")
+
+        if self.geometry_type == "CSG":
+            csg_file = geometry_data.get("csg_file")
+            if csg_file:
+                with open(os.path.join(benchmark_dir, csg_file), 'r') as f:
+                    self.csg = yaml.safe_load(f)
+            else:
+                self.csg = geometry_data.get("csg")
+        else:
+            self.csg = None
+
+    def __repr__(self):
+        return f"<Geometry(type={self.geometry_type}, units={self.units})>"
+
+
+class Material:
+    def __init__(self, mat_data: dict):
+        self.name = mat_data["name"]
+        self.density = mat_data["density"]
+        self.composition = mat_data["composition"]
+
+    def __repr__(self):
+        return f"<Material(name={self.name}, density={self.density})>"
+
+
+class Source:
+    def __init__(self, source_data: dict):
+        self.type = source_data["type"]
+        self.location = source_data["location"]
+        self.energy_dist = source_data["energy_distribution"]
+        self.rate = source_data.get("rate", 1.0)
+
+    def __repr__(self):
+        return (f"<Source(type={self.type}, location={self.location}, "
+                f"rate={self.rate})>")
+
+
+class Tally:
+    def __init__(self, tally_data: dict):
+        self.type = tally_data["type"]
+        self.quantity = tally_data["quantity"]
+        self.mesh = tally_data.get("mesh", None)
+
+    def __repr__(self):
+        return f"<Tally(type={self.type}, quantity={self.quantity})>"
 
 
 class FngStr(Benchmark):
