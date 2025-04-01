@@ -1,0 +1,188 @@
+metadata:
+  title: OKTAVIAN AL Benchmark
+  version: 1.0.0
+  description: >
+    The Osaka Aluminium Sphere Benchmark Experiment (OKTAVIAN) (December 22, 1988) 
+    is an intermediate quality neutronics experiment conducted to measure the leakage 
+    neutron spectrum from the outer surface of a aluminium sphere with a radius of 20 cm, 
+    surrounded by a 0.2 cm thick stainless steel shield, using 14 MeV neutrons.
+  authors:
+    - name: N/A
+      affiliation: N/A
+      email: N/A
+  experiment_date: "1988-12-22"
+  date_created: N/A
+  last_updated: N/A
+  location:
+    facility: OKTAVIAN
+    city: Osaka
+    country: Japan
+  experiment_type: fusion
+  experiment_category: neutron
+  references:
+    - title: "SINBAD–Radiation shielding benchmark experiments."
+      doi: "https://doi.org/10.1016/j.anucene.2021.108254"
+
+materials:
+  - material_id: 1
+    name: Aluminum
+    composition:
+      type: nuclide
+      fraction_type: atomic
+      data:
+        Al27: 0.9975488
+        Si28: 0.001329808
+        Si29: 6.752131e-05
+        Si30: 4.450956e-05
+        Fe54: 5.651123e-05
+        Fe56: 0.0008871055
+        Fe57: 2.048713e-05
+        Fe58: 2.726461e-06
+        Cu63: 2.938581e-05
+        Cu65: 1.309765e-05
+    density:
+      value: 1.223
+      units: g/cm3
+
+  - material_id: 2
+    name: SS-304
+    composition:
+      type: nuclide
+      fraction_type: mass
+      data:
+        Cr50: 0.00803825
+        Cr52: 0.15501
+        Cr53: 0.0175768
+        Cr54: 0.00437525
+        Fe54: 0.0411488
+        Fe56: 0.645948
+        Fe57: 0.0149178
+        Fe58: 0.00198528
+        Ni58: 0.0755655
+        Ni60: 0.0291075
+        Ni61: 0.0012654
+        Ni62: 0.00403374
+        Ni64: 0.00102786
+    density:
+      value: 7.824
+      units: g/cm3
+
+geometry:
+  geometry_type: CAD # or "CAD"
+  units: cm
+
+  # temporarily .h5m - .stp + meshing engine in the future
+  cad:
+    cad_file: geometry.h5m
+    dagmc: true
+    material_assignments:
+      - volume_id: 1
+        material_id: 1
+      - volume_id: 2
+        material_id: 2
+
+# SOURCE
+# Future Extensions
+# - Support for time dependence (e.g., pulsed fusion sources)
+# - Correlated angle-energy distributions
+# - Multiple sources in a list (for composite sources)
+source:
+  - particle_type: neutron
+    geometry:
+      type: point
+      location: [0.0, 0.0, 0.0]
+    angular_distribution:
+      type: isotropic
+      bins:
+        - angle_range: [0.0, 360.0]
+          energy_distribution:
+            type: tabular
+            interpolation: histogram
+            bins: 
+              values: [100000., 136440., 150790., 166650., 184180., 203550.,
+                        224960., 248620., 274760., 303660., 335600., 370890.,
+                        409900., 453010., 500650., 553310., 611500., 675810.,
+                        746890., 825440., 912250., 1008200., 1114200., 1231400.,
+                        1360900., 1504000., 1662200., 1837000., 2030200., 2243800.,
+                        2479700., 2740500., 3028800., 3347300., 3699300., 4088400.,
+                        4518400., 4993600., 5518800., 6099200., 6740600., 7449600.,
+                        8233000., 9098900., 10056000., 11113000., 12282000., 13574000.,
+                        15002000., 16579000., 18323000., 20250000.]
+              units: eV
+            probabilities: 
+              values: [3.00903e-05, 9.65131e-05, 2.80822e-05, 0.000306354, 0.000210096, 
+                       0.000205622, 0.000381712, 0.000300617, 0.000375540, 0.000512358, 
+                       0.000520925, 0.000630849, 0.000570806, 0.000734549, 0.000957807, 
+                       0.000969666, 0.001149970, 0.001293080, 0.001529980, 0.001626960, 
+                       0.001824140, 0.001787470, 0.001978300, 0.001942890, 0.001943650, 
+                       0.002018280, 0.002028830, 0.002114010, 0.002087760, 0.002137290, 
+                       0.002799080, 0.003490910, 0.001768780, 0.001823810, 0.001780180, 
+                       0.001644070, 0.001542990, 0.001405050, 0.001305960, 0.001378880, 
+                       0.001254140, 0.001359870, 0.001496050, 0.001911300, 0.002545630, 
+                       0.004641890, 0.020724400, 0.621470000, 0.295462000, 0.000602722, 
+                       1.92596e-05, 0.0]
+    rate:
+      value: 1
+      units: n/s
+
+# RESULTS
+# domain.type can be cell, surface, mesh, volume_detector, etc.
+# values can be:
+# Inline scalars or vectors
+# Referenced file (e.g., HDF5 mesh data)
+# You can optionally include:
+# validation_type: absolute | relative | spectral shape
+# reference_result_id for comparing to other results
+# location for point detectors
+results:
+  - name: neutron_leakage
+    description: "Total neutron current leaving the outer surface"
+    particle: neutron
+    quantity: current
+    domain:
+      type: surface
+      id: 6
+    values:
+      - value: [97122., 101090., 105210., 109500., 113970., 118620.,
+                123470., 128500., 133750., 139210., 144890., 150800.,
+                156960., 163360., 170030., 176970., 184190., 191710.,
+                199530., 207670., 216150., 224970., 234150., 243710.,
+                253650., 264000., 274780., 285990., 297660., 309810.,
+                322450., 335610., 349310., 363570., 378400., 393850.,
+                409920., 426650., 444060., 462180., 481050., 500680.,
+                521110., 542380., 564510., 587550., 611530., 636480.,
+                662460., 689500., 717630., 746920., 777400., 809130.,
+                842150., 876520., 912290., 949520., 988270., 1028600.,
+                1070600., 1114300., 1159800., 1207100., 1256300., 1307600.,
+                1361000., 1416500., 1474300., 1534500., 1597100., 1662300.,
+                1730100., 1800800., 1874200., 1950700., 2030300., 2113200.,
+                2199400., 2289200., 2382600., 2479900., 2581100., 2686400.,
+                2796000., 2910100., 3028900., 3152500., 3281200., 3415100.,
+                3554500., 3699500., 3850500., 4007600., 4171200., 4341400.,
+                4518600., 4703000., 4894900., 5094700., 5302600., 5519000.,
+                5744300., 5978700., 6222700., 6476600., 6741000., 7016100.,
+                7302400., 7600400., 7910600., 8233400., 8569400., 8919200.,
+                9283200., 9662000., 10056000., 10467000., 10894000., 11339000.,
+                11801000., 12283000., 12784000., 13306000., 13849000., 14414000.,
+                15002000., 15615000., 16252000., 16915000., 17605000., 18324000.,
+                19072000., 19850000., 20660000.]
+        units: particle/src/cm**2
+  - name: photon_leakage
+    description: "Total photon current leaving the outer surface"
+    particle: photon
+    quantity: current
+    domain:
+      type: surface
+      id: 6
+    values:
+      - value: [500000.,   600000.,   700000.,   800000.,   900000.,  1000000.,
+                1100000.,  1200000.,  1300000.,  1400000.,  1500000.,  1600000.,
+                1700000.,  1800000.,  1900000.,  2000000.,  2100000.,  2200000.,
+                2300000.,  2400000.,  2500000.,  2600000.,  2700000.,  2800000.,
+                2900000.,  3000000.,  3100000.,  3200000.,  3300000.,  3400000.,
+                3500000.,  3600000.,  3700000.,  3800000.,  3900000.,  4000000.,
+                4100000.,  4200000.,  4300000.,  4400000.,  4500000.,  4600000.,
+                4700000.,  4800000.,  4900000.,  5000000.,  5500000.,  6000000.,
+                6500000.,  7000000.,  7500000.,  8000000.,  8500000.,  9000000.,
+                9500000., 10000000., 10500000., 11000000.]
+        units: particle/src/cm**2
