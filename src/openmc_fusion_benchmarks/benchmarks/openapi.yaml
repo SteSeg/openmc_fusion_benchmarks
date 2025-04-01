@@ -144,22 +144,6 @@ components:
           items:
             $ref: '#/components/schemas/Cell'
 
-    Surface:
-      type: object
-      required: [id, type, parameters]
-      properties:
-        id:
-          type: integer
-        type:
-          type: string
-        parameters:
-          type: number
-          additionalProperties:
-            type: number
-        boundary_condition:
-          type: string
-          enum: [vacuum, reflective, periodic, white]
-
 # SOURCE
 # Future Extensions
 # - Support for time dependence (e.g., pulsed fusion sources)
