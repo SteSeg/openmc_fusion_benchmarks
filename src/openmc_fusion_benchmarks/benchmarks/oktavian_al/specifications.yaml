@@ -27,7 +27,7 @@ materials:
   - material_id: 1
     name: Aluminum
     composition:
-      type: nuclide
+      composition_type: nuclide
       fraction_type: atomic
       data:
         Al27: 0.9975488
@@ -47,7 +47,7 @@ materials:
   - material_id: 2
     name: SS-304
     composition:
-      type: nuclide
+      composition_type: nuclide
       fraction_type: mass
       data:
         Cr50: 0.00803825
@@ -88,15 +88,15 @@ geometry:
 # - Multiple sources in a list (for composite sources)
 source:
   - particle_type: neutron
-    geometry:
-      type: point
+    spatial_distribution:
+      spatialdistribution_type: point
       location: [0.0, 0.0, 0.0]
     angular_distribution:
-      type: isotropic
+      angulardistribution_type: isotropic
       bins:
         - angle_range: [0.0, 360.0]
           energy_distribution:
-            type: tabular
+            energydistribution_type: tabular
             interpolation: histogram
             bins: 
               values: [100000., 136440., 150790., 166650., 184180., 203550.,
@@ -140,7 +140,7 @@ results:
     particle: neutron
     quantity: current
     domain:
-      type: surface
+      domain_type: surface
       id: 6
     values:
       - value: [97122., 101090., 105210., 109500., 113970., 118620.,
@@ -172,7 +172,7 @@ results:
     particle: photon
     quantity: current
     domain:
-      type: surface
+      domain_type: surface
       id: 6
     values:
       - value: [500000.,   600000.,   700000.,   800000.,   900000.,  1000000.,
