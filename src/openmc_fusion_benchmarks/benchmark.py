@@ -3,6 +3,7 @@
 import yaml
 import os
 from .material import Material
+from .metadata import Metadata
 
 
 import os
@@ -52,14 +53,14 @@ class OktavianAl(Benchmark):
 #         return f"<Material id={self.material_id}, name={self.name}>"
 
 
-class Metadata:
-    def __init__(self, data: dict):
-        self.title = data.get('title')
-        self.description = data.get('description')
-        self.date = data.get('date')
+# class Metadata:
+#     def __init__(self, data: dict):
+#         self.title = data.get('title')
+#         self.description = data.get('description')
+#         self.date = data.get('date')
 
-    def __repr__(self):
-        return f"<Metadata title='{self.title}'>"
+#     def __repr__(self):
+#         return f"<Metadata title='{self.title}'>"
 
 
 class Materials:
