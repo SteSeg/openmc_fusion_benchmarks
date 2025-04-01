@@ -2,8 +2,9 @@
 # from typing import Dict
 import yaml
 import os
-from .material import Material
 from .metadata import Metadata
+from .material import Material
+from .source import Source
 
 
 import os
@@ -86,14 +87,6 @@ class Geometry:
 
     def __repr__(self):
         return f"<Geometry type={self.data.get('type', 'unknown')}>"
-
-
-class Source:
-    def __init__(self, data: dict):
-        self.data = data
-
-    def __repr__(self):
-        return f"<Source particle_type={self.data.get('particle_type')}>"
 
 
 class Results:
