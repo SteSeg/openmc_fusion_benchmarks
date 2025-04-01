@@ -28,22 +28,20 @@ class Reference:
 
 
 class Metadata:
-    def __init__(
-        self, title: str, version: str, description: str, authors: list[dict],
-        experiment_date: str, date_created: str, last_updated: str, location: dict,
-        experiment_type: str, experiment_category: str, references: list[dict]
-    ):
-        self.title = title
-        self.version = version
-        self.description = description
-        self.authors = [Author(**author) for author in authors]
-        self.experiment_date = experiment_date
-        self.date_created = date_created
-        self.last_updated = last_updated
-        self.location = Location(**location)
-        self.experiment_type = experiment_type
-        self.experiment_category = experiment_category
-        self.references = [Reference(**ref) for ref in references]
+    def __init__(self, data: dict):
+        self.title = data.get("title", "N/A")
+        self.version = data.get("version", "N/A")
+        self.description = data.get("description", "N/A")
+        self.authors = [Author(**author) for author in data.get("authors", [])]
+        self.experiment_date = data.get("experiment_date", "N/A")
+        self.date_created = data.get("date_created", "N/A")
+        self.last_updated = data.get("last_updated", "N/A")
+        self.location = Location(
+            **data.get("location", {})) if "location" in data else None
+        self.experiment_type = data.get("experiment_type", "N/A")
+        self.experiment_category = data.get("experiment_category", "N/A")
+        self.references = [Reference(**ref)
+                           for ref in data.get("references", [])]
 
     def __repr__(self):
         return (
