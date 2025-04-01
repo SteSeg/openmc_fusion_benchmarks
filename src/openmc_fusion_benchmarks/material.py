@@ -13,13 +13,13 @@ class Density:
 
 class Composition:
     def __init__(self, composition_type: str, fraction_type: str, data: dict):
-        self.composition_type = composition_type
+        self.type = composition_type
         self.fraction_type = fraction_type
         self.data = data
 
     def __repr__(self):
         lines = [
-            f"<Composition type={self.composition_type}, fraction_type={self.fraction_type}, nuclides={len(self.data)}>"]
+            f"<Composition type={self.type}, fraction_type={self.fraction_type}, nuclides={len(self.data)}>"]
         for nuclide, fraction in self.data.items():
             lines.append(f"<{nuclide}: {fraction}>")
         return "\n".join(lines)
