@@ -40,25 +40,25 @@ class OpenmcBenchmark(Benchmark):
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
         mats = self._benchmark_spec['materials']
-
         materials = []
+
+        fraction_map = {'atomic': 'ao', 'weight': 'wo'}
+
         for m in mats:
             mat = openmc.Material(name=m['name'])
             mat.material_id = m['material_id']
             mat.set_density(m['density']['units'], m['density']['value'])
-            # fraction type to openmc - atomic fraction or weight fraction
-            if m['composition']['fraction_type'] == 'atomic':
-                ft = 'ao'
-            elif m['composition']['fraction_type'] == 'weight':
-                ft = 'wo'
 
-            # composition type to openmc - element or nuclide
-            if m['composition']['composition_type'] == 'element':
-                for k, v in m['composition']['data'].items():
-                    mat.add_element(k, v, ft)
-            elif m['composition']['composition_type'] == 'nuclide':
-                for k, v in m['composition']['data'].items():
-                    mat.add_nuclide(k, v, ft)
+            # Ensure fraction type is valid
+            fraction_type = m['composition']['fraction_type']
+            if fraction_type not in fraction_map:
+                raise ValueError(f"Invalid fraction type: {fraction_type}")
+
+            ft = fraction_map[fraction_type]
+            add_method = mat.add_element if m['composition']['composition_type'] == 'element' else mat.add_nuclide
+
+            for k, v in m['composition']['data'].items():
+                add_method(k, v, ft)
 
             materials.append(mat)
 
