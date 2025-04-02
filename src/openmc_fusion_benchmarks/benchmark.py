@@ -1,9 +1,11 @@
 import yaml
 import os
 from abc import ABC, abstractmethod
+import openmc
 
 
-class Benchmark(ABC):
+# class Benchmark(ABC):
+class Benchmark:
     def __init__(self, name: str):
         self.name = name
         base_dir = os.path.dirname(__file__)
@@ -13,28 +15,18 @@ class Benchmark(ABC):
 
         self._benchmark_spec = benchmark_spec
 
-        @abstractmethod
-        def build_materials(self):
-            """Build materials for the benchmark."""
-            pass
+    @abstractmethod
+    def build_materials(self):
+        """Build materials for the benchmark."""
+        mats = self._benchmark_spec['materials']
+        # for mat in mats:
+        #     matid = mat['material_id']
+        #     name = mat['name']
+        #     density = mat['density']
+        #     density_units = mat['density']['units']
+        #     composition = mat['composition']
 
-        @abstractmethod
-        def build_geometry(self):
-            """Build geometry for the benchmark."""
-            pass
-
-        @abstractmethod
-        def build_settings(self):
-            """Build settings for the benchmark."""
-            pass
-
-        @abstractmethod
-        def build_tallies(self):
-            """Build tallies for the benchmark."""
-            pass
-
-    def __repr__(self):
-        pass
+        return mats
 
 
 class OpenmcBenchmark(Benchmark):
@@ -47,16 +39,27 @@ class OpenmcBenchmark(Benchmark):
 
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
-        pass
+        mats = self._benchmark_spec['materials']
 
-    def build_geometry(self):
-        # Implement the logic to build geometry for OpenMC
-        pass
+        materials = []
+        for m in mats:
+            mat = openmc.Material(name=m['name'])
+            mat.material_id = m['material_id']
+            mat.set_density(m['density']['units'], m['density']['value'])
+            # fraction type to openmc - atomic fraction or weight fraction
+            if m['composition']['fraction_type'] == 'atomic':
+                ft = 'ao'
+            elif m['composition']['fraction_type'] == 'weight':
+                ft = 'wo'
 
-    def build_settings(self):
-        # Implement the logic to build settings for OpenMC
-        pass
+            # composition type to openmc - element or nuclide
+            if m['composition']['composition_type'] == 'element':
+                for k, v in m['composition']['data'].items():
+                    mat.add_element(k, v, ft)
+            elif m['composition']['composition_type'] == 'nuclide':
+                for k, v in m['composition']['data'].items():
+                    mat.add_nuclide(k, v, ft)
 
-    def build_tallies(self):
-        # Implement the logic to build tallies for OpenMC
-        pass
+            materials.append(mat)
+
+        return openmc.Materials(materials)
