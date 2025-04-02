@@ -8,14 +8,15 @@ def validate_benchmark(benchmark_name: str):
 
     print(f"\n🔍 Validating benchmark file: {benchmark_name}")
 
-    schema_path = "src/openmc_fusion_benchmarks/benchmarks/benchmark_schema.yaml"
-    benchmark_path = f"src/openmc_fusion_benchmarks/benchmarks/{benchmark_name}/specifications.yaml"
+    base_path = Path("src/openmc_fusion_benchmarks/benchmarks")
+    schema_path = base_path / "benchmark_schema.yaml"
+    benchmark_path = base_path / benchmark_name / "specifications.yaml"
 
-    if not Path(benchmark_path).is_file():
+    if not benchmark_path.is_file():
         raise FileNotFoundError(f"Benchmark file {benchmark_path} not found.")
 
     # Load the schema
-    with open(schema_path, "r") as schema_file:
+    with schema_path.open("r") as schema_file:
         schema = yaml.safe_load(schema_file)
 
     # Create a registry and register the schema
