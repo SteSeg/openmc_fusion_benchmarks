@@ -35,3 +35,28 @@ class Benchmark(ABC):
 
     def __repr__(self):
         pass
+
+
+class OpenmcBenchmark(Benchmark):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self._materials = None
+        self._geometry = None
+        self._settings = None
+        self._tallies = None
+
+    def build_materials(self):
+        # Implement the logic to build materials for OpenMC
+        pass
+
+    def build_geometry(self):
+        # Implement the logic to build geometry for OpenMC
+        pass
+
+    def build_settings(self):
+        # Implement the logic to build settings for OpenMC
+        pass
+
+    def build_tallies(self):
+        # Implement the logic to build tallies for OpenMC
+        pass
