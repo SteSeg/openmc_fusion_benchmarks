@@ -48,7 +48,7 @@ materials:
     name: SS-304
     composition:
       composition_type: nuclide
-      fraction_type: mass
+      fraction_type: weigth
       data:
         Cr50: 0.00803825
         Cr52: 0.15501

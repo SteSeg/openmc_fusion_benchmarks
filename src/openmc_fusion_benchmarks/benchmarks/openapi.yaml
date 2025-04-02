@@ -113,6 +113,7 @@ components:
               type: string
             fraction_type:
               type: string
+              enum: [atomic, weight]
             data:
               type: object
               additionalProperties:
