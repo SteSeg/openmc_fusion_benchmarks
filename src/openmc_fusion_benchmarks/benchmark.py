@@ -1,6 +1,6 @@
 import yaml
 import os
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class Benchmark(ABC):
@@ -13,10 +13,25 @@ class Benchmark(ABC):
 
         self._benchmark_spec = benchmark_spec
 
-        # self._benchmark_spec = data
-        # use private methods
-        # self._build_materials() --> write the function build_materials(..) -> return openmc.Materials
-        #
+        @abstractmethod
+        def build_materials(self):
+            """Build materials for the benchmark."""
+            pass
+
+        @abstractmethod
+        def build_geometry(self):
+            """Build geometry for the benchmark."""
+            pass
+
+        @abstractmethod
+        def build_settings(self):
+            """Build settings for the benchmark."""
+            pass
+
+        @abstractmethod
+        def build_tallies(self):
+            """Build tallies for the benchmark."""
+            pass
 
     def __repr__(self):
         pass
