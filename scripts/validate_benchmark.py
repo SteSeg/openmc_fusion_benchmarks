@@ -6,7 +6,7 @@ from jsonschema.exceptions import ValidationError
 from openapi_schema_validator import OAS30Validator
 
 # Path to the OpenAPI file
-openapi_path = "src/openmc_fusion_benchmarks/benchmarks/openapi.yaml"
+openapi_path = "src/openmc_fusion_benchmarks/benchmarks/benchmark_schema.yaml"
 
 # Load the full OpenAPI schema
 with open(openapi_path, "r") as f:
