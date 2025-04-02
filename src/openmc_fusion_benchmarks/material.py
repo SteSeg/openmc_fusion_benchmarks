@@ -1,3 +1,6 @@
+import openmc
+
+
 class Density:
     def __init__(self, value: float, units: str):
         self.value = value
@@ -48,7 +51,6 @@ class Material:
                 f"composition={self.composition}, density={self.density}>")
 
     # def to_openmc(self):
-    #     import openmc
     #     mat = openmc.Material()
     #     mat.name = self.name
     #     mat.set_density(self.density.units, self.density.value)
@@ -58,7 +60,8 @@ class Material:
     #     elif self.composition.fraction_type == 'weight':
     #         method = mat.add_nuclide  # openmc uses same method but needs `percent_type`
     #     else:
-    #         raise ValueError(f"Unsupported fraction_type: {self.composition.fraction_type}")
+    #         raise ValueError(
+    #             f"Unsupported fraction_type: {self.composition.fraction_type}")
 
     #     for nuclide, fraction in self.composition.data.items():
     #         method(nuclide, fraction, self.composition.fraction_type)

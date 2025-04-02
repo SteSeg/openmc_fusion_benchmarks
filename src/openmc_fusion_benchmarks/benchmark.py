@@ -19,6 +19,11 @@ class Benchmark:
         with open(os.path.join(benchmark_dir, 'specifications.yaml'), 'r') as f:
             data = yaml.safe_load(f)
 
+        # self._benchmark_spec = data
+        # use private methods
+        # self._build_materials() --> write the function build_materials(..) -> return openmc.Materials
+        #
+
         self.metadata = Metadata(data.get('metadata', {}))
         self.materials = Materials(data.get('materials', []))
         self.geometry = Geometry(data.get('geometry', {}))

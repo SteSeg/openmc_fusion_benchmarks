@@ -43,8 +43,14 @@ class AngularDistribution:
         self.bins = [AngularBin(**b) for b in bins] if bins else []
 
     def __repr__(self):
-        bins_str = f"{len(self.bins)} bins" if self.bins else "N/A"
-        return f"<AngularDistribution type={self.type}, {bins_str}>"
+        bins_str = ", ".join(
+            str(bin) for bin in self.bins[:2]) + ("..." if len(self.bins) > 2 else "")
+        return f"<AngularDistribution type={self.type}, bins=[{bins_str}]>"
+
+    @property
+    def energy_distribution_summary(self):
+        """Return a summary of all energy distributions per angle bin."""
+        return "\n".join(str(bin) for bin in self.bins)
 
 
 class Rate:
@@ -71,3 +77,8 @@ class Source:
     def __repr__(self):
         return (f"<Source particle={self.particle_type}, {self.spatial_distribution}, "
                 f"{self.angular_distribution}, {self.rate}>")
+
+    @property
+    def energy_distribution(self):
+        """Provides a global summary of all energy distributions across angle bins."""
+        return self.angular_distribution.energy_distribution_summary
