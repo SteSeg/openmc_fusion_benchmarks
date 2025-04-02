@@ -18,15 +18,7 @@ class Benchmark:
     @abstractmethod
     def build_materials(self):
         """Build materials for the benchmark."""
-        mats = self._benchmark_spec['materials']
-        # for mat in mats:
-        #     matid = mat['material_id']
-        #     name = mat['name']
-        #     density = mat['density']
-        #     density_units = mat['density']['units']
-        #     composition = mat['composition']
-
-        return mats
+        return self._benchmark_spec['materials']
 
 
 class OpenmcBenchmark(Benchmark):
@@ -39,12 +31,12 @@ class OpenmcBenchmark(Benchmark):
 
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
-        mats = self._benchmark_spec['materials']
-        materials = []
+        matetial_data = super().build_materials()
 
         fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
-        for m in mats:
+        materials = []
+        for m in matetial_data:
             mat = openmc.Material(name=m['name'])
             mat.material_id = m['material_id']
             mat.set_density(m['density']['units'], m['density']['value'])
