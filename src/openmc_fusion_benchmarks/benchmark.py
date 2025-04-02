@@ -1,16 +1,15 @@
 import yaml
-import os
+from pathlib import Path
 from abc import ABC, abstractmethod
 import openmc
 
 
-# class Benchmark(ABC):
-class Benchmark:
+class Benchmark(ABC):
     def __init__(self, name: str):
         self.name = name
-        base_dir = os.path.dirname(__file__)
-        benchmark_dir = os.path.join(base_dir, 'benchmarks', name)
-        with open(os.path.join(benchmark_dir, 'specifications.yaml'), 'r') as f:
+        base_dir = Path(__file__).parent
+        benchmark_dir = base_dir / "benchmarks" / name
+        with (benchmark_dir / "specifications.yaml").open("r") as f:
             benchmark_spec = yaml.safe_load(f)
 
         self._benchmark_spec = benchmark_spec
