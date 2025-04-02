@@ -260,16 +260,16 @@ components:
                 type: string
                 enum: [s, h, d]
 
-# RESULTS
+# TALLIES
 # domain.type can be cell, surface, mesh, volume_detector, etc.
 # values can be:
 # Inline scalars or vectors
 # Referenced file (e.g., HDF5 mesh data)
 # You can optionally include:
 # validation_type: absolute | relative | spectral shape
-# reference_result_id for comparing to other results
+# reference_tally_id for comparing to other tallies
 # location for point detectors
-    Results:
+    Tallies:
       type: object
       properties:
         name:
