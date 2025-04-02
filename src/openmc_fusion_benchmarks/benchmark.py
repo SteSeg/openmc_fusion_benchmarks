@@ -1,8 +1,9 @@
 import yaml
 import os
+from abc import ABC
 
 
-class Benchmark:
+class Benchmark(ABC):
     def __init__(self, name: str):
         self.name = name
         base_dir = os.path.dirname(__file__)
