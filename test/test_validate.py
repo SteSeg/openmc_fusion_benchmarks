@@ -3,7 +3,7 @@ import jsonschema
 import yaml
 from unittest.mock import patch, mock_open, MagicMock
 from pathlib import Path
-from src.openmc_fusion_benchmarks.validate import validate_benchmark
+from openmc_fusion_benchmarks import validate_benchmark
 
 
 @pytest.fixture
