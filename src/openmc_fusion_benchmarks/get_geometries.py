@@ -20,7 +20,9 @@ def get_cad_file(benchmark_name: str, cwd: str = ".") -> Path:
     Returns:
     - Path to the downloaded .stp file
     """
-    temp_clone_path = Path(".lfs_temp_repo")  # hidden temp folder
+    # temp_clone_path = Path(".lfs_temp_repo")  # hidden temp folder
+    # hidden temp folder
+    temp_clone_path = (Path(cwd) / ".lfs_temp_repo").resolve()
     local_target_path = Path(cwd) / f"{benchmark_name}.stp"
     remote_file_path = f"benchmarks/{benchmark_name}/{benchmark_name}.stp"
 
