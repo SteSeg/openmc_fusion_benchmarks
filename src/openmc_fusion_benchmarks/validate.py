@@ -36,7 +36,7 @@ def validate_benchmark(benchmark_name: str):
             print(f"Validation Error: {error.message} at {list(error.path)}")
         raise jsonschema.exceptions.ValidationError("YAML validation failed.")
 
-        # Print errors
+    # Print errors
     if errors:
         print(f"❌ {len(errors)} errors found in {benchmark_name}:")
         for error in errors:

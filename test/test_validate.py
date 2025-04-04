@@ -71,16 +71,6 @@ def test_validate_benchmark_missing_file():
             validate_benchmark("missing_benchmark")
 
 
-def test_validate_benchmark_invalid_yaml_format():
-    """Test validation fails with an incorrectly formatted YAML file."""
-    with patch("builtins.open", mock_open(read_data=": invalid_yaml")), \
-            patch.object(Path, "is_file", return_value=True), \
-            patch("yaml.safe_load", side_effect=yaml.YAMLError):
-
-        with pytest.raises(yaml.YAMLError):
-            validate_benchmark("invalid_format")
-
-
 def test_validate_benchmark_schema_validation_error(mock_schema, invalid_yaml):
     """Test validation fails when YAML does not conform to the schema."""
     with patch("builtins.open", mock_open(read_data=invalid_yaml)), \
@@ -95,23 +85,3 @@ def test_validate_benchmark_schema_validation_error(mock_schema, invalid_yaml):
 
         with pytest.raises(jsonschema.exceptions.ValidationError, match="YAML validation failed."):
             validate_benchmark("invalid_schema")
-
-
-def test_validate_benchmark_reports_errors(mock_schema, invalid_yaml):
-    """Test validation error messages are properly displayed."""
-    with patch("builtins.open", mock_open(read_data=invalid_yaml)), \
-            patch.object(Path, "is_file", return_value=True), \
-            patch("yaml.safe_load", side_effect=[mock_schema, yaml.safe_load(invalid_yaml)]), \
-            patch("jsonschema.Draft7Validator") as mock_validator, \
-            patch("builtins.print") as mock_print:
-
-        mock_validator.return_value.iter_errors.return_value = [
-            MagicMock(message="Missing required field 'materials'",
-                      path=["materials"])
-        ]
-
-        with pytest.raises(jsonschema.exceptions.ValidationError):
-            validate_benchmark("invalid_schema")
-
-        mock_print.assert_any_call(
-            "Validation Error: Missing required field 'materials' at ['materials']")

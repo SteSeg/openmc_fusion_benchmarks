@@ -2,11 +2,16 @@ import yaml
 from pathlib import Path
 from abc import ABC, abstractmethod
 import openmc
+from .validate import validate_benchmark
 
 
 class Benchmark(ABC):
     def __init__(self, name: str):
         self.name = name
+
+        # # Validate the benchmark specification
+        # validate_benchmark(name)
+
         base_dir = Path(__file__).parent
         benchmark_dir = base_dir / "benchmarks" / name
         with (benchmark_dir / "specifications.yaml").open("r") as f:
