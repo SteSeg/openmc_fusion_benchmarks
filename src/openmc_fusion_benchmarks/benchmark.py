@@ -55,12 +55,12 @@ class OpenmcBenchmark(Benchmark):
 
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
-        matetial_data = super().build_materials()
+        material_data = super().build_materials()
 
         fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
         materials = []
-        for m in matetial_data:
+        for m in material_data:
             mat = openmc.Material(name=m['name'])
             mat.material_id = m['material_id']
             mat.set_density(m['density']['units'], m['density']['value'])
