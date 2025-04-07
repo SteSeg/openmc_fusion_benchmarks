@@ -55,12 +55,12 @@ class OpenmcBenchmark(Benchmark):
 
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
-        matetial_data = super().build_materials()
+        material_data = super().build_materials()
 
         fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
         materials = []
-        for m in matetial_data:
+        for m in material_data:
             mat = openmc.Material(name=m['name'])
             mat.material_id = m['material_id']
             mat.set_density(m['density']['units'], m['density']['value'])
@@ -79,3 +79,13 @@ class OpenmcBenchmark(Benchmark):
             materials.append(mat)
 
         return openmc.Materials(materials)
+
+    def build_geometry(self):
+        # Implement the logic to build geometry for OpenMC
+        geometry_data = super().build_geometry()
+        # Assuming geometry_data is a dictionary with necessary information
+        # You can use openmc.Geometry and other OpenMC classes to build the geometry
+        # For example:
+        # self._geometry = openmc.Geometry()
+        # Add your geometry building logic here
+        return self._geometry
