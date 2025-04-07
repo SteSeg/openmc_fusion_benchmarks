@@ -2,7 +2,7 @@ import yaml
 from pathlib import Path
 from abc import ABC, abstractmethod
 import openmc
-from .validate import validate_benchmark
+from .utils.get_geometries import download_from_drive
 
 
 class Benchmark(ABC):
@@ -24,10 +24,10 @@ class Benchmark(ABC):
         """Build materials for the benchmark."""
         return self._benchmark_spec['materials']
 
-    # @abstractmethod
-    # def build_geometry(self):
-    #     """Build geometry for the benchmark."""
-    #     return self._benchmark_spec['geometry']
+    @abstractmethod
+    def build_geometry(self):
+        """Build geometry for the benchmark."""
+        return self._benchmark_spec['geometry']
 
     # @abstractmethod
     # def build_source(self):
@@ -80,7 +80,12 @@ class OpenmcBenchmark(Benchmark):
 
         return openmc.Materials(materials)
 
-    def build_geometry(self, mesh_file: str):
+    def build_geometry(self):
+        # geometry_data = super().build_geometry()
+
+        # download the h5m file
+        download_from_drive(benchmark_name=self.name, file_format='h5m')
+        mesh_file = Path(f"{self.name}.h5m")
         # Implement the logic to build geometry for OpenMC
         dag_universe = openmc.DAGMCUniverse(
             mesh_file).bounded_universe(starting_id=90000)
