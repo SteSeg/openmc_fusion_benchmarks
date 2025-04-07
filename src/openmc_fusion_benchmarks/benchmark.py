@@ -80,12 +80,9 @@ class OpenmcBenchmark(Benchmark):
 
         return openmc.Materials(materials)
 
-    def build_geometry(self):
+    def build_geometry(self, mesh_file: str):
         # Implement the logic to build geometry for OpenMC
-        geometry_data = super().build_geometry()
-        # Assuming geometry_data is a dictionary with necessary information
-        # You can use openmc.Geometry and other OpenMC classes to build the geometry
-        # For example:
-        # self._geometry = openmc.Geometry()
-        # Add your geometry building logic here
-        return self._geometry
+        dag_universe = openmc.DAGMCUniverse(
+            mesh_file).bounded_universe(starting_id=90000)
+
+        return openmc.Geometry(root=dag_universe)
