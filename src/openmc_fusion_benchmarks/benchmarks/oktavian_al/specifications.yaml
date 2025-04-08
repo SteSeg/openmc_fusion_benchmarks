@@ -93,6 +93,7 @@ source:
       location: [0.0, 0.0, 0.0]
     angular_distribution:
       angulardistribution_type: isotropic
+      interpolation: uniform
       bins:
         - angle_range: [0.0, 360.0]
           energy_distribution:
