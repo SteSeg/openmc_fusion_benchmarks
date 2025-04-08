@@ -22,7 +22,7 @@ class Benchmark(ABC):
     @abstractmethod
     def build_materials(self):
         """Build materials for the benchmark."""
-        return self._benchmark_spec['materials']
+        pass
 
     # @abstractmethod
     # def build_geometry(self):
@@ -55,7 +55,7 @@ class OpenmcBenchmark(Benchmark):
 
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
-        material_data = super().build_materials()
+        material_data = self._benchmark_spec['materials']
 
         fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
