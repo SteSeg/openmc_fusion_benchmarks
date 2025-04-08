@@ -23,7 +23,7 @@ class Benchmark(ABC):
     @abstractmethod
     def build_materials(self):
         """Build materials for the benchmark."""
-        return self._benchmark_spec['materials']
+        pass
 
     # @abstractmethod
     # def build_geometry(self):
@@ -33,17 +33,17 @@ class Benchmark(ABC):
     @abstractmethod
     def build_source(self):
         """Build settings for the benchmark."""
-        return self._benchmark_spec['source']
+        pass
 
     # @abstractmethod
     # def build_settings(self):
     #     """Build settings for the benchmark."""
-    #     return self._benchmark_spec['settings']
+    #     pass
 
     # @abstractmethod
     # def build_tallies(self):
     #     """Build tallies for the benchmark."""
-    #     return self._benchmark_spec['tallies']
+    #     pass
 
 
 class OpenmcBenchmark(Benchmark):
@@ -56,7 +56,7 @@ class OpenmcBenchmark(Benchmark):
 
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
-        material_data = super().build_materials()
+        material_data = self._benchmark_spec['materials']
 
         fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
@@ -82,7 +82,7 @@ class OpenmcBenchmark(Benchmark):
         return openmc.Materials(materials)
 
     def build_source(self):
-        source_data = super().build_source()
+        source_data = self._benchmark_spec['source']
 
         def energy_conversion(units):
             if units == 'eV':
