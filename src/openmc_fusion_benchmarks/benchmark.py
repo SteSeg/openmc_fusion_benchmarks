@@ -22,27 +22,27 @@ class Benchmark(ABC):
     @abstractmethod
     def build_materials(self):
         """Build materials for the benchmark."""
-        return self._benchmark_spec['materials']
+        pass
 
     @abstractmethod
     def build_geometry(self):
         """Build geometry for the benchmark."""
-        return self._benchmark_spec['geometry']
+        pass
 
     # @abstractmethod
     # def build_source(self):
     #     """Build settings for the benchmark."""
-    #     return self._benchmark_spec['source']
+    #     pass
 
     # @abstractmethod
     # def build_settings(self):
     #     """Build settings for the benchmark."""
-    #     return self._benchmark_spec['settings']
+    #     pass
 
     # @abstractmethod
     # def build_tallies(self):
     #     """Build tallies for the benchmark."""
-    #     return self._benchmark_spec['tallies']
+    #     pass
 
 
 class OpenmcBenchmark(Benchmark):
@@ -55,7 +55,7 @@ class OpenmcBenchmark(Benchmark):
 
     def build_materials(self):
         # Implement the logic to build materials for OpenMC
-        material_data = super().build_materials()
+        material_data = self._benchmark_spec['materials']
 
         fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
@@ -81,7 +81,7 @@ class OpenmcBenchmark(Benchmark):
         return openmc.Materials(materials)
 
     def build_geometry(self):
-        # geometry_data = super().build_geometry()
+        # geometry_data = self._benchmark_spec['geometry']
 
         # download the h5m file
         download_from_drive(benchmark_name=self.name, file_format='h5m')
