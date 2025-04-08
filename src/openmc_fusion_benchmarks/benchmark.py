@@ -27,22 +27,22 @@ class Benchmark(ABC):
     # @abstractmethod
     # def build_geometry(self):
     #     """Build geometry for the benchmark."""
-    #     return self._benchmark_spec['geometry']
+    #     pass
 
     # @abstractmethod
     # def build_source(self):
     #     """Build settings for the benchmark."""
-    #     return self._benchmark_spec['source']
+    #     pass
 
     # @abstractmethod
     # def build_settings(self):
     #     """Build settings for the benchmark."""
-    #     return self._benchmark_spec['settings']
+    #     pass
 
     # @abstractmethod
     # def build_tallies(self):
     #     """Build tallies for the benchmark."""
-    #     return self._benchmark_spec['tallies']
+    #     pass
 
 
 class OpenmcBenchmark(Benchmark):
