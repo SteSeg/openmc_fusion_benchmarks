@@ -97,9 +97,9 @@ class OpenmcBenchmark(Benchmark):
                 raise ValueError(f"Unsupported energy unit: {units}")
 
         if source_data['angular_distribution']['angulardistribution_type'] == 'polar_azimuthal':
+            sources = []
             # One source per angle bin
             for angle in source_data['angular_distribution']['bins']:
-                source = openmc.IndependentSource()
                 # Handle angular distribution
                 lb = angle['angle_range'][0]
                 ub = angle['angle_range'][1]
@@ -115,19 +115,31 @@ class OpenmcBenchmark(Benchmark):
                     angle['energy_distribution']['bins']['values'])
                 evalues *= energy_conversion(
                     angle['energy_distribution']['units'])
+                pvalues = np.array(
+                    angle['energy_distribution']['bins']['probabilities'])
                 interpolation = angle['energy_distribution']['interpolation']
                 # energy distribution type --> STILL TO HANDLE
                 energy = openmc.stats.Tabular(
-                    evalues, fvalues[i], interpolation=interpolation)
+                    evalues, pvalues, interpolation=interpolation)
                 # Handle strength
                 strength = angle['strength']
-                # Build source
+                # handle space and paticle type
+                source = openmc.IndependentSource()
+                if source_data['spatial_distribution']['spatialdistribution_type'] == 'point':
+                    center = source_data['spatial_distribution']['location']
+                    space = openmc.stats.Point(center)
+                if source_data['particle_type'] == 'neutron':
+                    particle = 'neutron'
 
-        # if source_data['spatial_distribution']['spatialdistribution_type'] == 'point':
-        #     center = source_data['spatial_distribution']['location']
-        #     source.space = openmc.stats.Point(center)
-        # if source_data['particle_type'] == 'neutron':
-        #     source.particle = 'neutron'
+                # Build angular source
+                asource = openmc.IndependentSource()
+                asource.particle = particle
+                asource.space = space
+                asource.angle = angle
+                asource.energy = energy
+                asource.strength = strength
+                # append to source list
+                source.append(asource)
 
         source = openmc.IndependentSource()
         if source_data['spatial_distribution']['spatialdistribution_type'] == 'point':
