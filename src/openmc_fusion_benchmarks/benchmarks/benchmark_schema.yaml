@@ -152,34 +152,19 @@ components:
 # - Multiple sources in a list (for composite sources)
     Source:
       type: object
-      required: [particle_type, spatial_distribution, angular_distribution, rate]
+      required: [particle_type, spatial_distribution, angular_distribution, strength, rate]
       properties:
         particle_type:
           type: string
-          enum: [neutron, photon, deuteron, triton, proton, electron]
+          enum: [neutron, photon]
         spatial_distribution:
           type: object
           required: [type]
           properties:
             type:
               type: string
-              enum: [point, line, surface, volume]
+              enum: [point, box, cylinder, sphere, cartesian, mesh, domain]
             location:
-              type: array
-              items:
-                type: number
-              minItems: 3
-              maxItems: 3
-            bounds:
-              type: array
-              items:
-                type: array
-                items:
-                  type: number
-                minItems: 3
-                maxItems: 3
-              minItems: 2
-              maxItems: 2
         angular_distribution:
           type: object
           interpolation: str
