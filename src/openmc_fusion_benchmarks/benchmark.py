@@ -95,8 +95,8 @@ class OpenmcBenchmark(Benchmark):
                 return 1e9
             else:
                 raise ValueError(f"Unsupported energy unit: {units}")
-
-        if source_data['angular_distribution']['type'] == 'polar_azimuthal':
+        angular_distribution = source_data['angular_distribution']
+        if angular_distribution == 'polar_azimuthal' or angular_distribution == 'isotropic':
             sources = []
             # One source per angle bin
             for angle in source_data['angular_distribution']['bins']:
@@ -140,52 +140,4 @@ class OpenmcBenchmark(Benchmark):
                 asource.strength = strength
                 # append to source list
                 source.append(asource)
-
-        source = openmc.IndependentSource()
-        if source_data['spatial_distribution']['type'] == 'point':
-            center = source_data['spatial_distribution']['location']
-            source.space = openmc.stats.Point(center)
-        if source_data['type'] == 'isotropic':
-            source.angle = openmc.stats.Isotropic()
-        source.angle = None
-        source.energy = None
-        source.strength = None
-        if source_data['particle_type'] == 'neutron':
-            source.particle = 'neutron'
-
-        # #
-
-        # # angular bins in [0, pi)
-        # pbins = np.cos(np.linspace(0, np.pi, 37))
-
-        # # energy and flux values from tables
-        # evalues = (fng_source_fr[0] + fng_source_fr[0]) / 2
-        # fvalues = fng_source_fr[2:]
-
-        # # yield values for strengths
-        # yields = np.sum(fvalues, axis=-1) * np.diff(pbins)
-        # yields /= np.sum(yields)
-
-        # # azimuthal values
-        # phi = openmc.stats.Uniform(a=0, b=2*np.pi)
-
-        # all_sources = []
-        # for i, angle in enumerate(pbins[:-1]):
-
-        #     mu = openmc.stats.Uniform(a=pbins[i+1], b=pbins[i])
-
-        #     space = openmc.stats.Point(center)
-        #     angle = openmc.stats.PolarAzimuthal(
-        #         mu=mu, phi=phi, reference_uvw=reference_uvw)
-        #     energy = openmc.stats.Tabular(
-        #         evalues, fvalues[i], interpolation='linear-linear')
-        #     strength = yields[i]
-
-        #     my_source = openmc.IndependentSource(
-        #         space=space, angle=angle, energy=energy, strength=strength, particle='neutron')
-
-        #     all_sources.append(my_source)
-
-        # return all_sources
-
-        # return source_data
+        return sources
