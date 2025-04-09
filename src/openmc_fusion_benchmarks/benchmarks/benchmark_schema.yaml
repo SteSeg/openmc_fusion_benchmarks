@@ -188,6 +188,13 @@ components:
             type:
               type: string
               enum: [isotropic, tabulated]
+            reference_uvw:
+              type: array
+              items:
+                type: number
+              minItems: 3
+              maxItems: 3
+              description: A 3D direction or position vector [x, y, z]
             bins:
               type: array
               items:
