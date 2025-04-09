@@ -202,7 +202,7 @@ components:
                     maxItems: 2
                   energy_distribution:
                     type: object
-                    required: [type, bins, probabilities]
+                    required: [type, bins, probabilities, strength]
                     properties:
                       type:
                         type: string
@@ -229,6 +229,9 @@ components:
                             type: array
                             items:
                               type: number
+                      strength:
+                        type: number
+
         rate:
           type: object
           required: [value, units]
