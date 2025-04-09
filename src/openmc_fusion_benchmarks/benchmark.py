@@ -96,7 +96,7 @@ class OpenmcBenchmark(Benchmark):
             else:
                 raise ValueError(f"Unsupported energy unit: {units}")
 
-        if source_data['angular_distribution']['angulardistribution_type'] == 'polar_azimuthal':
+        if source_data['angular_distribution']['type'] == 'polar_azimuthal':
             sources = []
             # One source per angle bin
             for angle in source_data['angular_distribution']['bins']:
@@ -125,7 +125,7 @@ class OpenmcBenchmark(Benchmark):
                 strength = angle['strength']
                 # handle space and paticle type
                 source = openmc.IndependentSource()
-                if source_data['spatial_distribution']['spatialdistribution_type'] == 'point':
+                if source_data['spatial_distribution']['type'] == 'point':
                     center = source_data['spatial_distribution']['location']
                     space = openmc.stats.Point(center)
                 if source_data['particle_type'] == 'neutron':
@@ -142,10 +142,10 @@ class OpenmcBenchmark(Benchmark):
                 source.append(asource)
 
         source = openmc.IndependentSource()
-        if source_data['spatial_distribution']['spatialdistribution_type'] == 'point':
+        if source_data['spatial_distribution']['type'] == 'point':
             center = source_data['spatial_distribution']['location']
             source.space = openmc.stats.Point(center)
-        if source_data['angulardistribution_type'] == 'isotropic':
+        if source_data['type'] == 'isotropic':
             source.angle = openmc.stats.Isotropic()
         source.angle = None
         source.energy = None
