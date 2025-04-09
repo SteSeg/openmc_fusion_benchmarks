@@ -157,6 +157,8 @@ components:
         particle_type:
           type: string
           enum: [neutron, photon]
+        strength:
+          type: number
         spatial_distribution:
           type: object
           required: [type]
