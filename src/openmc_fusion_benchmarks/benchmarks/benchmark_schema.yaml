@@ -158,8 +158,8 @@ components:
           type: string
           enum: [neutron, photon, deuteron, triton, proton, electron]
         spatial_distribution:
-          spatialdistribution_type: object
-          required: [spatialdistribution_type]
+          type: object
+          required: [type]
           properties:
             type:
               type: string
@@ -181,9 +181,9 @@ components:
               minItems: 2
               maxItems: 2
         angular_distribution:
-          angulardistribution_type: object
+          type: object
           interpolation: str
-          required: [angulardistribution_type]
+          required: [type]
           properties:
             type:
               type: string
@@ -201,8 +201,8 @@ components:
                     minItems: 2
                     maxItems: 2
                   energy_distribution:
-                    energydistribution_type: object
-                    required: [energydistribution_type, bins, probabilities]
+                    type: object
+                    required: [type, bins, probabilities]
                     properties:
                       type:
                         type: string
@@ -283,14 +283,14 @@ components:
         quantity:
           type: string
         domain:
-          domain_type: object
+          type: object
           properties:
             type:
               type: string
               enum: [surface, volume]  # Adjust if needed
             id:
               type: integer
-          required: [domain_type, id]
+          required: [type, id]
         values:
           type: array
           items:

@@ -68,7 +68,7 @@ materials:
       units: g/cm3
 
 geometry:
-  geometry_type: CAD # or "CAD"
+  type: CAD # or "CAD"
   units: cm
 
   # temporarily .h5m - .stp + meshing engine in the future
@@ -89,15 +89,15 @@ geometry:
 source:
   - particle_type: neutron
     spatial_distribution:
-      spatialdistribution_type: point
+      type: point
       location: [0.0, 0.0, 0.0]
     angular_distribution:
-      angulardistribution_type: isotropic
+      type: isotropic
       interpolation: uniform
       bins:
         - angle_range: [0.0, 360.0]
           energy_distribution:
-            energydistribution_type: tabular
+            type: tabular
             interpolation: histogram
             bins: 
               values: [100000., 136440., 150790., 166650., 184180., 203550.,
@@ -141,7 +141,7 @@ tallies:
     particle: neutron
     quantity: current
     domain:
-      domain_type: surface
+      type: surface
       id: 6
     values:
       - value: [97122., 101090., 105210., 109500., 113970., 118620.,
@@ -173,7 +173,7 @@ tallies:
     particle: photon
     quantity: current
     domain:
-      domain_type: surface
+      type: surface
       id: 6
     values:
       - value: [500000.,   600000.,   700000.,   800000.,   900000.,  1000000.,
