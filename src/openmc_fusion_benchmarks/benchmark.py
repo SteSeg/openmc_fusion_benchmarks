@@ -84,19 +84,29 @@ class OpenmcBenchmark(Benchmark):
     def build_source(self):
         source_data = self._benchmark_spec['source']
 
-        def energy_conversion(units):
+        def energy_conversion(values, units):
+            values = np.array(values)
             if units == 'eV':
-                return 1
+                return values
             elif units == 'keV':
-                return 1e3
+                return values * 1e3
             elif units == 'MeV':
-                return 1e6
+                return values * 1e6
             elif units == 'GeV':
-                return 1e9
+                return values * 1e9
             else:
                 raise ValueError(f"Unsupported energy unit: {units}")
 
-        source = []
+        def angular_conversion(values, units):
+            values = np.array(values)
+            if units == 'degrees':
+                return values * np.pi / 180
+            elif units == 'radians':
+                return values
+            else:
+                raise ValueError(f"Unsupported angle unit: {units}")
+
+        sources = []
         # More than one source is possible
         for source in source_data:
             # Handle source particle type
@@ -130,51 +140,58 @@ class OpenmcBenchmark(Benchmark):
                 raise NotImplementedError(
                     'Source domain not implemented yet.')
 
-        # source = []
-        # for s in source_data:
-        #     angular_distribution = s['angular_distribution']
-        #     if angular_distribution['type'] == 'polar_azimuthal' or angular_distribution['type'] == 'isotropic':
-        #         # One source per angle bin
-        #         for a in angular_distribution['bins']:
-        #             # Handle angular distribution
-        #             lb = a['angle_range'][0]
-        #             ub = a['angle_range'][1]
-        #             mu = openmc.stats.Uniform(a=lb, b=ub)  # polar angle
-        #             # azimuthal angle --> STILL TO HANDLE
-        #             phi = openmc.stats.Uniform(a=0, b=2*np.pi)
-        #             # polar-azimuthal direction -> STILL TO HANDLE
-        #             reference_uvw = angular_distribution['reference_uvw']
-        #             angle = openmc.stats.PolarAzimuthal(
-        #                 mu=mu, phi=phi, reference_uvw=reference_uvw)
-        #             # Handle energy distribution
-        #             evalues = np.array(
-        #                 a['energy_distribution']['bins']['values'])
-        #             evalues *= energy_conversion(
-        #                 a['energy_distribution']['bins']['units'])
-        #             pvalues = np.array(
-        #                 a['energy_distribution']['probabilities']['values'])
-        #             interpolation = a['energy_distribution']['interpolation']
-        #             # energy distribution type --> STILL TO HANDLE
-        #             energy = openmc.stats.Tabular(
-        #                 evalues, pvalues, interpolation=interpolation)
-        #             # Handle strength
-        #             strength = a['strength']
-        #             # handle space and paticle type
-        #             asource = openmc.IndependentSource()
-        #             if s['spatial_distribution']['type'] == 'point':
-        #                 center = s['spatial_distribution']['location']
-        #                 space = openmc.stats.Point(center)
-        #             if s['particle_type'] == 'neutron':
-        #                 particle = 'neutron'
+            # Handle angular and energy distributions
+            angular_sources = []
+            # Openmc needs one source per angle bin:
+            angles = source['angular_energy_distribution']
+            abins = np.array(angles['angle']['bins'])
+            for i in range(len(abins)-1):
+                lb = angular_conversion(
+                    abins[i], angles['angle']['units'])
+                ub = angular_conversion(
+                    abins[i+1], angles['angle']['units'])
+                mu = openmc.stats.Uniform(a=lb, b=ub)  # polar angle
+                # Azimuthal angle --> STILL TO HANDLE
+                phi = openmc.stats.Uniform(0, 2*np.pi)
+                reference_uvw = angles['polar_direction']
+                # Polar-azimuthal distribution
+                angle = openmc.stats.PolarAzimuthal(mu, phi, reference_uvw)
+                # Energy distribution
+                evalues = energy_conversion(
+                    angles['energy']['values'], angles['energy']['units'])
+                # Weights
+                weights = np.array(angles['weights'])
 
-        #             # Build angular source
-        #             asource = openmc.IndependentSource()
-        #             asource.particle = particle
-        #             asource.space = space
-        #             asource.angle = angle
-        #             asource.energy = energy
-        #             asource.strength = strength
-        #             # append to source list
-        #             source.append(asource)
+                # Check weights has the right shape
+                # Weights must be a 2D array (rows, columns)
+                if weights.ndim != 2:
+                    raise ValueError(
+                        'Weights must be a 2D array (rows, columns).')
+                # Angle bins: check the number of rows is equal to the number of angle bins minus one
+                if weights.shape[0] != len(abins)-1:
+                    raise ValueError(
+                        'Number of weights rows must match number of angle bins minus one.')
+                # Energy values: check the number of columns is equal to the number of energy values
+                if weights.shape[1] != len(evalues):
+                    raise ValueError(
+                        'Number of weights columns must match number of energy values.')
+
+                interpolation = angles['energy']['interpolation']
+                # energy distribution type --> STILL TO HANDLE
+                energy = openmc.stats.Tabular(
+                    evalues, weights[i], interpolation=interpolation)
+                # Handle strength
+                strength = angles['strength']['data'][i]
+                # Build source
+                source = openmc.IndependentSource()
+                source.paricle = particle
+                source.space = space
+                source.angle = angle
+                source.energy = energy
+                source.strength = strength
+                # Append to source list
+                angular_sources.append(source)
+            # Append angular sources to the main source list
+            sources.extend(angular_sources)
 
         return source
