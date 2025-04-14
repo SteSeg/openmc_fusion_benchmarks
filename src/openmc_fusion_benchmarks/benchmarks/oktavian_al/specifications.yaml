@@ -24,7 +24,7 @@ metadata:
       doi: "https://doi.org/10.1016/j.anucene.2021.108254"
 
 materials:
-  - material_id: 1
+  - id: 1
     name: Aluminum
     composition:
       composition_type: nuclide
@@ -44,7 +44,7 @@ materials:
       value: 1.223
       units: g/cm3
 
-  - material_id: 2
+  - id: 2
     name: SS-304
     composition:
       composition_type: nuclide
