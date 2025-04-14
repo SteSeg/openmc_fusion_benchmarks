@@ -6,6 +6,9 @@ import numpy as np
 from .validate import validate_benchmark
 
 
+BENCHMARK_DIR = Path(__file__).parent / "benchmarks"
+
+
 class Benchmark(ABC):
     def __init__(self, name: str):
         self.name = name
@@ -13,12 +16,8 @@ class Benchmark(ABC):
         # # Validate the benchmark specification
         # validate_benchmark(name)
 
-        base_dir = Path(__file__).parent
-        benchmark_dir = base_dir / "benchmarks" / name
-        with (benchmark_dir / "specifications.yaml").open("r") as f:
-            benchmark_spec = yaml.safe_load(f)
-
-        self._benchmark_spec = benchmark_spec
+        with (BENCHMARK_DIR / f"{self.name}/specifications.yaml").open("r") as f:
+            self._benchmark_spec = yaml.safe_load(f)
 
     @abstractmethod
     def build_materials(self):
