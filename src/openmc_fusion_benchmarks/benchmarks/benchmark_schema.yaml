@@ -145,14 +145,9 @@ components:
           items:
             $ref: '#/components/schemas/Cell'
 
-# SOURCE
-# Future Extensions
-# - Support for time dependence (e.g., pulsed fusion sources)
-# - Correlated angle-energy distributions
-# - Multiple sources in a list (for composite sources)
     Source:
       type: object
-      required: [particle_type, spatial_distribution, angular_distribution, strength, rate]
+      required: [particle_type, spatial_distribution, angular_energy_distribution, strength]
       properties:
         particle_type:
           type: string
@@ -226,21 +221,17 @@ components:
                       strength:
                         type: number
 
-        rate:
-          type: object
-          required: [value, units]
-          properties:
-            value:
-              type: number
-            units:
-              type: string
-              enum: [n/s, particles/s]
+      rate:
+        type: object
+        required: [value, units]
+        properties:
+          value:
+            type: number
+          units:
+            type: string
+            enum: [n/s, particles/s]
 
-# IRRADIATION SCHEDULE
-# Future-Proof Ideas
-# - Add repeat: N to repeat a phase N times (e.g. pulsed operation)
-# - Add time_profile: file.csv to support arbitrary time-dependent flux
-# - Add cooling_only: true as a shortcut for pure decay phases
+
     IrradiationSchedule:
       type: object
       required: [steps]
@@ -258,15 +249,6 @@ components:
                 type: string
                 enum: [s, h, d]
 
-# TALLIES
-# domain.type can be cell, surface, mesh, volume_detector, etc.
-# values can be:
-# Inline scalars or vectors
-# Referenced file (e.g., HDF5 mesh data)
-# You can optionally include:
-# validation_type: absolute | relative | spectral shape
-# reference_tally_id for comparing to other tallies
-# location for point detectors
     Tallies:
       type: object
       properties:
@@ -302,12 +284,7 @@ components:
             required: [value, units]
       required: [name, description, particle, quantity, domain, values]
 
-# UNCERTAINTY QUANTIFICATION
-# Extensions To Add Later
-# Perturbation correlation groups (e.g., tied isotopes or material sets)
-# Experimental uncertainty models (e.g., detector efficiency)
-# UQ-specific output storage (e.g., full distributions, quantiles, Sobol plots)
-# Surrogate modeling or reduced-order model integration
+
     UncertaintyQuantification:
       type: object
       properties:
