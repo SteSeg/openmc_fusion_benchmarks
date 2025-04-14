@@ -1,3 +1,6 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://openmc-fusion/schemas/benchmark_schema"
+
 openapi: 3.0.3
 info:
   title: Fusion Neutronics Benchmark Specification
@@ -5,39 +8,34 @@ info:
   description: >
     OpenAPI specification for a benchmark definition used in fusion neutronics transport validation.
 
+$ref: "#/components/schemas/Benchmark"
 components:
   schemas:
     Benchmark:
       type: object
-      required:
+      required: 
         - metadata
         - materials
         - geometry
-        - source
-        # - irradiation_schedule
+        - sources
         - tallies
-        # - uncertainty_quantification
       properties:
         metadata:
           $ref: '#/components/schemas/Metadata'
         materials:
-          type: array
-          items:
-            $ref: '#/components/schemas/Materials'
+          # type: array
+          # items:
+          $ref: '#/components/schemas/Materials'
         geometry:
           $ref: '#/components/schemas/Geometry'
-        source:
-          type: array
-          items:
-            $ref: '#/components/schemas/Source'
-        # irradiation_schedule:
-        #   $ref: '#/components/schemas/IrradiationSchedule'
+        sources:
+          # type: array
+          # items:
+          $ref: '#/components/schemas/Sources'
         tallies:
           type: array
           items:
-            $ref: '#/components/schemas/Tallies'
-        # uncertainty_quantification:
-        #   $ref: '#/components/schemas/UncertaintyQuantification'
+            $ref: '#/components/schemas/Tally'
 
     Metadata:
       type: object
@@ -99,6 +97,11 @@ components:
             required: [title, doi]
 
     Materials:
+      type: array
+      items:
+        $ref: '#/components/schemas/Material'
+
+    Material:
       type: object
       required: [material_id, name, composition, density]
       properties:
@@ -145,6 +148,11 @@ components:
           items:
             $ref: '#/components/schemas/Cell'
 
+    Sources:
+      type: array
+      items:
+        $ref: '#/components/schemas/Source'
+    
     Source:
       type: object
       required: [particle_type, spatial_distribution, angular_energy_distribution, strength]
@@ -249,7 +257,7 @@ components:
                 type: string
                 enum: [s, h, d]
 
-    Tallies:
+    Tally:
       type: object
       properties:
         name:

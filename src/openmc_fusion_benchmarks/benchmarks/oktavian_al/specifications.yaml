@@ -68,7 +68,7 @@ materials:
       units: g/cm3
 
 geometry:
-  type: CAD # or "CAD"
+  type: cad
   units: cm
 
   # temporarily .h5m - .stp + meshing engine in the future
@@ -86,7 +86,7 @@ geometry:
 # - Support for time dependence (e.g., pulsed fusion sources)
 # - Correlated angle-energy distributions
 # - Multiple sources in a list (for composite sources)
-source:
+sources:
   - particle_type: neutron
     strength: 1.0
     spatial_distribution:
