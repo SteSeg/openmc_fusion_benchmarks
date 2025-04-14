@@ -81,11 +81,6 @@ geometry:
       - volume_id: 2
         material_id: 2
 
-# SOURCE
-# Future Extensions
-# - Support for time dependence (e.g., pulsed fusion sources)
-# - Correlated angle-energy distributions
-# - Multiple sources in a list (for composite sources)
 sources:
   - particle_type: neutron
     strength: 1.0
@@ -133,15 +128,6 @@ sources:
         units:
         description: "Neutron source probability distribution as a function of emission angle and energy"
 
-# TALLIES
-# domain.type can be cell, surface, mesh, volume_detector, etc.
-# values can be:
-# Inline scalars or vectors
-# Referenced file (e.g., HDF5 mesh data)
-# You can optionally include:
-# validation_type: absolute | relative | spectral shape
-# reference_tally_id for comparing to other tallies
-# location for point detectors
 tallies:
   - name: neutron_leakage
     description: "Total neutron current leaving the outer surface"

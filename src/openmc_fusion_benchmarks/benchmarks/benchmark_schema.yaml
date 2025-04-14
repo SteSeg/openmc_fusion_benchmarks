@@ -23,15 +23,15 @@ components:
         metadata:
           $ref: '#/components/schemas/Metadata'
         materials:
-          # type: array
-          # items:
-          $ref: '#/components/schemas/Materials'
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
         geometry:
           $ref: '#/components/schemas/Geometry'
         sources:
-          # type: array
-          # items:
-          $ref: '#/components/schemas/Sources'
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
         tallies:
           type: array
           items:
@@ -96,11 +96,6 @@ components:
                 format: uri  # Ensures a valid URL format for DOI
             required: [title, doi]
 
-    Materials:
-      type: array
-      items:
-        $ref: '#/components/schemas/Material'
-
     Material:
       type: object
       required: [material_id, name, composition, density]
@@ -147,11 +142,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Cell'
-
-    Sources:
-      type: array
-      items:
-        $ref: '#/components/schemas/Source'
     
     Source:
       type: object
