@@ -31,7 +31,7 @@ class Benchmark(ABC):
 
     @abstractmethod
     def build_source(self):
-        """Build settings for the benchmark."""
+        """Build source for the benchmark."""
         pass
 
     @abstractmethod
