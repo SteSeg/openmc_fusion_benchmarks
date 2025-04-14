@@ -59,7 +59,7 @@ class OpenmcBenchmark(Benchmark):
 
         fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
-        materials = []
+        materials = openmc.Materials()
         for m in material_data:
             mat = openmc.Material(name=m['name'])
             mat.material_id = m['material_id']
@@ -78,7 +78,7 @@ class OpenmcBenchmark(Benchmark):
 
             materials.append(mat)
 
-        return openmc.Materials(materials)
+        return materials
 
     def build_source(self):
         source_data = self._benchmark_spec['source']
