@@ -62,7 +62,7 @@ class OpenmcBenchmark(Benchmark):
         materials = openmc.Materials()
         for m in material_data:
             mat = openmc.Material(name=m['name'])
-            mat.material_id = m['material_id']
+            mat.id = m['material_id']
             mat.set_density(m['density']['units'], m['density']['value'])
 
             # Ensure fraction type is valid
