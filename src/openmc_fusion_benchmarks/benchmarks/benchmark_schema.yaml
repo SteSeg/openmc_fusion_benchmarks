@@ -36,6 +36,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Tally'
+        # Optional entries
+        irradiation_schedule:
+          $ref: '#/components/schemas/IrradiationSchedule'
+        uncertainty_quantification:
+          $ref: '#/components/schemas/UncertaintyQuantification'
 
     Metadata:
       type: object
@@ -230,24 +235,6 @@ components:
             type: string
             enum: [n/s, particles/s]
 
-
-    # IrradiationSchedule:
-    #   type: object
-    #   required: [steps]
-    #   properties:
-    #     steps:
-    #       type: array
-    #       items:
-    #         type: object
-    #         properties:
-    #           power:
-    #             type: number
-    #           duration:
-    #             type: number
-    #           unit:
-    #             type: string
-    #             enum: [s, h, d]
-
     Tally:
       type: object
       properties:
@@ -283,25 +270,42 @@ components:
             required: [value, units]
       required: [name, description, particle, quantity, domain, values]
 
+    IrradiationSchedule:
+      type: object
+      # required: [steps]
+      properties:
+        steps:
+          # type: array
+          # items:
+          #   type: object
+          #   properties:
+          #     power:
+          #       type: number
+          #     duration:
+          #       type: number
+          #     unit:
+          #       type: string
+          #       enum: [s, h, d]
 
-    # UncertaintyQuantification:
-    #   type: object
-    #   properties:
-    #     nuclear_data:
-    #       type: boolean
-    #     materials:
-    #       type: object
-    #       properties:
-    #         density:
-    #           type: boolean
-    #         composition:
-    #           type: boolean
-    #     source:
-    #       type: object
-    #       properties:
-    #         geometry:
-    #           type: boolean
-    #         angle:
-    #           type: boolean
-    #         energy:
-    #           type: boolean
+
+    UncertaintyQuantification:
+      type: object
+      properties:
+        # nuclear_data:
+        #   type: boolean
+        # materials:
+        #   type: object
+        #   properties:
+        #     density:
+        #       type: boolean
+        #     composition:
+        #       type: boolean
+        # source:
+        #   type: object
+        #   properties:
+        #     geometry:
+        #       type: boolean
+        #     angle:
+        #       type: boolean
+        #     energy:
+        #       type: boolean
