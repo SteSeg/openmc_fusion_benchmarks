@@ -166,7 +166,6 @@ components:
           required: [dims, angle, energy, weights]
           properties:
           interpolation: str
-          # required: [type]
           properties:
             type:
               type: string
