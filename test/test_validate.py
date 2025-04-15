@@ -1,87 +1,93 @@
 import pytest
-import jsonschema
 import yaml
-from unittest.mock import patch, mock_open, MagicMock
 from pathlib import Path
+from unittest.mock import patch, mock_open, MagicMock
 from openmc_fusion_benchmarks import validate_benchmark
 
 
 @pytest.fixture
-def mock_schema():
-    """Returns a mock schema for validation."""
-    return {
-        "$id": "benchmark_schema",
+def mock_paths(tmp_path):
+    """Creates mock schema and benchmark YAML files."""
+    base = tmp_path / "src" / "openmc_fusion_benchmarks" / "benchmarks"
+    base.mkdir(parents=True)
+    schema_path = base / "benchmark_schema.yaml"
+    benchmark_dir = base / "dummy_benchmark"
+    benchmark_dir.mkdir()
+    benchmark_path = benchmark_dir / "specifications.yaml"
+    return schema_path, benchmark_path, benchmark_dir.name
+
+
+def test_file_not_found(mock_paths):
+    schema_path, benchmark_path, benchmark_name = mock_paths
+    # Don't create the benchmark YAML file
+    with pytest.raises(FileNotFoundError):
+        validate_benchmark("dummy_benchmark")
+
+
+@patch("openmc_fusion_benchmarks.validate.yaml.safe_load")
+@patch("openmc_fusion_benchmarks.validate.open")
+@patch("openmc_fusion_benchmarks.validate.Path.is_file")
+def test_valid_yaml_schema_validation_passes(mock_is_file, mock_open_file, mock_safe_load, capsys):
+    # Arrange
+    mock_is_file.return_value = True
+
+    schema = {
+        "$id": "https://openmc-fusion/schemas/benchmark_schema",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
-            "name": {"type": "string"},
-            "materials": {"type": "array"},
+            "metadata": {"type": "object"},
+            "materials": {"type": "array"}
         },
-        "required": ["name", "materials"]
+        "required": ["metadata", "materials"]
     }
 
+    benchmark = {
+        "metadata": {},
+        "materials": []
+    }
 
-@pytest.fixture
-def valid_yaml():
-    """Returns a valid benchmark YAML content."""
-    return """
-    name: "Benchmark A"
-    materials:
-      - material_id: 1
-        name: "Steel"
-    """
+    # Simulate loading schema, then benchmark data
+    mock_safe_load.side_effect = [schema, benchmark]
+    mock_open_file.return_value.__enter__.return_value = MagicMock()
 
+    # Act
+    validate_benchmark("dummy_benchmark")
+    out = capsys.readouterr().out
 
-@pytest.fixture
-def invalid_yaml():
-    """Returns an invalid YAML (missing required field 'materials')."""
-    return """
-    name: "Benchmark A"
-    """
+    # Assert
+    assert "✅ dummy_benchmark is valid!" in out
 
 
-@pytest.fixture
-def invalid_format_yaml():
-    """Returns a YAML with incorrect syntax."""
-    return """
-    name: "Benchmark A"
-    materials:
-      - material_id: 1
-        name: "Steel"
-      - material_id: 2  # Missing 'name' key, which makes it invalid
-    """
+@patch("openmc_fusion_benchmarks.validate.yaml.safe_load")
+@patch("openmc_fusion_benchmarks.validate.open")
+@patch("openmc_fusion_benchmarks.validate.Path.is_file")
+def test_invalid_yaml_schema_validation_fails(mock_is_file, mock_open_file, mock_safe_load, capsys):
+    # Arrange
+    mock_is_file.return_value = True
 
+    schema = {
+        "$id": "https://openmc-fusion/schemas/benchmark_schema",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+            "metadata": {"type": "object"},
+            "materials": {"type": "array"}
+        },
+        "required": ["metadata", "materials"]
+    }
 
-def test_validate_benchmark_valid(mock_schema, valid_yaml):
-    """Test validation succeeds with a correct benchmark YAML file."""
-    with patch("builtins.open", mock_open(read_data=valid_yaml)) as mock_file, \
-            patch.object(Path, "is_file", return_value=True), \
-            patch("yaml.safe_load", side_effect=[mock_schema, yaml.safe_load(valid_yaml)]), \
-            patch("jsonschema.Draft7Validator") as mock_validator:
+    benchmark = {
+        "materials": []  # missing metadata!
+    }
 
-        mock_validator.return_value.iter_errors.return_value = []  # No validation errors
+    mock_safe_load.side_effect = [schema, benchmark]
+    mock_open_file.return_value.__enter__.return_value = MagicMock()
 
-        validate_benchmark("valid_benchmark")  # Should not raise any exception
-        mock_file.assert_called()
+    # Act
+    validate_benchmark("dummy_benchmark")
+    out = capsys.readouterr().out
 
-
-def test_validate_benchmark_missing_file():
-    """Test validation fails when the benchmark file is missing."""
-    with patch.object(Path, "is_file", return_value=False):
-        with pytest.raises(FileNotFoundError, match="Benchmark file .* not found."):
-            validate_benchmark("missing_benchmark")
-
-
-def test_validate_benchmark_schema_validation_error(mock_schema, invalid_yaml):
-    """Test validation fails when YAML does not conform to the schema."""
-    with patch("builtins.open", mock_open(read_data=invalid_yaml)), \
-            patch.object(Path, "is_file", return_value=True), \
-            patch("yaml.safe_load", side_effect=[mock_schema, yaml.safe_load(invalid_yaml)]), \
-            patch("jsonschema.Draft7Validator") as mock_validator:
-
-        mock_validator.return_value.iter_errors.return_value = [
-            MagicMock(message="Missing required field 'materials'",
-                      path=["materials"])
-        ]
-
-        with pytest.raises(jsonschema.exceptions.ValidationError, match="YAML validation failed."):
-            validate_benchmark("invalid_schema")
+    # Assert
+    assert "❌" in out
+    assert "metadata" in out
