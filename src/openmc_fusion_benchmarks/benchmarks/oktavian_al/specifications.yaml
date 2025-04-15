@@ -86,14 +86,13 @@ sources:
     strength: 1.0
     spatial_distribution:
       type: point
-      location: [0.0, 0.0, 0.0]
-      domain:
+      center: [0.0, 0.0, 0.0]
     angular_energy_distribution:
       polar_direction: [0.0, 1.0, 0.0]
       dims: ["angle", "energy"]
       angle: 
-        bins: [0.0, 360.0]
-        units: degrees
+          bins: [0.0, 360.0]
+          units: degrees
       energy:
         values: [100000., 136440., 150790., 166650., 184180., 203550.,
                 224960., 248620., 274760., 303660., 335600., 370890.,
