@@ -81,7 +81,7 @@ class OpenmcBenchmark(Benchmark):
         return materials
 
     def build_source(self):
-        source_data = self._benchmark_spec['source']
+        source_data = self._benchmark_spec['sources']
 
         def energy_conversion(values, units):
             values = np.array(values)
@@ -113,7 +113,7 @@ class OpenmcBenchmark(Benchmark):
 
             # Handle source spatial distribution
             if source['spatial_distribution']['type'] == 'point':
-                center = source['spatial_distribution']['location']
+                center = source['spatial_distribution']['center']
                 space = openmc.stats.Point(center)
             elif source['spatial_distribution']['type'] == 'box':
                 raise NotImplementedError(
@@ -134,10 +134,10 @@ class OpenmcBenchmark(Benchmark):
                 raise ValueError(
                     f"Unsupported spatial distribution type: {source['spatial_distribution']['type']}")
 
-            # Handle if source is associated with a domain (e.g. a cell, volume or material)
-            if source['spatial_distribution']['domain'] is not None:
-                raise NotImplementedError(
-                    'Source domain not implemented yet.')
+            # # Handle if source is associated with a domain (e.g. a cell, volume or material)
+            # if source['spatial_distribution']['domain'] is not None:
+            #     raise NotImplementedError(
+            #         'Source domain not implemented yet.')
 
             # Handle angular and energy distributions
             angular_sources = []
