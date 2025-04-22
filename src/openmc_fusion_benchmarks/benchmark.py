@@ -202,3 +202,7 @@ class OpenmcBenchmark(Benchmark):
         # source
         # batches
         # particles
+        # photon transport
+        # weight windows
+        # electron treatment
+        # settings.output = {'tallies': False}
