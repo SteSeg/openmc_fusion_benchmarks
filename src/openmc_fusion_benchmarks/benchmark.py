@@ -199,7 +199,7 @@ class OpenmcBenchmark(Benchmark):
         settings_data = self._benchmark_spec['settings']
 
         settings = openmc.Settings()
-        settings.run_mode = 'fixed source'
+        settings.run_mode = settings_data['run_mode']
         settings.batches = 100
         settings.particles = int(settings_data['particles'] / 100)
         settings.photon_transport = settings_data['photon_transport']
