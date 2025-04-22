@@ -199,9 +199,12 @@ class OpenmcBenchmark(Benchmark):
         settings_data = self._benchmark_spec['settings']
 
         settings = openmc.Settings()
-        settings.run_mode = settings_data['run_mode']
-        settings.batches = 100
-        settings.particles = int(settings_data['particles'] / 100)
+        if settings_data['run_mode'] == 'fixed source':
+            settings.run_mode = 'fixed source'
+        elif settings_data['run_mode'] == 'k-eigenvalue':
+            settings.run_mode = 'eigenvalue'
+        settings.batches = int(settings_data['batches'])
+        settings.particles = int(settings_data['particles_per_batch'])
         settings.photon_transport = settings_data['photon_transport']
         # photon transport
         # weight windows
