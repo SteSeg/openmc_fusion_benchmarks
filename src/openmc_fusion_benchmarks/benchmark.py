@@ -194,3 +194,6 @@ class OpenmcBenchmark(Benchmark):
             sources.extend(angular_sources)
 
         return source
+
+    def build_tallies(self):
+        tallies_data = self._benchmark_spec['tallies']
