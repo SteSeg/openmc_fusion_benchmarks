@@ -198,11 +198,17 @@ class OpenmcBenchmark(Benchmark):
     def build_settings(self):
         settings_data = self._benchmark_spec['settings']
 
-        # run mode
-        # source
-        # batches
-        # particles
+        settings = openmc.Settings()
+        settings.run_mode = 'fixed source'
+        settings.batches = 100
+        settings.particles = int(settings_data['particles'] / 100)
+        settings.photon_transport = settings_data['photon_transport']
         # photon transport
         # weight windows
         # electron treatment
-        # settings.output = {'tallies': False}
+        settings.output = {'tallies': False}
+
+        source = self.build_source()
+        settings.source = source
+
+        return settings
