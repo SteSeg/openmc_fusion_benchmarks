@@ -194,3 +194,11 @@ class OpenmcBenchmark(Benchmark):
             sources.extend(angular_sources)
 
         return source
+
+    def build_settings(self):
+        settings_data = self._benchmark_spec['settings']
+
+        # run mode
+        # source
+        # batches
+        # particles
