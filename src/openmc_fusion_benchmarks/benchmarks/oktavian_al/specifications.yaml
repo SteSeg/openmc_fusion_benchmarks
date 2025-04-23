@@ -1,5 +1,7 @@
 metadata:
   title: OKTAVIAN AL Benchmark
+  type: experimental
+  category: fusion
   version: 1.0.0
   description: >
     The Osaka Aluminium Sphere Benchmark Experiment (OKTAVIAN) (December 22, 1988) 
@@ -11,17 +13,13 @@ metadata:
       affiliation: N/A
       email: N/A
   experiment_date: "1988-12-22"
-  date_created: N/A
-  last_updated: N/A
   location:
     facility: OKTAVIAN
     city: Osaka
     country: Japan
-  experiment_type: fusion
-  experiment_category: neutron
   references:
-    - title: "SINBAD–Radiation shielding benchmark experiments."
-      doi: "https://doi.org/10.1016/j.anucene.2021.108254"
+    - doi: "https://doi.org/10.1016/j.anucene.2021.108254"
+    - doi: "https://doi.org/10.1016/j.anucene.2009.12.016"
 
 materials:
   - id: 1
