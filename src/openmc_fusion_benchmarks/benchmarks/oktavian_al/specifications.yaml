@@ -8,11 +8,7 @@ metadata:
     is an intermediate quality neutronics experiment conducted to measure the leakage 
     neutron spectrum from the outer surface of a aluminium sphere with a radius of 20 cm, 
     surrounded by a 0.2 cm thick stainless steel shield, using 14 MeV neutrons.
-  authors:
-    - name: N/A
-      affiliation: N/A
-      email: N/A
-  experiment_date: "1988-12-22"
+  date: "1988-12-22"
   location:
     facility: OKTAVIAN
     city: Osaka
