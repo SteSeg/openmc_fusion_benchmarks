@@ -14,8 +14,12 @@ metadata:
     city: Osaka
     country: Japan
   references:
-    - doi: "https://doi.org/10.1016/j.anucene.2021.108254"
-    - doi: "https://doi.org/10.1016/j.anucene.2009.12.016"
+    - title: "Compilation of benchmark results for fusion related Nuclear Data"
+      url: "https://inis.iaea.org/records/01rr2-t5f29"
+    - title: "SINBAD–Radiation shielding benchmark experiments."
+      doi: "https://doi.org/10.1016/j.anucene.2021.108254"
+    - title: "The OKTAVIAN TOF Experiments in SINBAD: Evaluation of the Experimental Uncertainties"
+      doi: "https://doi.org/10.1016/j.anucene.2009.12.016"
 
 materials:
   - id: 1
