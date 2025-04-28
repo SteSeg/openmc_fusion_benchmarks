@@ -131,12 +131,12 @@ tallies:
   - name: neutron_leakage
     description: "Total neutron current leaving the outer surface"
     particle: neutron
-    quantity: current
-    domain:
-      type: surface
-      id: 6
-    values:
-      - value: [97122., 101090., 105210., 109500., 113970., 118620.,
+    quantities: [current]
+    domains:
+      - type: surface
+        values: [6]
+      - type: energy
+        values: [97122., 101090., 105210., 109500., 113970., 118620.,
                 123470., 128500., 133750., 139210., 144890., 150800.,
                 156960., 163360., 170030., 176970., 184190., 191710.,
                 199530., 207670., 216150., 224970., 234150., 243710.,
@@ -160,15 +160,16 @@ tallies:
                 15002000., 15615000., 16252000., 16915000., 17605000., 18324000.,
                 19072000., 19850000., 20660000.]
         units: particle/src/cm**2
+
   - name: photon_leakage
     description: "Total photon current leaving the outer surface"
     particle: photon
-    quantity: current
-    domain:
-      type: surface
-      id: 6
-    values:
-      - value: [500000.,   600000.,   700000.,   800000.,   900000.,  1000000.,
+    quantities: [current]
+    domains:
+      - type: surface
+        values: [6]
+      - type: energy
+        values: [500000.,   600000.,   700000.,   800000.,   900000.,  1000000.,
                 1100000.,  1200000.,  1300000.,  1400000.,  1500000.,  1600000.,
                 1700000.,  1800000.,  1900000.,  2000000.,  2100000.,  2200000.,
                 2300000.,  2400000.,  2500000.,  2600000.,  2700000.,  2800000.,
