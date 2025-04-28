@@ -130,7 +130,7 @@ sources:
 tallies:
   - name: neutron_leakage
     description: "Total neutron current leaving the outer surface"
-    particle: neutron
+    particle_type: neutron
     quantities: [current]
     domains:
       - type: surface
@@ -163,7 +163,7 @@ tallies:
 
   - name: photon_leakage
     description: "Total photon current leaving the outer surface"
-    particle: photon
+    particle_type: photon
     quantities: [current]
     domains:
       - type: surface
