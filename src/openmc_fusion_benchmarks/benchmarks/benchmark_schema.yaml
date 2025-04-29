@@ -18,6 +18,7 @@ components:
         - materials
         - geometry
         - sources
+        - settings
         - tallies
       properties:
         metadata:
@@ -32,6 +33,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Source'
+        settings:
+          $ref: '#/components/schemas/Settings'
         tallies:
           type: array
           items:
@@ -44,14 +47,48 @@ components:
 
     Metadata:
       type: object
-      required: [title, version, description, experiment_type, experiment_category, references]
+      required: [title, type, category, version, description, date, location, references]
       properties:
         title:
           type: string
+        type:
+          type: string
+          enum: [experimental, computational, analytic]
+        category:
+          type: string
+          enum: [fusion, fission, accelerator, other]
         version:
           type: string
+          pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"  # Major.Minor.Patch format
         description:
           type: string
+        date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"  # YYYY-MM-DD format
+        location:
+          type: object
+          properties:
+            facility:
+              type: string
+            city:
+              type: string
+            country:
+              type: string
+          required: [facility, city, country]
+        references:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              doi:
+                type: string
+                format: uri  # Ensures a valid URL format for DOI
+            required: [title]
+            anyOf:
+            - required: [doi]
+            - required: [url]
         authors:
           type: array
           items:
@@ -64,42 +101,6 @@ components:
               email:
                 type: string
             required: [name, affiliation, email]
-        experiment_date:
-          type: string
-          pattern: "^\\d{4}-\\d{2}-\\d{2}$"  # YYYY-MM-DD format
-        date_created:
-          type: string
-          pattern: "^(N/A|\\d{4}-\\d{2}-\\d{2})$"  # Allows "N/A" or date format
-        last_updated:
-          type: string
-          pattern: "^(N/A|\\d{4}-\\d{2}-\\d{2})$"  # Allows "N/A" or date format
-        location:
-          type: object
-          properties:
-            facility:
-              type: string
-            city:
-              type: string
-            country:
-              type: string
-          required: [facility, city, country]
-        experiment_type:
-          type: string
-          enum: [fusion, fission, accelerator, other]
-        experiment_category:
-          type: string
-          enum: [neutron, gamma, mixed]
-        references:
-          type: array
-          items:
-            type: object
-            properties:
-              title:
-                type: string
-              doi:
-                type: string
-                format: uri  # Ensures a valid URL format for DOI
-            required: [title, doi]
 
     Material:
       type: object
@@ -165,7 +166,7 @@ components:
             type:
               type: string
               enum: [point, box, cylinder, sphere, cartesian, mesh, domain]
-            location:
+            domain:
         angular_energy_distribution:
           type: object
           required: [dims, angle, energy, weights]
@@ -234,6 +235,21 @@ components:
           units:
             type: string
             enum: [n/s, particles/s]
+
+    Settings:
+      type: object
+      required: [run_mode, batches, particles_per_batch, photon_transport]
+      properties:
+        run_mode:
+          type: string
+          enum: [fixed_source, k_eigenvalue]
+        batches:
+          type: integer
+        particles_per_batch:
+          type: integer
+        photon_transport:
+          type: boolean
+        # Optional entries
 
     Tally:
       type: object
