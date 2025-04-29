@@ -253,38 +253,32 @@ components:
 
     Tally:
       type: object
+      required: [name, particle_type, domains, quantities]
       properties:
-        name:
+        name: 
           type: string
-        description:
+        description: 
           type: string
-        particle:
+        particle_type:
           type: string
-          enum: [neutron, photon]  # Enforcing valid particle types
-        quantity:
-          type: string
-        domain:
-          type: object
-          properties:
-            type:
-              type: string
-              enum: [surface, volume]  # Adjust if needed
-            id:
-              type: integer
-          required: [type, id]
-        values:
+          enum: [neutron, photon, electron, positron]
+        domains:
           type: array
           items:
             type: object
+            required: [type, values]
             properties:
-              value:
+              type:
+                type: string
+                enum: [surface, cell, material, energy, mesh]
+              values:
                 type: array
-                items:
-                  type: number
               units:
                 type: string
-            required: [value, units]
-      required: [name, description, particle, quantity, domain, values]
+        quantities:
+          type: array
+          items:
+            type: string
 
     IrradiationSchedule:
       type: object

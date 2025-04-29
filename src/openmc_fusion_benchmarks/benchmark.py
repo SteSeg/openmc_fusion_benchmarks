@@ -200,6 +200,43 @@ class OpenmcBenchmark(Benchmark):
 
         return source
 
+    def build_tallies(self):
+        tallies_data = self._benchmark_spec['tallies']
+
+        # Initialize openmc tallies
+        tallies = openmc.Tallies()
+
+        for t in tallies_data:
+            tally = openmc.Tally(name=t['name'])
+            # Handle particle type
+            particle = t['particle_type']
+            particle_filter = openmc.ParticleFilter([particle])
+            tally.filters.append(particle_filter)
+            # Handle domains/filters
+            for d in t['domains']:
+                if d['type'] == 'cell':
+                    filter = openmc.CellFilter(d['values'])
+                elif d['type'] == 'material':
+                    filter = openmc.MaterialFilter(d['values'])
+                elif d['type'] == 'surface':
+                    filter = openmc.SurfaceFilter(d['values'])
+                elif d['type'] == 'energy':
+                    filter = openmc.EnergyFilter(d['values'])
+                else:
+                    raise ValueError(
+                        f"Unsupported domain type: {d['type']}")
+
+                tally.filters.append(filter)
+
+            # Handle quantities/scores
+            for q in t['quantities']:
+                tally.scores.append(q)
+
+            # Store in tallies
+            tallies.append(tally)
+
+        return tallies
+
     @property
     def metadata(self):
         metadata = self._benchmark_spec['metadata']
