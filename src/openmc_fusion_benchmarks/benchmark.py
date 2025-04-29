@@ -194,3 +194,24 @@ class OpenmcBenchmark(Benchmark):
             sources.extend(angular_sources)
 
         return source
+
+    def build_settings(self):
+        settings_data = self._benchmark_spec['settings']
+
+        settings = openmc.Settings()
+        if settings_data['run_mode'] == 'fixed source':
+            settings.run_mode = 'fixed source'
+        elif settings_data['run_mode'] == 'k-eigenvalue':
+            settings.run_mode = 'eigenvalue'
+        settings.batches = int(settings_data['batches'])
+        settings.particles = int(settings_data['particles_per_batch'])
+        settings.photon_transport = settings_data['photon_transport']
+        # photon transport
+        # weight windows
+        # electron treatment
+        settings.output = {'tallies': False}
+
+        source = self.build_source()
+        settings.source = source
+
+        return settings
