@@ -44,6 +44,11 @@ class Benchmark(ABC):
         """Build tallies for the benchmark."""
         pass
 
+    @abstractmethod
+    def metadata(self):
+        """Get metadata for the benchmark."""
+        pass
+
 
 class OpenmcBenchmark(Benchmark):
     def __init__(self, name: str):
@@ -194,6 +199,50 @@ class OpenmcBenchmark(Benchmark):
             sources.extend(angular_sources)
 
         return source
+
+    @property
+    def metadata(self):
+        metadata = self._benchmark_spec['metadata']
+
+        lines = []
+        lines.append(f"📘 Title: {metadata.get('title', 'N/A')}")
+        lines.append("")
+        lines.append(f"🔖 Type: {metadata.get('type', 'N/A')}")
+        lines.append("")
+        lines.append(f"📂 Category: {metadata.get('category', 'N/A')}")
+        lines.append("")
+        lines.append(f"🧮 Version: {metadata.get('version', 'N/A')}")
+        lines.append("")
+        lines.append(f"📝 Description: {metadata.get('description', 'N/A')}")
+        lines.append(f"📅 Date: {metadata.get('date', 'N/A')}")
+
+        location = metadata.get("location", {})
+        lines.append("📍 Location:")
+        lines.append(f"   - Facility: {location.get('facility', 'N/A')}")
+        lines.append(f"   - City: {location.get('city', 'N/A')}")
+        lines.append(f"   - Country: {location.get('country', 'N/A')}")
+        lines.append("")
+
+        references = metadata.get("references", [])
+        lines.append("🔗 References:")
+        for ref in references:
+            lines.append(f"   - Title: {ref.get('title', 'N/A')}")
+            if 'doi' in ref:
+                lines.append(f"     DOI: {ref['doi']}")
+            if 'url' in ref:
+                lines.append(f"     URL: {ref['url']}")
+
+        authors = metadata.get("authors", [])
+        if authors:
+            lines.append("")
+            lines.append("👥 Authors:")
+            for author in authors:
+                name = author.get("name", "N/A")
+                affiliation = author.get("affiliation", "N/A")
+                email = author.get("email", "N/A")
+                lines.append(f"   - {name} ({affiliation}, {email})")
+
+        print("\n".join(lines))
 
     def build_settings(self):
         settings_data = self._benchmark_spec['settings']

@@ -1,27 +1,25 @@
 metadata:
   title: OKTAVIAN AL Benchmark
+  type: experimental
+  category: fusion
   version: 1.0.0
   description: >
     The Osaka Aluminium Sphere Benchmark Experiment (OKTAVIAN) (December 22, 1988) 
     is an intermediate quality neutronics experiment conducted to measure the leakage 
     neutron spectrum from the outer surface of a aluminium sphere with a radius of 20 cm, 
     surrounded by a 0.2 cm thick stainless steel shield, using 14 MeV neutrons.
-  authors:
-    - name: N/A
-      affiliation: N/A
-      email: N/A
-  experiment_date: "1988-12-22"
-  date_created: N/A
-  last_updated: N/A
+  date: "1988-12-22"
   location:
     facility: OKTAVIAN
     city: Osaka
     country: Japan
-  experiment_type: fusion
-  experiment_category: neutron
   references:
+    - title: "Compilation of benchmark results for fusion related Nuclear Data"
+      url: "https://inis.iaea.org/records/01rr2-t5f29"
     - title: "SINBAD–Radiation shielding benchmark experiments."
       doi: "https://doi.org/10.1016/j.anucene.2021.108254"
+    - title: "The OKTAVIAN TOF Experiments in SINBAD: Evaluation of the Experimental Uncertainties"
+      doi: "https://doi.org/10.1016/j.anucene.2009.12.016"
 
 materials:
   - id: 1
