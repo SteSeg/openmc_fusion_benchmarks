@@ -168,7 +168,7 @@ components:
             type:
               type: string
               enum: [point, box, cylinder, sphere, cartesian, mesh, domain]
-            location:
+            domain:
         angular_energy_distribution:
           type: object
           required: [dims, angle, energy, weights]
