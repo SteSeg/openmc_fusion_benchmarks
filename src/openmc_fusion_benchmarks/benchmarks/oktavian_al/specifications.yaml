@@ -125,6 +125,12 @@ sources:
         units:
         description: "Neutron source probability distribution as a function of emission angle and energy"
 
+settings:
+  run_mode: fixed_source
+  batches: 100
+  particles_per_batch: 10000000
+  photon_transport: true
+
 tallies:
   - name: neutron_leakage
     description: "Total neutron current leaving the outer surface"
