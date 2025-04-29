@@ -1,3 +1,6 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://openmc-fusion/schemas/benchmark_schema"
+
 openapi: 3.0.3
 info:
   title: Fusion Neutronics Benchmark Specification
@@ -5,39 +8,39 @@ info:
   description: >
     OpenAPI specification for a benchmark definition used in fusion neutronics transport validation.
 
+$ref: "#/components/schemas/Benchmark"
 components:
   schemas:
     Benchmark:
       type: object
-      required:
+      required: 
         - metadata
         - materials
         - geometry
-        - source
-        # - irradiation_schedule
+        - sources
         - tallies
-        # - uncertainty_quantification
       properties:
         metadata:
           $ref: '#/components/schemas/Metadata'
         materials:
           type: array
           items:
-            $ref: '#/components/schemas/Materials'
+            $ref: '#/components/schemas/Material'
         geometry:
           $ref: '#/components/schemas/Geometry'
-        source:
+        sources:
           type: array
           items:
             $ref: '#/components/schemas/Source'
-        # irradiation_schedule:
-        #   $ref: '#/components/schemas/IrradiationSchedule'
         tallies:
           type: array
           items:
-            $ref: '#/components/schemas/Tallies'
-        # uncertainty_quantification:
-        #   $ref: '#/components/schemas/UncertaintyQuantification'
+            $ref: '#/components/schemas/Tally'
+        # Optional entries
+        irradiation_schedule:
+          $ref: '#/components/schemas/IrradiationSchedule'
+        uncertainty_quantification:
+          $ref: '#/components/schemas/UncertaintyQuantification'
 
     Metadata:
       type: object
@@ -98,11 +101,11 @@ components:
                 format: uri  # Ensures a valid URL format for DOI
             required: [title, doi]
 
-    Materials:
+    Material:
       type: object
-      required: [material_id, name, composition, density]
+      required: [id, name, composition, density]
       properties:
-        material_id:
+        id:
           type: integer
         name:
           type: string
@@ -126,6 +129,7 @@ components:
               type: number
             units:
               type: string
+              enum: [g/cm3]
           required: [value, units]
 
     Geometry:
@@ -144,49 +148,40 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Cell'
-
-# SOURCE
-# Future Extensions
-# - Support for time dependence (e.g., pulsed fusion sources)
-# - Correlated angle-energy distributions
-# - Multiple sources in a list (for composite sources)
+    
     Source:
       type: object
-      required: [particle_type, spatial_distribution, angular_distribution, rate]
+      required: [particle_type, spatial_distribution, angular_energy_distribution, strength]
       properties:
         particle_type:
           type: string
-          enum: [neutron, photon, deuteron, triton, proton, electron]
+          enum: [neutron, photon]
+        strength:
+          type: number
         spatial_distribution:
-          spatialdistribution_type: object
-          required: [spatialdistribution_type]
+          type: object
+          required: [type]
           properties:
             type:
               type: string
-              enum: [point, line, surface, volume]
-            location:
+              enum: [point, box, cylinder, sphere, cartesian, mesh, domain]
+            domain:
+        angular_energy_distribution:
+          type: object
+          required: [dims, angle, energy, weights]
+          properties:
+          interpolation: str
+          properties:
+            type:
+              type: string
+              enum: [isotropic, tabulated]
+            reference_uvw:
               type: array
               items:
                 type: number
               minItems: 3
               maxItems: 3
-            bounds:
-              type: array
-              items:
-                type: array
-                items:
-                  type: number
-                minItems: 3
-                maxItems: 3
-              minItems: 2
-              maxItems: 2
-        angular_distribution:
-          angulardistribution_type: object
-          required: [angulardistribution_type]
-          properties:
-            type:
-              type: string
-              enum: [isotropic, tabulated]
+              description: A 3D direction or position vector [x, y, z]
             bins:
               type: array
               items:
@@ -200,8 +195,8 @@ components:
                     minItems: 2
                     maxItems: 2
                   energy_distribution:
-                    energydistribution_type: object
-                    required: [energydistribution_type, bins, probabilities]
+                    type: object
+                    required: [type, bins, weights, strength]
                     properties:
                       type:
                         type: string
@@ -228,48 +223,19 @@ components:
                             type: array
                             items:
                               type: number
-        rate:
-          type: object
-          required: [value, units]
-          properties:
-            value:
-              type: number
-            units:
-              type: string
-              enum: [n/s, particles/s]
+                      strength:
+                        type: number
+      rate:
+        type: object
+        required: [value, units]
+        properties:
+          value:
+            type: number
+          units:
+            type: string
+            enum: [n/s, particles/s]
 
-# IRRADIATION SCHEDULE
-# Future-Proof Ideas
-# - Add repeat: N to repeat a phase N times (e.g. pulsed operation)
-# - Add time_profile: file.csv to support arbitrary time-dependent flux
-# - Add cooling_only: true as a shortcut for pure decay phases
-    IrradiationSchedule:
-      type: object
-      required: [steps]
-      properties:
-        steps:
-          type: array
-          items:
-            type: object
-            properties:
-              power:
-                type: number
-              duration:
-                type: number
-              unit:
-                type: string
-                enum: [s, h, d]
-
-# TALLIES
-# domain.type can be cell, surface, mesh, volume_detector, etc.
-# values can be:
-# Inline scalars or vectors
-# Referenced file (e.g., HDF5 mesh data)
-# You can optionally include:
-# validation_type: absolute | relative | spectral shape
-# reference_tally_id for comparing to other tallies
-# location for point detectors
-    Tallies:
+    Tally:
       type: object
       properties:
         name:
@@ -282,14 +248,14 @@ components:
         quantity:
           type: string
         domain:
-          domain_type: object
+          type: object
           properties:
             type:
               type: string
               enum: [surface, volume]  # Adjust if needed
             id:
               type: integer
-          required: [domain_type, id]
+          required: [type, id]
         values:
           type: array
           items:
@@ -304,30 +270,42 @@ components:
             required: [value, units]
       required: [name, description, particle, quantity, domain, values]
 
-# UNCERTAINTY QUANTIFICATION
-# Extensions To Add Later
-# Perturbation correlation groups (e.g., tied isotopes or material sets)
-# Experimental uncertainty models (e.g., detector efficiency)
-# UQ-specific output storage (e.g., full distributions, quantiles, Sobol plots)
-# Surrogate modeling or reduced-order model integration
+    IrradiationSchedule:
+      type: object
+      # required: [steps]
+      properties:
+        steps:
+          # type: array
+          # items:
+          #   type: object
+          #   properties:
+          #     power:
+          #       type: number
+          #     duration:
+          #       type: number
+          #     unit:
+          #       type: string
+          #       enum: [s, h, d]
+
+
     UncertaintyQuantification:
       type: object
       properties:
-        nuclear_data:
-          type: boolean
-        materials:
-          type: object
-          properties:
-            density:
-              type: boolean
-            composition:
-              type: boolean
-        source:
-          type: object
-          properties:
-            geometry:
-              type: boolean
-            angle:
-              type: boolean
-            energy:
-              type: boolean
+        # nuclear_data:
+        #   type: boolean
+        # materials:
+        #   type: object
+        #   properties:
+        #     density:
+        #       type: boolean
+        #     composition:
+        #       type: boolean
+        # source:
+        #   type: object
+        #   properties:
+        #     geometry:
+        #       type: boolean
+        #     angle:
+        #       type: boolean
+        #     energy:
+        #       type: boolean

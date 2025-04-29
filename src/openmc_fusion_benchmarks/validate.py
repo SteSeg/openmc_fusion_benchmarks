@@ -1,6 +1,6 @@
 import yaml
 import jsonschema
-from referencing import Registry
+from referencing import Registry, Resource
 from pathlib import Path
 
 
@@ -23,18 +23,23 @@ def validate_benchmark(benchmark_name: str):
     registry = Registry().with_resources(
         [(schema.get("$id", "benchmark_schema"), schema)])
 
+    # CHANGED: Wrap the schema in a Resource and use the referencing registry
+    schema_id = schema.get(
+        "$id", "https://openmc-fusion/schemas/benchmark_schema")  # <-- CHANGED
+    registry = Registry().with_resources(
+        [(schema_id, Resource.from_contents(schema))])  # <-- CHANGED
+
     # Load the YAML file to validate
     with open(benchmark_path, "r") as yaml_file:
         yaml_data = yaml.safe_load(yaml_file)
 
-    # Validate the YAML file
-    validator = jsonschema.Draft7Validator(schema, registry=registry)
-    errors = sorted(validator.iter_errors(yaml_data), key=lambda e: e.path)
+    # CHANGED: Use jsonschema 2020-12 validator with registry
+    validator_cls = jsonschema.validators.validator_for(schema)  # <-- ADDED
+    validator_cls.check_schema(schema)                           # <-- ADDED
+    validator = validator_cls(schema, registry=registry)         # <-- CHANGED
 
-    if errors:
-        for error in errors:
-            print(f"Validation Error: {error.message} at {list(error.path)}")
-        raise jsonschema.exceptions.ValidationError("YAML validation failed.")
+    # Validate the YAML file
+    errors = sorted(validator.iter_errors(yaml_data), key=lambda e: e.path)
 
     # Print errors
     if errors:
