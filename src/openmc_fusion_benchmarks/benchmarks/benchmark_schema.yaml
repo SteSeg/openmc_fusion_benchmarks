@@ -1,0 +1,333 @@
+openapi: 3.0.3
+info:
+  title: Fusion Neutronics Benchmark Specification
+  version: 1.0.0
+  description: >
+    OpenAPI specification for a benchmark definition used in fusion neutronics transport validation.
+
+components:
+  schemas:
+    Benchmark:
+      type: object
+      required:
+        - metadata
+        - materials
+        - geometry
+        - source
+        # - irradiation_schedule
+        - tallies
+        # - uncertainty_quantification
+      properties:
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/Materials'
+        geometry:
+          $ref: '#/components/schemas/Geometry'
+        source:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+        # irradiation_schedule:
+        #   $ref: '#/components/schemas/IrradiationSchedule'
+        tallies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tallies'
+        # uncertainty_quantification:
+        #   $ref: '#/components/schemas/UncertaintyQuantification'
+
+    Metadata:
+      type: object
+      required: [title, version, description, experiment_type, experiment_category, references]
+      properties:
+        title:
+          type: string
+        version:
+          type: string
+        description:
+          type: string
+        authors:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              affiliation:
+                type: string
+              email:
+                type: string
+            required: [name, affiliation, email]
+        experiment_date:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"  # YYYY-MM-DD format
+        date_created:
+          type: string
+          pattern: "^(N/A|\\d{4}-\\d{2}-\\d{2})$"  # Allows "N/A" or date format
+        last_updated:
+          type: string
+          pattern: "^(N/A|\\d{4}-\\d{2}-\\d{2})$"  # Allows "N/A" or date format
+        location:
+          type: object
+          properties:
+            facility:
+              type: string
+            city:
+              type: string
+            country:
+              type: string
+          required: [facility, city, country]
+        experiment_type:
+          type: string
+          enum: [fusion, fission, accelerator, other]
+        experiment_category:
+          type: string
+          enum: [neutron, gamma, mixed]
+        references:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              doi:
+                type: string
+                format: uri  # Ensures a valid URL format for DOI
+            required: [title, doi]
+
+    Materials:
+      type: object
+      required: [material_id, name, composition, density]
+      properties:
+        material_id:
+          type: integer
+        name:
+          type: string
+        composition:
+          type: object
+          properties:
+            composition_type:
+              type: string
+            fraction_type:
+              type: string
+              enum: [atomic, weight]
+            data:
+              type: object
+              additionalProperties:
+                type: number
+          required: [composition_type, fraction_type, data]
+        density:
+          type: object
+          properties:
+            value:
+              type: number
+            units:
+              type: string
+          required: [value, units]
+
+    Geometry:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [cad, csg]
+        cad_file:
+          type: string
+        surfaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Surface'
+        cells:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cell'
+
+# SOURCE
+# Future Extensions
+# - Support for time dependence (e.g., pulsed fusion sources)
+# - Correlated angle-energy distributions
+# - Multiple sources in a list (for composite sources)
+    Source:
+      type: object
+      required: [particle_type, spatial_distribution, angular_distribution, rate]
+      properties:
+        particle_type:
+          type: string
+          enum: [neutron, photon, deuteron, triton, proton, electron]
+        spatial_distribution:
+          spatialdistribution_type: object
+          required: [spatialdistribution_type]
+          properties:
+            type:
+              type: string
+              enum: [point, line, surface, volume]
+            location:
+              type: array
+              items:
+                type: number
+              minItems: 3
+              maxItems: 3
+            bounds:
+              type: array
+              items:
+                type: array
+                items:
+                  type: number
+                minItems: 3
+                maxItems: 3
+              minItems: 2
+              maxItems: 2
+        angular_distribution:
+          angulardistribution_type: object
+          required: [angulardistribution_type]
+          properties:
+            type:
+              type: string
+              enum: [isotropic, tabulated]
+            bins:
+              type: array
+              items:
+                type: object
+                required: [angle_range, energy_distribution]
+                properties:
+                  angle_range:
+                    type: array
+                    items:
+                      type: number
+                    minItems: 2
+                    maxItems: 2
+                  energy_distribution:
+                    energydistribution_type: object
+                    required: [energydistribution_type, bins, probabilities]
+                    properties:
+                      type:
+                        type: string
+                        enum: [tabular]
+                      interpolation:
+                        type: string
+                        enum: [histogram, linear-linear, linear-logarithmic, logarithmic-linear, logarithmic-logarithmic]
+                      bins: 
+                        type: object
+                        required: [values, units]
+                        properties:
+                          values:
+                            type: array
+                            items:
+                              type: number
+                          units:
+                            type: string
+                            enum: [eV, keV, MeV, GeV]
+                      probabilities:
+                        type: object
+                        required: [values]
+                        properties:
+                          values:
+                            type: array
+                            items:
+                              type: number
+        rate:
+          type: object
+          required: [value, units]
+          properties:
+            value:
+              type: number
+            units:
+              type: string
+              enum: [n/s, particles/s]
+
+# IRRADIATION SCHEDULE
+# Future-Proof Ideas
+# - Add repeat: N to repeat a phase N times (e.g. pulsed operation)
+# - Add time_profile: file.csv to support arbitrary time-dependent flux
+# - Add cooling_only: true as a shortcut for pure decay phases
+    IrradiationSchedule:
+      type: object
+      required: [steps]
+      properties:
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              power:
+                type: number
+              duration:
+                type: number
+              unit:
+                type: string
+                enum: [s, h, d]
+
+# TALLIES
+# domain.type can be cell, surface, mesh, volume_detector, etc.
+# values can be:
+# Inline scalars or vectors
+# Referenced file (e.g., HDF5 mesh data)
+# You can optionally include:
+# validation_type: absolute | relative | spectral shape
+# reference_tally_id for comparing to other tallies
+# location for point detectors
+    Tallies:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        particle:
+          type: string
+          enum: [neutron, photon]  # Enforcing valid particle types
+        quantity:
+          type: string
+        domain:
+          domain_type: object
+          properties:
+            type:
+              type: string
+              enum: [surface, volume]  # Adjust if needed
+            id:
+              type: integer
+          required: [domain_type, id]
+        values:
+          type: array
+          items:
+            type: object
+            properties:
+              value:
+                type: array
+                items:
+                  type: number
+              units:
+                type: string
+            required: [value, units]
+      required: [name, description, particle, quantity, domain, values]
+
+# UNCERTAINTY QUANTIFICATION
+# Extensions To Add Later
+# Perturbation correlation groups (e.g., tied isotopes or material sets)
+# Experimental uncertainty models (e.g., detector efficiency)
+# UQ-specific output storage (e.g., full distributions, quantiles, Sobol plots)
+# Surrogate modeling or reduced-order model integration
+    UncertaintyQuantification:
+      type: object
+      properties:
+        nuclear_data:
+          type: boolean
+        materials:
+          type: object
+          properties:
+            density:
+              type: boolean
+            composition:
+              type: boolean
+        source:
+          type: object
+          properties:
+            geometry:
+              type: boolean
+            angle:
+              type: boolean
+            energy:
+              type: boolean

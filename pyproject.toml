@@ -17,6 +17,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "pyYAML",
+    "jsonschema",
+    "openapi_schema_validator",
+    "pydantic",
     "numpy",
     "pandas",
     "tables",

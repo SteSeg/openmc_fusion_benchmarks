@@ -1,119 +1,81 @@
-"""Module for defining and managing benchmarks"""
+import yaml
+from pathlib import Path
+from abc import ABC, abstractmethod
 import openmc
-from .cloud_interface import download_geometry
-# from openmc_fusion_benchmarks import StatePoint
-# from openmc_fusion_benchmarks import get_statepoint_path
-from functools import wraps
+from .validate import validate_benchmark
 
 
-class Benchmark:
+class Benchmark(ABC):
     def __init__(self, name: str):
         self.name = name
 
-    def get_model(self, geometry_type: str) -> openmc.Model:
-        """Dynamically import and return the model object from benchmarks/{benchmark_name}/model.py"""
+        # # Validate the benchmark specification
+        # validate_benchmark(name)
 
-        if geometry_type not in ['csg', 'cad']:
-            raise ValueError(
-                'Invalid geometry type can be either "csg" or "cad"')
+        base_dir = Path(__file__).parent
+        benchmark_dir = base_dir / "benchmarks" / name
+        with (benchmark_dir / "specifications.yaml").open("r") as f:
+            benchmark_spec = yaml.safe_load(f)
 
-        try:
-            module_path = f"openmc_fusion_benchmarks.benchmarks.{self.name}.benchmark_module"
-            benchmark_module = __import__(module_path, fromlist=['model'])
-            # Retrieve the model function or class from the module
-            benchmark_func = benchmark_module.model
+        self._benchmark_spec = benchmark_spec
 
-            model = (
-                benchmark_func(geometry_type=geometry_type,
-                               run_option=self.run_option)
-                if hasattr(self, "run_option")
-                else benchmark_func(geometry_type=geometry_type)
-            )
-
-            # Wrap `run()` only if geometry_type == 'cad'
-            if geometry_type == "cad" and hasattr(model, "run") and callable(model.run):
-                model.run = _wrap_run(self.download_h5m_file, model.run)
-
-            return model
-
-        except ModuleNotFoundError:
-            raise ValueError(
-                f"Model {self.model_name} not found in myrepo.models")
-
-    # def statepoint(self) -> StatePoint:
-    #     sp_path = get_statepoint_path(self.geometry_type)
-
-    def download_step_file(self, cwd: str = None):
-        download_geometry(self.name, 'step', self.run_option, cwd)
-
-    def download_rtt_file(self, cwd: str = None):
-        download_geometry(self.name, 'rtt', self.run_option, cwd)
-
-    def download_h5m_file(self, cwd: str = None):
-        download_geometry(self.name, 'h5m', self.run_option, cwd)
-
-    def download_weight_windows(self, cwd: str = None):
-        # file needs to go on drive with the rest
-
-        # download ww file:
-        # return openmc.wwinp_to_wws(path/to/ww_file)
+    @abstractmethod
+    def build_materials(self):
+        """Build materials for the benchmark."""
         pass
 
-    def _run_and_store(self):
-        pass
+    # @abstractmethod
+    # def build_geometry(self):
+    #     """Build geometry for the benchmark."""
+    #     pass
+
+    # @abstractmethod
+    # def build_source(self):
+    #     """Build settings for the benchmark."""
+    #     pass
+
+    # @abstractmethod
+    # def build_settings(self):
+    #     """Build settings for the benchmark."""
+    #     pass
+
+    # @abstractmethod
+    # def build_tallies(self):
+    #     """Build tallies for the benchmark."""
+    #     pass
 
 
-def _wrap_run(download_files_func, original_run):
-    """Standalone function to wrap `run()` and ensure files are downloaded first."""
-    @wraps(original_run)
-    def wrapped_run(*args, **kwargs):
-        cwd = kwargs.get("cwd", ".")  # Extract cwd argument (default: ".")
-        download_files_func(cwd)  # Ensure files are downloaded
-        return original_run(*args, **kwargs)  # Call the original method
-    return wrapped_run
+class OpenmcBenchmark(Benchmark):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self._materials = None
+        self._geometry = None
+        self._settings = None
+        self._tallies = None
 
+    def build_materials(self):
+        # Implement the logic to build materials for OpenMC
+        material_data = self._benchmark_spec['materials']
 
-class FngStr(Benchmark):
-    def __init__(self, run_option: str = 'onaxis'):
-        super().__init__("fng_str")
+        fraction_map = {'atomic': 'ao', 'weight': 'wo'}
 
-        self.run_option = run_option
+        materials = []
+        for m in material_data:
+            mat = openmc.Material(name=m['name'])
+            mat.material_id = m['material_id']
+            mat.set_density(m['density']['units'], m['density']['value'])
 
+            # Ensure fraction type is valid
+            fraction_type = m['composition']['fraction_type']
+            if fraction_type not in fraction_map:
+                raise ValueError(f"Invalid fraction type: {fraction_type}")
 
-class FngW(Benchmark):
-    def __init__(self, run_option: str = 'reaction_rates'):
-        super().__init__("fng_w")
+            ft = fraction_map[fraction_type]
+            add_method = mat.add_element if m['composition']['composition_type'] == 'element' else mat.add_nuclide
 
-        self.run_option = run_option
+            for k, v in m['composition']['data'].items():
+                add_method(k, v, ft)
 
+            materials.append(mat)
 
-class Oktavian(Benchmark):
-    def __init__(self, run_option: str = 'Al'):
-        super().__init__("oktavian")
-
-
-class FnsDuct(Benchmark):
-    def __init__(self):
-        super().__init__("fns_duct")
-
-
-class FnsCleanW(Benchmark):
-    def __init__(self):
-        super().__init__("fns_clean_w")
-
-
-class BenchmarkDatabase:
-    @staticmethod
-    def get_benchmark(name: str, **kwargs):
-        if name == "fng_str":
-            return FngStr(**kwargs)
-        elif name == "fng_w":
-            return FngW(**kwargs)
-        elif name == "oktavian":
-            return Oktavian(**kwargs)
-        elif name == "fns_duct":
-            return FnsDuct(**kwargs)
-        elif name == "fns_clean_w":
-            return FnsCleanW(**kwargs)
-        else:
-            return Benchmark(name)
+        return openmc.Materials(materials)

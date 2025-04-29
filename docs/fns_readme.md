@@ -1,3 +1,0 @@
-# FNS general infomation
-
-TODO
