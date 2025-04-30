@@ -80,7 +80,7 @@ geometry:
         material_id: 2
 
 sources:
-  - particle_type: neutron
+  - particle: neutron
     strength: 1.0
     spatial_distribution:
       type: point
@@ -134,7 +134,7 @@ settings:
 tallies:
   - name: neutron_leakage
     description: "Total neutron current leaving the outer surface"
-    particle_type: neutron
+    particle: neutron
     scores: [current]
     filters:
       - type: surface
@@ -167,7 +167,7 @@ tallies:
 
   - name: photon_leakage
     description: "Total photon current leaving the outer surface"
-    particle_type: photon
+    particle: photon
     scores: [current]
     filters:
       - type: surface

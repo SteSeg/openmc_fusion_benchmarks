@@ -114,7 +114,7 @@ class OpenmcBenchmark(Benchmark):
         # More than one source is possible
         for source in source_data:
             # Handle source particle type
-            particle = source['particle_type']
+            particle = source['particle']
 
             # Handle source spatial distribution
             if source['spatial_distribution']['type'] == 'point':
@@ -209,7 +209,7 @@ class OpenmcBenchmark(Benchmark):
         for t in tallies_data:
             tally = openmc.Tally(name=t['name'])
             # Handle particle type
-            particle = t['particle_type']
+            particle = t['particle']
             particle_filter = openmc.ParticleFilter([particle])
             tally.filters.append(particle_filter)
             # Handle filters
