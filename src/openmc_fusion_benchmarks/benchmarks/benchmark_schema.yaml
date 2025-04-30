@@ -253,7 +253,7 @@ components:
 
     Tally:
       type: object
-      required: [name, particle_type, filters, quantities]
+      required: [name, particle_type, filters, scores]
       properties:
         name: 
           type: string
@@ -275,7 +275,7 @@ components:
                 type: array
               units:
                 type: string
-        quantities:
+        scores:
           type: array
           items:
             type: string

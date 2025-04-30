@@ -228,8 +228,8 @@ class OpenmcBenchmark(Benchmark):
 
                 tally.filters.append(filter)
 
-            # Handle quantities/scores
-            for q in t['quantities']:
+            # Handle scores
+            for q in t['scores']:
                 tally.scores.append(q)
 
             # Store in tallies

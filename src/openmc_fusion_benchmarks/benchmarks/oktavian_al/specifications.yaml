@@ -135,7 +135,7 @@ tallies:
   - name: neutron_leakage
     description: "Total neutron current leaving the outer surface"
     particle_type: neutron
-    quantities: [current]
+    scores: [current]
     filters:
       - type: surface
         values: [6]
@@ -168,7 +168,7 @@ tallies:
   - name: photon_leakage
     description: "Total photon current leaving the outer surface"
     particle_type: photon
-    quantities: [current]
+    scores: [current]
     filters:
       - type: surface
         values: [6]
