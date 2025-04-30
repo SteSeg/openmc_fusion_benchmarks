@@ -136,7 +136,7 @@ tallies:
     description: "Total neutron current leaving the outer surface"
     particle_type: neutron
     quantities: [current]
-    domains:
+    filters:
       - type: surface
         values: [6]
       - type: energy
@@ -169,7 +169,7 @@ tallies:
     description: "Total photon current leaving the outer surface"
     particle_type: photon
     quantities: [current]
-    domains:
+    filters:
       - type: surface
         values: [6]
       - type: energy

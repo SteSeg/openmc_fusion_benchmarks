@@ -212,8 +212,8 @@ class OpenmcBenchmark(Benchmark):
             particle = t['particle_type']
             particle_filter = openmc.ParticleFilter([particle])
             tally.filters.append(particle_filter)
-            # Handle domains/filters
-            for d in t['domains']:
+            # Handle filters
+            for d in t['filters']:
                 if d['type'] == 'cell':
                     filter = openmc.CellFilter(d['values'])
                 elif d['type'] == 'material':

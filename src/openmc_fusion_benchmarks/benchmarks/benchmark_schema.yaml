@@ -253,7 +253,7 @@ components:
 
     Tally:
       type: object
-      required: [name, particle_type, domains, quantities]
+      required: [name, particle_type, filters, quantities]
       properties:
         name: 
           type: string
@@ -262,7 +262,7 @@ components:
         particle_type:
           type: string
           enum: [neutron, photon, electron, positron]
-        domains:
+        filters:
           type: array
           items:
             type: object
