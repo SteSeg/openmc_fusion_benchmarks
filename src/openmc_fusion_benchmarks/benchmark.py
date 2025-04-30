@@ -13,21 +13,23 @@ class Benchmark(ABC):
     def __init__(self, name: str):
         self.name = name
 
-        # Validate the benchmark specification
-        validate_benchmark(name)
+        # # Validate the benchmark specification
+        # validate_benchmark(name)
 
         with (BENCHMARK_DIR / f"{self.name}/specifications.yaml").open("r") as f:
             self._benchmark_spec = yaml.safe_load(f)
+
+        self._read_metadata()
 
     @abstractmethod
     def build_materials(self):
         """Build materials for the benchmark."""
         pass
 
-    @abstractmethod
-    def build_geometry(self):
-        """Build geometry for the benchmark."""
-        pass
+    # @abstractmethod
+    # def build_geometry(self):
+    #     """Build geometry for the benchmark."""
+    #     pass
 
     @abstractmethod
     def build_source(self):
@@ -44,10 +46,65 @@ class Benchmark(ABC):
         """Build tallies for the benchmark."""
         pass
 
-    @abstractmethod
+    def _read_metadata(self):
+        """Read metadata from the benchmark specification."""
+        metadata = self._benchmark_spec['metadata']
+
+        lines = []
+        lines.append(f"📘 Title: {metadata.get('title', 'N/A')}")
+        lines.append("")
+        lines.append(f"🔖 Type: {metadata.get('type', 'N/A')}")
+        lines.append("")
+        lines.append(f"📂 Category: {metadata.get('category', 'N/A')}")
+        lines.append("")
+        lines.append(f"🧮 Version: {metadata.get('version', 'N/A')}")
+        lines.append("")
+        lines.append(f"📝 Description: {metadata.get('description', 'N/A')}")
+        lines.append(f"📅 Date: {metadata.get('date', 'N/A')}")
+
+        location = metadata.get("location", {})
+        lines.append("📍 Location:")
+        lines.append(f"   - Facility: {location.get('facility', 'N/A')}")
+        lines.append(f"   - City: {location.get('city', 'N/A')}")
+        lines.append(f"   - Country: {location.get('country', 'N/A')}")
+        lines.append("")
+
+        references = metadata.get("references", [])
+        lines.append("🔗 References:")
+        for ref in references:
+            lines.append(f"   - Title: {ref.get('title', 'N/A')}")
+            if 'doi' in ref:
+                lines.append(f"     DOI: {ref['doi']}")
+            if 'url' in ref:
+                lines.append(f"     URL: {ref['url']}")
+
+        authors = metadata.get("authors", [])
+        if authors:
+            lines.append("")
+            lines.append("👥 Authors:")
+            for author in authors:
+                name = author.get("name", "N/A")
+                affiliation = author.get("affiliation", "N/A")
+                email = author.get("email", "N/A")
+                lines.append(f"   - {name} ({affiliation}, {email})")
+
+        self._metadata = "\n".join(lines)
+
+    @property
     def metadata(self):
-        """Get metadata for the benchmark."""
-        pass
+        """Show metadata for the benchmark."""
+
+        class _MetadataDisplay:
+            def __init__(self, text):
+                self.text = text
+
+            def __str__(self):
+                return self.text
+
+            def __repr__(self):
+                return self.text
+
+        return _MetadataDisplay(self._metadata)
 
 
 class OpenmcBenchmark(Benchmark):
@@ -236,50 +293,6 @@ class OpenmcBenchmark(Benchmark):
             tallies.append(tally)
 
         return tallies
-
-    @property
-    def metadata(self):
-        metadata = self._benchmark_spec['metadata']
-
-        lines = []
-        lines.append(f"📘 Title: {metadata.get('title', 'N/A')}")
-        lines.append("")
-        lines.append(f"🔖 Type: {metadata.get('type', 'N/A')}")
-        lines.append("")
-        lines.append(f"📂 Category: {metadata.get('category', 'N/A')}")
-        lines.append("")
-        lines.append(f"🧮 Version: {metadata.get('version', 'N/A')}")
-        lines.append("")
-        lines.append(f"📝 Description: {metadata.get('description', 'N/A')}")
-        lines.append(f"📅 Date: {metadata.get('date', 'N/A')}")
-
-        location = metadata.get("location", {})
-        lines.append("📍 Location:")
-        lines.append(f"   - Facility: {location.get('facility', 'N/A')}")
-        lines.append(f"   - City: {location.get('city', 'N/A')}")
-        lines.append(f"   - Country: {location.get('country', 'N/A')}")
-        lines.append("")
-
-        references = metadata.get("references", [])
-        lines.append("🔗 References:")
-        for ref in references:
-            lines.append(f"   - Title: {ref.get('title', 'N/A')}")
-            if 'doi' in ref:
-                lines.append(f"     DOI: {ref['doi']}")
-            if 'url' in ref:
-                lines.append(f"     URL: {ref['url']}")
-
-        authors = metadata.get("authors", [])
-        if authors:
-            lines.append("")
-            lines.append("👥 Authors:")
-            for author in authors:
-                name = author.get("name", "N/A")
-                affiliation = author.get("affiliation", "N/A")
-                email = author.get("email", "N/A")
-                lines.append(f"   - {name} ({affiliation}, {email})")
-
-        print("\n".join(lines))
 
     def build_settings(self):
         settings_data = self._benchmark_spec['settings']
