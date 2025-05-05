@@ -94,17 +94,7 @@ class Benchmark(ABC):
     def metadata(self):
         """Show metadata for the benchmark."""
 
-        class _MetadataDisplay:
-            def __init__(self, text):
-                self.text = text
-
-            def __str__(self):
-                return self.text
-
-            def __repr__(self):
-                return self.text
-
-        return _MetadataDisplay(self._metadata)
+        return self._metadata
 
 
 class OpenmcBenchmark(Benchmark):
