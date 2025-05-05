@@ -26,10 +26,10 @@ class Benchmark(ABC):
         """Build materials for the benchmark."""
         pass
 
-    # @abstractmethod
-    # def build_geometry(self):
-    #     """Build geometry for the benchmark."""
-    #     pass
+    @abstractmethod
+    def build_geometry(self):
+        """Build geometry for the benchmark."""
+        pass
 
     @abstractmethod
     def build_source(self):
@@ -131,6 +131,11 @@ class OpenmcBenchmark(Benchmark):
             materials.append(mat)
 
         return materials
+
+    def build_geometry(self):
+        raise NotImplementedError(
+            'Geometry building not implemented yet. Please implement the build_geometry method in the OpenmcBenchmark class.'
+        )
 
     def build_source(self):
         source_data = self._benchmark_spec['sources']
