@@ -152,9 +152,9 @@ components:
     
     Source:
       type: object
-      required: [particle_type, spatial_distribution, angular_energy_distribution, strength]
+      required: [particle, spatial_distribution, angular_energy_distribution, strength]
       properties:
-        particle_type:
+        particle:
           type: string
           enum: [neutron, photon]
         strength:
@@ -253,16 +253,16 @@ components:
 
     Tally:
       type: object
-      required: [name, particle_type, domains, quantities]
+      required: [name, particle, filters, scores]
       properties:
         name: 
           type: string
         description: 
           type: string
-        particle_type:
+        particle:
           type: string
           enum: [neutron, photon, electron, positron]
-        domains:
+        filters:
           type: array
           items:
             type: object
@@ -275,7 +275,7 @@ components:
                 type: array
               units:
                 type: string
-        quantities:
+        scores:
           type: array
           items:
             type: string
