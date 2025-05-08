@@ -22,9 +22,7 @@ dependencies = [
     "openapi_schema_validator",
     "pydantic",
     "numpy",
-    "pandas",
     "tables",
-    "gdown",
     "cad-to-dagmc",
 ]
 
