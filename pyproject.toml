@@ -25,6 +25,7 @@ dependencies = [
     "pandas",
     "tables",
     "gdown",
+    "cad-to-dagmc",
 ]
 
 [tool.setuptools.package-data]
