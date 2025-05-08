@@ -66,18 +66,27 @@ materials:
       units: g/cm3
 
 geometry:
-  type: cad
-  units: cm
+  cad_file: oktavian_a.step
+  folder: oktavian
+  meshing:
+    global_mesh_size_min: 0.1
+    global_mesh_size_max: 10
+    volumes:
+      - id: 1
+        material: void
+      - id: 2
+        material: void
+      - id: 3
+        material: SS-304
+        mesh_size: 0.5
+      - id: 4
+        material: SS-304
+        mesh_size: 0.5
+      - id: 5
+        material: Aluminum
+        mesh_size: 2
 
-  # temporarily .h5m - .stp + meshing engine in the future
-  cad:
-    cad_file: geometry.h5m
-    dagmc: true
-    material_assignments:
-      - volume_id: 1
-        material_id: 1
-      - volume_id: 2
-        material_id: 2
+
 
 sources:
   - particle: neutron
