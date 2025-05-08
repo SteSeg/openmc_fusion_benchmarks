@@ -138,12 +138,12 @@ class OpenmcBenchmark(Benchmark):
 
     def build_geometry(self):
 
-        def build_mesh(step_file: str, material_tags, set_size: dict, global_mesh_size_min: float, global_mesh_size_max: float, dimensions: int = 2, mesh_file: str = "mesh.h5m"):
+        def build_mesh(cad_file: str, material_tags, set_size: dict, global_mesh_size_min: float, global_mesh_size_max: float, dimensions: int = 2, mesh_file: str = "mesh.h5m"):
 
             # Instantiate the CadToDagmc model
             model = CadToDagmc()
             # Load the STEP file and assign material tags
-            model.add_stp_file(filename=step_file,
+            model.add_stp_file(filename=cad_file,
                                material_tags=material_tags, scale_factor=.1)
 
             # Generate the mesh
@@ -167,11 +167,11 @@ class OpenmcBenchmark(Benchmark):
         global_mesh_size_max = meshing['global_mesh_size_max']
 
         # Get the STEP file
-        step_file = geometry_data['cad_file']
-        get_lfs_file(f"benchmarks/{geometry_data['folder']}/{step_file}")
+        cad_file = geometry_data['cad_file']
+        get_lfs_file(f"benchmarks/{geometry_data['folder']}/{cad_file}")
 
         # Generate the mesh
-        build_mesh(step_file=step_file, material_tags=material_tags, set_size=set_size,
+        build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
                    global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
 
         # download the h5m file
