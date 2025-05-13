@@ -3,7 +3,6 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 import numpy as np
 from .validate import validate_benchmark
-from .utils import get_lfs_file
 
 # Can be moved to OpenmcBenchmark constructor
 import openmc
