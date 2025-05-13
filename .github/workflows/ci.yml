@@ -10,8 +10,8 @@ jobs:
         shell: bash
         run: |
           sudo apt -y update
-          sudo apt install -y libgl1-mesa-glx \
-                              libgl1-mesa-dev
+          sudo apt install -y libglu1-mesa \
+                              libglu1-mesa-dev
         
       - name: Checkout repository
         uses: actions/checkout@v3
