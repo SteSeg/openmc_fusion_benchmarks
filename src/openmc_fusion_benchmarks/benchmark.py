@@ -11,6 +11,7 @@ from cad_to_dagmc import CadToDagmc
 
 
 BENCHMARK_DIR = Path(__file__).parent / "benchmarks"
+LFS_DIR = Path(__file__).parents[2] / "lfs"
 
 
 class Benchmark(ABC):
@@ -167,8 +168,8 @@ class OpenmcBenchmark(Benchmark):
         global_mesh_size_max = meshing['global_mesh_size_max']
 
         # Get the STEP file
-        cad_file = geometry_data['cad_file']
-        get_lfs_file(f"benchmarks/{geometry_data['folder']}/{cad_file}")
+        cad_file = LFS_DIR / "benchmarks" / \
+            f"{geometry_data['folder']}" / f"{geometry_data['cad_file']}"
 
         # Generate the mesh
         build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
