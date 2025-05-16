@@ -52,6 +52,7 @@ htmlcov
 build/
 dist/
 *.egg-info/
+docs/source/_build/
 
 # macOS
 *.DS_Store
