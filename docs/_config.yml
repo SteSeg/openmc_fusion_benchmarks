@@ -22,7 +22,7 @@ bibtex_bibfiles:
 repository:
   url: https://github.com/eepeterson/openmc_fusion_benchmarks  # todo update when github pages is live
   path_to_book: docs  # Optional path to your book, relative to the repository root
-  branch: master  # Which branch of the repository should be used when creating links (optional)
+  branch: develop  # Which branch of the repository should be used when creating links (optional)
 
 # Add GitHub buttons to your book
 # See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
