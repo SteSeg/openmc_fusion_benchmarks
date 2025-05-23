@@ -66,8 +66,7 @@ materials:
       units: g/cm3
 
 geometry:
-  cad_file: oktavian_a.step
-  folder: oktavian
+  cad_file: oktavian/oktavian_a.step
   meshing:
     global_mesh_size_min: 0.1
     global_mesh_size_max: 10
