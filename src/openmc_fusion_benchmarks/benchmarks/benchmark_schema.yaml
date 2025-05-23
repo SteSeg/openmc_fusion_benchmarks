@@ -135,11 +135,9 @@ components:
 
     Geometry:
       type: object
-      required: [cad_file, folder, meshing]
+      required: [cad_file, meshing]
       properties:
         cad_file:
-          type: string
-        folder:
           type: string
         meshing:
           type: object
