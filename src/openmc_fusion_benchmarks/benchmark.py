@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 from .validate import validate_benchmark
 
-# Can be moved to OpenmcBenchmark constructor
 import openmc
 from cad_to_dagmc import CadToDagmc
 
