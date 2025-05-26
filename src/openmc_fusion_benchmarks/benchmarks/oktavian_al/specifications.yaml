@@ -147,11 +147,12 @@ tallies:
     filters:
       - type: surface
         definition:
-        shape: sphere
-        parameters:
-          center: [0.0, 0.0, 0.0]
-          radius: 19.95
+          shape: sphere
+          parameters:
+            center: [0.0, 0.0, 0.0]
+            radius: 19.95
         units: cm
+        combine: False
       - type: energy
         values: [97122., 101090., 105210., 109500., 113970., 118620.,
                 123470., 128500., 133750., 139210., 144890., 150800.,
