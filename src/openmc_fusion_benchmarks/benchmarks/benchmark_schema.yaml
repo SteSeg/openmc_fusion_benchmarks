@@ -277,15 +277,32 @@ components:
           type: array
           items:
             type: object
-            required: [type, values]
+            required: [type]
             properties:
               type:
                 type: string
                 enum: [surface, cell, material, energy, mesh]
-              values:
-                type: array
               units:
                 type: string
+              oneOf:
+              - required: [values]
+                properties:
+                  values:
+                    type: array
+                    items:
+                      type: integer
+              - required: [definition]
+                properties:
+                  definition:
+                    type: object
+                    required: [shape, parameters]
+                    properties:
+                      shape:
+                        type: string
+                        enum: [sphere, plane, torus, cylinder]
+                      parameters:
+                        type: object
+                        additionalProperties: true  # flexible depending on shape
         scores:
           type: array
           items:
