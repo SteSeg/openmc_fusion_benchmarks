@@ -1,12 +1,15 @@
 import yaml
 from pathlib import Path
 from abc import ABC, abstractmethod
-import openmc
 import numpy as np
 from .validate import validate_benchmark
 
+import openmc
+from cad_to_dagmc import CadToDagmc
+
 
 BENCHMARK_DIR = Path(__file__).parent / "benchmarks"
+LFS_DIR = Path(__file__).parents[2] / "lfs"
 
 
 class Benchmark(ABC):
@@ -133,9 +136,50 @@ class OpenmcBenchmark(Benchmark):
         return materials
 
     def build_geometry(self):
-        raise NotImplementedError(
-            'Geometry building not implemented yet. Please implement the build_geometry method in the OpenmcBenchmark class.'
-        )
+
+        def build_mesh(cad_file: str, material_tags, set_size: dict, global_mesh_size_min: float, global_mesh_size_max: float, dimensions: int = 2, mesh_file: str = "mesh.h5m"):
+
+            # Instantiate the CadToDagmc model
+            model = CadToDagmc()
+            # Load the STEP file and assign material tags
+            model.add_stp_file(filename=cad_file,
+                               material_tags=material_tags, scale_factor=.1)
+
+            # Generate the mesh
+            model.export_dagmc_h5m_file(imprint=True, min_mesh_size=global_mesh_size_min,
+                                        max_mesh_size=global_mesh_size_max, set_size=set_size, dimensions=dimensions, filename=mesh_file)
+
+        # Implement the logic to build geometry for OpenMC
+        geometry_data = self._benchmark_spec['geometry']
+
+        # Preprocess for mesh generation
+        meshing = geometry_data['meshing']
+        # Sort volumes by rising id
+        volumes = sorted(meshing['volumes'], key=lambda x: x['id'])
+        # Get material tags out of sorted volumes
+        material_tags = [entry['material'] for entry in volumes]
+        # Build the set size: specific mesh size for some volumes
+        set_size = {v['id']: v['mesh_size']
+                    for v in volumes if 'mesh_size' in v}
+        # Get global mesh sizes
+        global_mesh_size_min = meshing['global_mesh_size_min']
+        global_mesh_size_max = meshing['global_mesh_size_max']
+
+        # Get the STEP file
+        cad_file = LFS_DIR / "benchmarks" / f"{geometry_data['cad_file']}"
+
+        # Generate the mesh
+        build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
+                   global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
+
+        # download the h5m file
+        # download_from_drive(benchmark_name=self.name, file_format='h5m')
+        mesh_file = Path("mesh.h5m")
+        # Implement the logic to build geometry for OpenMC
+        dag_universe = openmc.DAGMCUniverse(
+            mesh_file).bounded_universe(starting_id=90000)
+
+        return openmc.Geometry(root=dag_universe)
 
     def build_source(self):
         source_data = self._benchmark_spec['sources']

@@ -135,20 +135,31 @@ components:
 
     Geometry:
       type: object
+      required: [cad_file, meshing]
       properties:
-        type:
-          type: string
-          enum: [cad, csg]
         cad_file:
           type: string
-        surfaces:
-          type: array
-          items:
-            $ref: '#/components/schemas/Surface'
-        cells:
-          type: array
-          items:
-            $ref: '#/components/schemas/Cell'
+        meshing:
+          type: object
+          required: [global_mesh_size_min, global_mesh_size_max, volumes]
+          properties:
+            global_mesh_size_min:
+              type: number
+            global_mesh_size_max:
+              type: number
+            volumes:
+              type: array
+              items:
+                type: object
+                required: [id, material]
+                properties:
+                  id:
+                    type: integer
+                  material:
+                    type: string
+                  mesh_size:
+                    type: number
+
     
     Source:
       type: object
