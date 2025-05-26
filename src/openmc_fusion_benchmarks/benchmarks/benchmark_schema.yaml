@@ -284,6 +284,8 @@ components:
                 enum: [surface, cell, material, energy, mesh]
               units:
                 type: string
+              combine:
+                type: boolean
               oneOf:
               - required: [values]
                 properties:
