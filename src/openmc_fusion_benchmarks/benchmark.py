@@ -3,6 +3,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 import numpy as np
 from .validate import validate_benchmark
+from .geometry_utils import on_sphere_surface
 
 import openmc
 from cad_to_dagmc import CadToDagmc
@@ -299,9 +300,26 @@ class OpenmcBenchmark(Benchmark):
     def build_tallies(self):
         tallies_data = self._benchmark_spec['tallies']
 
+        def get_filter_ids(filter_specs):
+            """Get filter IDs for tallies."""
+            filter_ids = []
+
+            for f in filter_specs:
+                if f['combine']:
+                    if f['definition']['shape'] == 'sphere':
+                        if f['type'] == 'surface':
+                            r = f['definition']['parameters']['radius']
+                            center = f['definition']['parameters']['center']
+                            filter_ids.append(on_sphere_surface())
+                elif f['values']:
+                    filter_ids.extend(f['values'])
+                else:
+                    raise ValueError(
+                        f"Filter {f['id']} does not have 'combine' nor 'values' as keys.")
+            return filter_ids
+
         # Initialize openmc tallies
         tallies = openmc.Tallies()
-
         for t in tallies_data:
             tally = openmc.Tally(name=t['name'])
             # Handle particle type
@@ -309,18 +327,19 @@ class OpenmcBenchmark(Benchmark):
             particle_filter = openmc.ParticleFilter([particle])
             tally.filters.append(particle_filter)
             # Handle filters
-            for d in t['filters']:
-                if d['type'] == 'cell':
-                    filter = openmc.CellFilter(d['values'])
-                elif d['type'] == 'material':
-                    filter = openmc.MaterialFilter(d['values'])
-                elif d['type'] == 'surface':
-                    filter = openmc.SurfaceFilter(d['values'])
-                elif d['type'] == 'energy':
-                    filter = openmc.EnergyFilter(d['values'])
+            for f in t['filters']:
+                filter_ids = get_filter_ids(f)
+                if f['type'] == 'cell':
+                    filter = openmc.CellFilter(filter_ids)
+                elif f['type'] == 'material':
+                    filter = openmc.MaterialFilter(filter_ids)
+                elif f['type'] == 'surface':
+                    filter = openmc.SurfaceFilter(filter_ids)
+                elif f['type'] == 'energy':
+                    filter = openmc.EnergyFilter(filter_ids)
                 else:
                     raise ValueError(
-                        f"Unsupported domain type: {d['type']}")
+                        f"Unsupported domain type: {f['type']}")
 
                 tally.filters.append(filter)
 
