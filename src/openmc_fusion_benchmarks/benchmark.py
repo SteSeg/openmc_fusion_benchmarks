@@ -49,6 +49,7 @@ class Benchmark(ABC):
         """Build tallies for the benchmark."""
         pass
 
+    @abstractmethod
     def _build_model(self):
         """Build the whole model for the benchmark."""
         pass
