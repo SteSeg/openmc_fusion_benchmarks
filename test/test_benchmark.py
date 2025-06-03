@@ -8,11 +8,11 @@ from openmc_fusion_benchmarks import Benchmark
 
 # Minimal subclass for testing abstract class
 class DummyBenchmark(Benchmark):
-    def build_materials(self): return "materials"
-    def build_geometry(self): return "geometry"
-    def build_source(self): return "source"
-    def build_settings(self): return "settings"
-    def build_tallies(self): return "tallies"
+    def _build_materials(self): return "materials"
+    def _build_geometry(self): return "geometry"
+    def _build_source(self): return "source"
+    def _build_settings(self): return "settings"
+    def _build_tallies(self): return "tallies"
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def test_benchmark_success(mock_validate, valid_yaml):
 
     assert bench.name == "dummy"
     assert bench._benchmark_spec["metadata"]["title"] == "Dummy"
-    assert bench.build_materials() == "materials"
+    assert bench._build_materials() == "materials"
 
 
 @patch("openmc_fusion_benchmarks.benchmark.validate_benchmark")
