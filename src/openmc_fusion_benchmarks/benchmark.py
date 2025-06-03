@@ -49,6 +49,10 @@ class Benchmark(ABC):
         """Build tallies for the benchmark."""
         pass
 
+    def _build_model(self):
+        """Build the whole model for the benchmark."""
+        pass
+
     def _read_metadata(self):
         """Read metadata from the benchmark specification."""
         metadata = self._benchmark_spec['metadata']
