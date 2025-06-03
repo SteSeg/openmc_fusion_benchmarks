@@ -358,3 +358,16 @@ class OpenmcBenchmark(Benchmark):
         settings.source = source
 
         return settings
+
+    def _build_model(self):
+        materials = self._build_materials()
+        geometry = self._build_geometry()
+        settings = self._build_settings()
+        tallies = self._build_tallies()
+        model = openmc.Model(
+            materials=materials,
+            geometry=geometry,
+            settings=settings,
+            tallies=tallies
+        )
+        return model
