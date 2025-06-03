@@ -113,6 +113,8 @@ class OpenmcBenchmark(Benchmark):
         self._settings = None
         self._tallies = None
 
+        self.model = self._build_model()
+
     def _build_materials(self):
         # Implement the logic to build materials for OpenMC
         material_data = self._benchmark_spec['materials']
