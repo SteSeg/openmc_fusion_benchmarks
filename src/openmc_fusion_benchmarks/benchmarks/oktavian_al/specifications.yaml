@@ -142,6 +142,7 @@ settings:
 tallies:
   - name: neutron_leakage
     description: "Total neutron current leaving the outer surface"
+    shape: [134, 1]
     particle: neutron
     scores: [current]
     filters:
@@ -175,6 +176,7 @@ tallies:
 
   - name: photon_leakage
     description: "Total photon current leaving the outer surface"
+    shape: [1, 57]
     particle: photon
     scores: [current]
     filters:
