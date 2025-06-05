@@ -54,6 +54,10 @@ class Benchmark(ABC):
         """Build the whole model for the benchmark."""
         pass
 
+    @abstractmethod
+    def postprocess(self):
+        """Post-process the model after running."""
+
     def _read_metadata(self):
         """Read metadata from the benchmark specification."""
         metadata = self._benchmark_spec['metadata']
