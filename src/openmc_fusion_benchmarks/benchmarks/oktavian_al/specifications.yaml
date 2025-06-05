@@ -146,7 +146,7 @@ tallies:
     scores: [current]
     filters:
       - type: surface
-        values: [6]
+        values: [7]
       - type: energy
         values: [97122., 101090., 105210., 109500., 113970., 118620.,
                 123470., 128500., 133750., 139210., 144890., 150800.,
@@ -179,7 +179,7 @@ tallies:
     scores: [current]
     filters:
       - type: surface
-        values: [6]
+        values: [7]
       - type: energy
         values: [500000.,   600000.,   700000.,   800000.,   900000.,  1000000.,
                 1100000.,  1200000.,  1300000.,  1400000.,  1500000.,  1600000.,
