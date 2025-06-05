@@ -391,14 +391,14 @@ class OpenmcBenchmark(Benchmark):
         )
         return model
 
-    def postprocess(self):
+    def postprocess(self, statepoint: str = 'statepoint.100.h5', mesh: str = 'mesh.h5m'):
         """Post-process the model after running."""
         # Retrieve tallies data from specifications
         tallies_data = self._benchmark_spec['tallies']
         # Read openmc statepoint file
-        sp = openmc.StatePoint('statepoint.100.h5')
+        sp = openmc.StatePoint(statepoint)
         # Read mesh file
-        mesh = pydagmc.DAGModel('mesh.h5m')
+        mesh = pydagmc.DAGModel(mesh)
 
         # Cycle tallies in specifications
         for spec_t in tallies_data:
@@ -444,3 +444,15 @@ class OpenmcBenchmark(Benchmark):
             # f.attrs['literature'] = self._benchmark_spec['metadata'].get(
             #     'references', [])
             f.attrs['code'] = f"openmc {sp.version[0]}.{sp.version[1]}.{sp.version[2]}"
+
+        return
+
+    def run(self, *args, **kwargs):
+        """Run the benchmark simulation."""
+        # Run the OpenMC model
+        statepoint = self.model.run(*args, **kwargs)
+
+        # Post-process the results
+        self.postprocess(statepoint=statepoint)
+
+        return
