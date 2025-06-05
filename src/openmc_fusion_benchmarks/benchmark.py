@@ -361,10 +361,13 @@ class OpenmcBenchmark(Benchmark):
         settings_data = self._benchmark_spec['settings']
 
         settings = openmc.Settings()
-        if settings_data['run_mode'] == 'fixed source':
+        if settings_data['run_mode'] == 'fixed_source':
             settings.run_mode = 'fixed source'
         elif settings_data['run_mode'] == 'k-eigenvalue':
             settings.run_mode = 'eigenvalue'
+        else:
+            raise ValueError(
+                f"Unsupported run mode: {settings_data['run_mode']}")
         settings.batches = int(settings_data['batches'])
         settings.particles = int(settings_data['particles_per_batch'])
         settings.photon_transport = settings_data['photon_transport']
