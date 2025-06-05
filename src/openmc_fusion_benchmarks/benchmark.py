@@ -3,7 +3,7 @@ from pathlib import Path
 import warnings
 from abc import ABC, abstractmethod
 import numpy as np
-import xarray as xr
+import h5py
 from .validate import validate_benchmark
 
 import openmc
@@ -421,3 +421,20 @@ class OpenmcBenchmark(Benchmark):
 
             # Convert dataframe to xarray dataset
             t = t.to_xarray()
+
+            # Save the tally data to a netCDF file
+            t.to_netcdf(f"benchmark_results.h5",
+                        group=f"{spec_t['name']}")
+
+        # Add some metadata attributes
+        with h5py.File(f"benchmark_results.h5", "a") as f:
+            f.attrs['benchmark_name'] = self.name
+            # f.attrs['benchmark_version'] = self._benchmark_spec['metadata'].get(
+            #     'version', 'N/A')
+            # f.attrs['description'] = self._benchmark_spec['metadata'].get(
+            #     'description', 'N/A')
+            # f.attrs['title'] = self._benchmark_spec['metadata'].get(
+            #     'title', 'N/A')
+            # f.attrs['literature'] = self._benchmark_spec['metadata'].get(
+            #     'references', [])
+            f.attrs['code'] = f"openmc {sp.version[0]}.{sp.version[1]}.{sp.version[2]}"
