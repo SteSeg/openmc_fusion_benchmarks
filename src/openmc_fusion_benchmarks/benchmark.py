@@ -5,6 +5,7 @@ import numpy as np
 from .validate import validate_benchmark
 
 import openmc
+import pydagmc
 from cad_to_dagmc import CadToDagmc
 
 
@@ -360,7 +361,7 @@ class OpenmcBenchmark(Benchmark):
         # electron treatment
         settings.output = {'tallies': False}
 
-        source = self.build_source()
+        source = self._build_source()
         settings.source = source
 
         return settings
@@ -377,3 +378,18 @@ class OpenmcBenchmark(Benchmark):
             tallies=tallies
         )
         return model
+
+    def postprocess(self):
+        """Post-process the model after running."""
+        # Retrieve tallies data from specifications
+        tallies_data = self._benchmark_spec['tallies']
+        # Read openmc statepoint file
+        sp = openmc.StatePoint('statepoint.100.h5')
+        # Read mesh file
+        modelmesh = pydagmc.DAGModel('mesh.h5m')
+
+        for spec_t in tallies_data:
+            t = sp.get_tally(name=spec_t['name'])
+            if t is None:
+                raise ValueError(
+                    f"Tally '{spec_t['name']}' not found in statepoint file.")
