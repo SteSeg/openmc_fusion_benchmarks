@@ -1,5 +1,6 @@
 import yaml
 from pathlib import Path
+import warnings
 from abc import ABC, abstractmethod
 import numpy as np
 from .validate import validate_benchmark
@@ -181,7 +182,10 @@ class OpenmcBenchmark(Benchmark):
         cad_file = LFS_DIR / "benchmarks" / f"{geometry_data['cad_file']}"
 
         # Generate the mesh if mesh.h5m not already present
-        if not Path("filename.txt").exists():
+        if Path("mesh.h5m").exists():
+            warnings.warn(
+                f"Mesh file already exists. Skipping mesh generation.")
+        else:
             build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
                        global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
 
