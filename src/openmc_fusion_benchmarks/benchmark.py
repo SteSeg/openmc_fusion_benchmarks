@@ -180,9 +180,10 @@ class OpenmcBenchmark(Benchmark):
         # Get the STEP file
         cad_file = LFS_DIR / "benchmarks" / f"{geometry_data['cad_file']}"
 
-        # Generate the mesh
-        build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
-                   global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
+        # Generate the mesh if mesh.h5m not already present
+        if not Path("filename.txt").exists():
+            build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
+                       global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
 
         # download the h5m file
         # download_from_drive(benchmark_name=self.name, file_format='h5m')
