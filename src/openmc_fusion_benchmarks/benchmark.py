@@ -60,6 +60,12 @@ class Benchmark(ABC):
     @abstractmethod
     def postprocess(self):
         """Post-process the model after running."""
+        pass
+
+    @abstractmethod
+    def run(self):
+        """Run the benchmark simulation."""
+        pass
 
     def _read_metadata(self):
         """Read metadata from the benchmark specification."""
