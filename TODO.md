@@ -7,13 +7,13 @@
 - Add expected tally results shape in `schema` and `specifications` to deal with the point here above
 - Try to manage results as numpy arrays instead of pandas dataframes in `OpenmcBenchmark.postprocess()`
 - Should we use `h5netcdf` engine for saving/opening datasets in `h5` files or stick with the default `netcdf4`?
-- Add more attributes to the h5 file (e.g. openmc version, )
+- Do we wanna use `makefun` decorator for wrapped methods (e.g. `OpenmcBenchmark.run()`)?
 
 ## Tests
 - Add tests to everything
 
 ## Notebooks
-- Use `specifications` validation against `schema` script
+- Use `specifications` validation against `schema`  function and script
 - Open and inspect a `specifications` file (just `metadata`)
 - Instantiate an `OpenmcBenchmark` object, build model, run simulation
 - Postprocessing and visualization
