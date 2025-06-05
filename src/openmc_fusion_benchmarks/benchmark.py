@@ -3,6 +3,7 @@ from pathlib import Path
 import warnings
 from abc import ABC, abstractmethod
 import numpy as np
+import xarray as xr
 from .validate import validate_benchmark
 
 import openmc
@@ -391,10 +392,32 @@ class OpenmcBenchmark(Benchmark):
         # Read openmc statepoint file
         sp = openmc.StatePoint('statepoint.100.h5')
         # Read mesh file
-        modelmesh = pydagmc.DAGModel('mesh.h5m')
+        mesh = pydagmc.DAGModel('mesh.h5m')
 
+        # Cycle tallies in specifications
         for spec_t in tallies_data:
-            t = sp.get_tally(name=spec_t['name'])
-            if t is None:
-                raise ValueError(
-                    f"Tally '{spec_t['name']}' not found in statepoint file.")
+            # Get corresponding tally from statepoint
+            t = sp.get_tally(name=spec_t['name']).get_pandas_dataframe()
+
+            # Preparing tally dataframe
+            t = t.drop(columns=['cell', 'particle', 'nuclide',
+                       'score', 'energyfunction'], errors='ignore')
+            # Cyle tally filters
+            norm = 1
+            for f in spec_t['filters']:
+                if f['type'] == 'cell':
+                    # Get cell volumes for normalization
+                    norm = [mesh.volumes_by_id[v].area for v in f['values']]
+                elif f['type'] == 'surface':
+                    # Get surface areas for normalization
+                    norm = [mesh.surface_by_id[v].area for v in f['values']]
+                elif f['type'] == 'material':
+                    raise NotImplementedError(
+                        'Material filter not implemented in postprocess yet.')
+
+                # Normalize the tally data
+                t['mean'] = t['mean'] / norm
+                t['std. dev.'] = t['std. dev.'] / norm
+
+            # Convert dataframe to xarray dataset
+            t = t.to_xarray()
