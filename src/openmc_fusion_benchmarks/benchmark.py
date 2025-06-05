@@ -373,3 +373,33 @@ class OpenmcBenchmark(Benchmark):
             tallies=tallies
         )
         return model
+
+    def postprocess(self):
+        """Post-process the model after running."""
+
+        def folded_reshape(a, shape):
+            a = np.asarray(a)
+            target_size = np.prod(shape)
+            flat = a.flatten()
+
+            if flat.size % target_size != 0:
+                raise ValueError(
+                    "Cannot fold: total elements not divisible by target shape")
+
+            folded = flat.reshape(-1, target_size).sum(axis=0)
+            return folded.reshape(shape)
+
+        # Retrieve tallies data from specifications
+        tallies_data = self._benchmark_spec['tallies']
+
+        # Read openmc statepoint file
+        sp = openmc.StatePoint('statepoint.100.h5')
+
+        for spec_t in tallies_data:
+            t = sp.get_tally(name=spec_t['name'])
+            if t is None:
+                raise ValueError(
+                    f"Tally '{spec_t['name']}' not found in statepoint file.")
+            # Get mean and standard deviation
+            mean = folded_reshape(t.mean, spec_t['shape'])
+            std_dev = folded_reshape(t.std_dev, spec_t['shape'])
