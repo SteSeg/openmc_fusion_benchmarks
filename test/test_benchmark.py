@@ -23,7 +23,9 @@ def valid_yaml():
         "materials": [],
         "geometry": {},
         "sources": [],
-        "tallies": []
+        "tallies": [],
+        "postprocess": [],
+        "run": []
     })
 
 
