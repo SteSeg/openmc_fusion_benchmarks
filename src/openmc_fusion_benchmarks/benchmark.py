@@ -419,7 +419,7 @@ class OpenmcBenchmark(Benchmark):
                     norm = [mesh.volumes_by_id[v].area for v in f['values']]
                 elif f['type'] == 'surface':
                     # Get surface areas for normalization
-                    norm = [mesh.surface_by_id[v].area for v in f['values']]
+                    norm = [mesh.surfaces_by_id[v].area for v in f['values']]
                 elif f['type'] == 'material':
                     raise NotImplementedError(
                         'Material filter not implemented in postprocess yet.')
