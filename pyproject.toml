@@ -25,6 +25,7 @@ dependencies = [
     "xarray",
     "tables",
     "cad-to-dagmc",
+    "pydagmc @ https://github.com/svalinn/pydagmc"
 ]
 
 [tool.setuptools.package-data]
