@@ -268,7 +268,7 @@ class OpenmcBenchmark(Benchmark):
             angular_sources = []
             # Openmc needs one source per angle bin:
             angles = source['angular_energy_distribution']
-            abins = np.array(angles['angle']['bins'])
+            abins = np.cos(angles['angle']['bins'])
             for i in range(len(abins)-1):
                 lb = angular_conversion(
                     abins[i], angles['angle']['units'])
