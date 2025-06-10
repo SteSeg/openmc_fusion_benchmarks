@@ -14,7 +14,7 @@
 - Add tests to everything
 
 ## Notebooks
-- Open and inspect a `specifications` file (just `metadata`)
+- ~~Open and inspect a `specifications` file (just `metadata`)~~
 - Postprocessing and visualization
 
 ## Documentation
