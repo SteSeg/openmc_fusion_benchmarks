@@ -433,7 +433,7 @@ class OpenmcBenchmark(Benchmark):
 
             # Save the tally data to a netCDF file
             t.to_netcdf(f"benchmark_results.h5",
-                        group=f"{spec_t['name']}")
+                        group=f"{spec_t['name']}", mode='a')
 
         # Add some metadata attributes
         with h5py.File(f"benchmark_results.h5", "a") as f:
