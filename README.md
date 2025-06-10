@@ -26,7 +26,8 @@ Reliable neutronics simulations are essential in the design of fusion reactors. 
 - ✅ **CAD-based** geometries for V&V *meshing tools*, *unstructured mesh transport*, etc.
 - ✅ Processed tally data saved in HDF5 format using `xarray`
 - ✅ A **database** of experimental and computational results
-- 🔧 Python API to load *specifications* and build a transport code model (currently available for (OpenMC)[https://docs.openmc.org/en/stable/])
+- ✅ An embedded **Uncertainty Quantification** module for input data perturbation
+- 🔧 Python API to load *specifications* and build a transport code model (currently available for [OpenMC](https://docs.openmc.org/en/stable/))
 - 🔧 Python API to load analyze and compare simulation results and database results
 
 ## 🛠 Installation
