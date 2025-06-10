@@ -2,26 +2,38 @@
 [![CI testing](https://github.com/SteSeg/openmc_fusion_benchmarks/actions/workflows/ci.yml/badge.svg?branch=add_ci)](https://github.com/SteSeg/openmc_fusion_benchmarks/workflows/ci.yml)
 [![Code Coverage](https://coveralls.io/repos/github/SteSeg/openmc_fusion_benchmarks/badge.svg?branch=add_ci)](https://coveralls.io/github/SteSeg/openmc_fusion_benchmarks?branch=add_ci)
 
-# openmc_fusion_benchmarks
-OpenMC Fusion Benchmarks is a platform for V&V of fusion neutronics. It focuses on fusion-relevant integral benchmarks. It relies on an automated workflow for model simulation, data postprocessing, visualization and analysis. It embeds a database of experimental and numerical results for quick comparisons to which users can contribute to. The database contribution workflow is fully automated.
+# OpenMC Fusion Benchmarks
 
-## Installation
-```
-pip install -e .
-```
+Here the full [Documentation](https://openmc-fusion-benchmarks.readthedocs.io/en/latest/intro.html).
 
-## Folder organization
-The `src/` folder provides all the classes and functions of the package. It also has additional data in the `data/` subfolder (e.g. IRDFF-2 cross sections) and some neutron source characteristics, importable as `openmc.Source` object, in the `neutron_sources/` subfolder (so far there is only the Frascati Neutron Generator - FNG energy and angular characteristics).
+A CAD-based collection of benchmark models for validating and verifying **nuclear fusion neutronics simulations**.
+This repository provides standardized geometries, sources, materials, and results to facilitate comparison and reproducibility across codes and experiments.
 
-The `notebooks/` folder contains some useful tutorial notebooks.
+## 💡 Motivation
 
-The `models/` folder has all the models and benchmarks covered by this repo (e.g. the `fng-str` and `fns-duct` benchmarks). Each bechmark provides an `openmc_model.py` file that has the Python API input file for the relative openmc model. It can be run via command line and often has some different options for running it. There should be also a `postprocessing.ipynb` jupyter notebook for quick result visualization and confrontation against other experimental or other codes' results. The `run_and_store.py` script is an automated way to run the openmc model, postprocess the results and store them in a hdf5 file in the `results_database/` in just one click. It sometimes runs the model more than once in order match all the results provided by the experiments (e.g. the `fng-str` experiment has three different configurations and thus requires three different simulations).
+Reliable neutronics simulations are essential in the design of fusion reactors. This project collects and organizes benchmark problems, enabling:
 
-## Interactive database
-Each model has a `results_database/` subfolder that contains the experimental results as well as previous simulation results of the benchmark in form of hdf files. Tutorial notebooks in the `notebooks/` folder show how to navigate those files. All the hdf files belonging to the same model have same structure (same tallies with the same name, postprocessed in the same way and extractable in the same way). Each `results_database/` subfolder should have at least the `experiment.h5` file. Results from openmc and other codes are more than welcome, especially if built consistently with the files already present. The result hdf5 files from codes should have the name of `codename-codeversion_xsnameandversion.h5`.
+- Rigorous benchmark definition
+- Code verification (e.g., OpenMC)
+- Fusion neutronics design validation (e.g., for blankets and shields)
+- Consistent documentation of assumptions, inputs, and outputs
+- Comparisons against experimental data when available
+- Automated workflow
 
-## Database contribution
-The contribution workflow is automated for the openmc code. Users can run any openmc model and then the postprocessing notebook for a direct validation of the openmc version they use but they can also contribute to the repository. To contribute it is sufficient to:
+## 📦 Features
+- ✅ Benchmark **specifications** yaml files for complete and self-contained benchmark description 
+- ✅ A *unified* **schema** yaml file ensures *specifications* validity and consistency
+- ✅ **CAD-based** geometries for V&V *meshing tools*, *unstructured mesh transport*, etc.
+- ✅ Processed tally data saved in HDF5 format using `xarray`
+- ✅ A **database** of experimental and computational results
+- 🔧 Python API to load *specifications* and build a transport code model (currently available for (OpenMC)[https://docs.openmc.org/en/stable/])
+- 🔧 Python API to load analyze and compare simulation results and database results
 
-- Run the `run_and_store.py` script of a benchmark of choice according to the `run_and_store.ipynb` tutorial notebook (this would generate a result hdf5 file in the respective `results_database/` folder)
-- Review the result hdf5 and open a pull request to propose the new file to the database
+## 🛠 Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone --recursive-submodules https://github.com/eepeterson/openmc_fusion_benchmarks.git
+cd openmc-fusion-benchmarks
+pip install -e .[dev]
