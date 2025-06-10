@@ -409,7 +409,7 @@ class OpenmcBenchmark(Benchmark):
             t = sp.get_tally(name=spec_t['name']).get_pandas_dataframe()
 
             # Preparing tally dataframe
-            t = t.drop(columns=['cell', 'particle', 'nuclide',
+            t = t.drop(columns=['surface', 'cell', 'particle', 'nuclide',
                        'score', 'energyfunction'], errors='ignore')
             # Cyle tally filters
             norm = 1
