@@ -37,4 +37,4 @@ Clone the repository and install dependencies:
 ```bash
 git clone --recursive-submodules https://github.com/eepeterson/openmc_fusion_benchmarks.git
 cd openmc-fusion-benchmarks
-pip install -e .[dev]
+pip install .
