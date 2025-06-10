@@ -16,7 +16,7 @@ It also includes a growing **database of experimental and numerical results** fo
 ## Installation
 Currently, the way to install *ofb* is through:
 ```shell
-git clone --recursive https://github.com/eepeterson/openmc_fusion_benchmarks.git
+git clone --recurse-submodules https://github.com/eepeterson/openmc_fusion_benchmarks.git
 cd openmc_fusion_benchmarks
 pip install .
 ```
