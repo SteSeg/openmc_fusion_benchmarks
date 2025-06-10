@@ -5,6 +5,21 @@ from pathlib import Path
 
 
 def validate_benchmark(benchmark_name: str):
+    """
+    Validate a benchmark specifications.yaml file against the schema.
+
+    Parameters
+    ----------
+    benchmark_name : str
+        The name of the benchmark to validate, which corresponds to a directory
+        and a specifications.yaml file within the benchmarks directory.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the benchmark specifications.yaml file does not exist.
+
+    """
 
     print(f"\n🔍 Validating benchmark file: {benchmark_name}")
 
@@ -25,18 +40,18 @@ def validate_benchmark(benchmark_name: str):
 
     # CHANGED: Wrap the schema in a Resource and use the referencing registry
     schema_id = schema.get(
-        "$id", "https://openmc-fusion/schemas/benchmark_schema")  # <-- CHANGED
+        "$id", "https://openmc-fusion/schemas/benchmark_schema")
     registry = Registry().with_resources(
-        [(schema_id, Resource.from_contents(schema))])  # <-- CHANGED
+        [(schema_id, Resource.from_contents(schema))])
 
     # Load the YAML file to validate
     with open(benchmark_path, "r") as yaml_file:
         yaml_data = yaml.safe_load(yaml_file)
 
     # CHANGED: Use jsonschema 2020-12 validator with registry
-    validator_cls = jsonschema.validators.validator_for(schema)  # <-- ADDED
-    validator_cls.check_schema(schema)                           # <-- ADDED
-    validator = validator_cls(schema, registry=registry)         # <-- CHANGED
+    validator_cls = jsonschema.validators.validator_for(schema)
+    validator_cls.check_schema(schema)
+    validator = validator_cls(schema, registry=registry)
 
     # Validate the YAML file
     errors = sorted(validator.iter_errors(yaml_data), key=lambda e: e.path)
@@ -50,3 +65,5 @@ def validate_benchmark(benchmark_name: str):
         print(f"✅ {benchmark_name} is valid!")
 
     print("__________ \n")
+
+    return
