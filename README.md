@@ -4,17 +4,17 @@
 
 # OpenMC Fusion Benchmarks
 
-Documentation can be found [here](https://openmc-fusion-benchmarks.readthedocs.io/en/latest/intro.html).
-
-A CAD-based collection of benchmark models for validating and verifying **nuclear fusion neutronics simulations**.
+A CAD-based collection of benchmark models for automatic verification & validation of **nuclear fusion neutronics simulations**.
 This repository provides standardized geometries, sources, materials, and results to facilitate comparison and reproducibility across codes and experiments.
+
+Documentation can be found [here](https://openmc-fusion-benchmarks.readthedocs.io/en/latest/intro.html).
 
 ## 💡 Motivation
 
 Reliable neutronics simulations are essential in the design of fusion reactors. This project collects and organizes benchmark problems, enabling:
 
 - Rigorous benchmark definition
-- Code verification (e.g., OpenMC)
+- Code validation (e.g., OpenMC)
 - Fusion neutronics design validation (e.g., for blankets and shields)
 - Consistent documentation of assumptions, inputs, and outputs
 - Comparisons against experimental data when available
