@@ -15,7 +15,7 @@ Reliable neutronics simulations are essential in the design of fusion reactors. 
 
 - Rigorous benchmark definition
 - Code validation (e.g., OpenMC)
-- Fusion neutronics design validation (e.g., for blankets and shields)
+- CAD-based neutronics workflows validation (e.g, fusion machine design)
 - Consistent documentation of assumptions, inputs, and outputs
 - Comparisons against experimental data when available
 - Automated validation workflow
