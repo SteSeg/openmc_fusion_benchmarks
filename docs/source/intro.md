@@ -29,9 +29,9 @@ OFB promotes a rigorous and standardized validation process. Each benchmark begi
 
 > *“The minimum amount of technical information necessary to unambiguously model a benchmark and collect results.”*
 
-Each benchmark is defined in a `specification.yaml` file, which includes all information about geometry, materials, sources, and results.
+Each benchmark is defined in a `specification.yml` file, which includes all information about geometry, materials, sources, and results.
 
-To ensure compliance and consistency, OFB provides a `benchmark_schema.yaml` file that defines the required structure and syntax of a valid specification. The OFB Python API can be used to:
+To ensure compliance and consistency, OFB provides a `benchmark_schema.yml` file that defines the required structure and syntax of a valid specification. The OFB Python API can be used to:
 
 - Load and inspect specification files  
 - Validate them against the schema  
