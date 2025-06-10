@@ -4,6 +4,9 @@
 *.log
 *.out
 *.pkl
+
+# OpenMC files
+*.h5m
 summary.*
 statepoint.*
 
