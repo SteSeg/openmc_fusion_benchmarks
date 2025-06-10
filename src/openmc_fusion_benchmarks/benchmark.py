@@ -16,6 +16,11 @@ LFS_DIR = Path(__file__).parents[2] / "lfs"
 
 
 class Benchmark(ABC):
+    """Abstract base class for a benchmark.
+    This class provides a structure for implementing benchmarks in any
+    transport code.
+    """
+
     def __init__(self, name: str):
         self.name = name
 
@@ -119,6 +124,12 @@ class Benchmark(ABC):
 
 
 class OpenmcBenchmark(Benchmark):
+    """OpenMC benchmark class.
+    This class generates an OpenMC model based on the benchmark specifications.
+    It builds materials, geometry, source, settings, and tallies, and runs the
+    benchmark simulation.
+    """
+
     def __init__(self, name: str):
         super().__init__(name)
         self._materials = None
