@@ -48,3 +48,5 @@ def validate_benchmark(benchmark_name: str):
             print(f"   - {error.message} (at {list(error.path)})")
     else:
         print(f"✅ {benchmark_name} is valid!")
+
+    print("__________ \n")
