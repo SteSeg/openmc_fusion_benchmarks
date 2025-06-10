@@ -13,9 +13,7 @@
 - Add tests to everything
 
 ## Notebooks
-- Use `specifications` validation against `schema`  function and script
 - Open and inspect a `specifications` file (just `metadata`)
-- Instantiate an `OpenmcBenchmark` object, build model, run simulation
 - Postprocessing and visualization
 
 ## Documentation
