@@ -23,7 +23,7 @@ Reliable neutronics simulations are essential in the design of fusion reactors. 
 ## 📦 Features
 - ✅ Benchmark **specifications** yaml files for complete and self-contained benchmark description 
 - ✅ A *unified* **schema** yaml file ensures *specifications* validity and consistency
-- ✅ **CAD-based** geometries for V&V *meshing tools*, *unstructured mesh transport*, etc.
+- ✅ **CAD-based** geometries for V&V of *meshing tools*, *unstructured mesh transport*, etc.
 - ✅ Processed tally data saved in HDF5 format using [xarray](https://docs.xarray.dev/en/stable/index.html)
 - ✅ A **database** of experimental and computational results
 - ✅ An embedded **Uncertainty Quantification** module for input data perturbation
