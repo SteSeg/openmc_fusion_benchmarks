@@ -407,11 +407,11 @@ class OpenmcBenchmark(Benchmark):
         # Cycle tallies in specifications
         for spec_t in tallies_data:
             # Get corresponding tally from statepoint
-            t = sp.get_tally(name=spec_t['name']).get_pandas_dataframe()
+            df = sp.get_tally(name=spec_t['name']).get_pandas_dataframe()
 
             # Preparing tally dataframe
-            t = t.drop(columns=['surface', 'cell', 'particle', 'nuclide',
-                       'score', 'energyfunction'], errors='ignore')
+            df = df.drop(columns=['surface', 'cell', 'particle', 'nuclide',
+                                  'score', 'energyfunction'], errors='ignore')
             # Cyle tally filters
             norm = 1
             for f in spec_t['filters']:
@@ -426,19 +426,19 @@ class OpenmcBenchmark(Benchmark):
                         'Material filter not implemented in postprocess yet.')
 
                 # Normalize the tally data
-                t['mean'] = t['mean'] / norm
-                t['std. dev.'] = t['std. dev.'] / norm
+                df['mean'] = df['mean'] / norm
+                df['std. dev.'] = df['std. dev.'] / norm
 
             # Convert to xarray and add dimensions
             t = xr.DataArray(
-                t.values[np.newaxis, :, :],  # shape: (1, r, c)
+                df.values[np.newaxis, :, :],  # shape: (1, r, c)
                 dims=["case", "row", "column"],
                 coords={
                     "case": ["0"],
-                    "column": t.columns,
-                    "row": np.arange(t.shape[0])
+                    "column": df.columns,
+                    "row": np.arange(df.shape[0])
                 },
-                name="tally"
+                name=spec_t['name']
             )
 
             # Save the tally data to a netCDF file
