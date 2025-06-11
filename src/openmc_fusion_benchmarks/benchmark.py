@@ -3,6 +3,7 @@ from pathlib import Path
 import warnings
 from abc import ABC, abstractmethod
 import numpy as np
+import xarray as xr
 import h5py
 from .validate import validate_benchmark
 
@@ -428,8 +429,17 @@ class OpenmcBenchmark(Benchmark):
                 t['mean'] = t['mean'] / norm
                 t['std. dev.'] = t['std. dev.'] / norm
 
-            # Convert dataframe to xarray dataset
-            t = t.to_xarray()
+            # Convert to xarray and add dimensions
+            t = xr.DataArray(
+                t.values[np.newaxis, :, :],  # shape: (1, r, c)
+                dims=["case", "row", "column"],
+                coords={
+                    "case": ["0"],
+                    "column": t.columns,
+                    "row": np.arange(t.shape[0])
+                },
+                name="tally"
+            )
 
             # Save the tally data to a netCDF file
             t.to_netcdf(f"benchmark_results.h5",
