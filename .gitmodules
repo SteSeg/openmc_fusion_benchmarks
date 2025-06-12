@@ -1,3 +1,4 @@
 [submodule "lfs"]
 	path = lfs
 	url = https://github.com/SteSeg/openmc_fusion_benchmarks-lfs.git
+	branch = main
