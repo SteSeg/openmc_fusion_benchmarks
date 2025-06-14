@@ -1,4 +1,4 @@
-from .sandy_wrapper import perturb_to_hdf5
+from .xs_perturbation import perturb_to_hdf5
 from .data_conventions import get_nuclide_gnds
 from .modify_xs_xml import rewrite_xs_xml, perturb_xs_xml
 import os
