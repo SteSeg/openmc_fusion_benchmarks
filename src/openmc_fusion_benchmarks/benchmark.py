@@ -434,7 +434,7 @@ class OpenmcBenchmark(Benchmark):
                 df.values[np.newaxis, :, :],  # shape: (1, r, c)
                 dims=["case", "row", "column"],
                 coords={
-                    "case": ["0"],
+                    "case": ["baseline"],
                     "column": df.columns,
                     "row": np.arange(df.shape[0])
                 },
