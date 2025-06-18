@@ -198,3 +198,4 @@ uncertainty_quantification:
     description: "Uncertainty in nuclear data"
     nuclides: [Al27]
     reactions: [total]
+    samples: [500]
