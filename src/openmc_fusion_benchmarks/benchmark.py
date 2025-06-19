@@ -432,7 +432,7 @@ class OpenmcBenchmark(Benchmark):
             # Convert to xarray and add dimensions
             t = xr.DataArray(
                 df.values[np.newaxis, :, :],  # shape: (1, r, c)
-                dims=["case", "row", "column"],
+                dims=["realization", "row", "column"],
                 coords={
                     "realization": ["baseline"],
                     "column": df.columns,
