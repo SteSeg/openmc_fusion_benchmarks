@@ -2,6 +2,10 @@
 [![CI testing](https://github.com/SteSeg/openmc_fusion_benchmarks/actions/workflows/ci.yml/badge.svg?branch=add_ci)](https://github.com/SteSeg/openmc_fusion_benchmarks/workflows/ci.yml)
 [![Code Coverage](https://coveralls.io/repos/github/SteSeg/openmc_fusion_benchmarks/badge.svg?branch=add_ci)](https://coveralls.io/github/SteSeg/openmc_fusion_benchmarks?branch=add_ci)
 
+<div align="center">
+  <img src="docs/images/logo.png" alt="Your Logo">
+</div>
+
 # OpenMC Fusion Benchmarks
 
 A CAD-based collection of benchmark models for automatic verification & validation of **nuclear fusion neutronics simulations**.
