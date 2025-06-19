@@ -3,7 +3,7 @@
 [![Code Coverage](https://coveralls.io/repos/github/SteSeg/openmc_fusion_benchmarks/badge.svg?branch=add_ci)](https://coveralls.io/github/SteSeg/openmc_fusion_benchmarks?branch=add_ci)
 
 <div align="center">
-  <img src="docs/images/logo.png" alt="Your Logo">
+  <img src="docs/images/logo.png" alt="OFB Logo">
 </div>
 
 # OpenMC Fusion Benchmarks
