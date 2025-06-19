@@ -137,8 +137,7 @@ class OpenmcBenchmark(Benchmark):
 
         materials = openmc.Materials()
         for m in material_data:
-            mat = openmc.Material(name=m['name'])
-            mat.id = m['id']
+            mat = openmc.Material(material_id=m['id'], name=m['name'])
             mat.set_density(m['density']['units'], m['density']['value'])
 
             # Ensure fraction type is valid
@@ -441,9 +440,12 @@ class OpenmcBenchmark(Benchmark):
                 name=spec_t['name']
             )
 
-            # Save the tally data to a netCDF file
-            t.to_netcdf(f"benchmark_results.h5",
-                        group=spec_t['name'], mode='a')
+            # # Save the tally data to a netCDF file
+            # t.to_netcdf(f"benchmark_results.h5",
+            #             group=spec_t['name'], mode='a')
+
+            _save_result(new_result=t, filename="benchmark_results.h5",
+                         group=spec_t['name'], realization_label="baseline")
 
         # Add some metadata attributes
         with h5py.File(f"benchmark_results.h5", "a") as f:
@@ -462,6 +464,14 @@ class OpenmcBenchmark(Benchmark):
 
     def run(self, *args, **kwargs):
         """Run the benchmark simulation."""
+
+        # Check if benchmark_results.h5 already exists and delete it
+        path = Path("benchmark_results.h5")
+        if path.exists():
+            path.unlink()
+            warnings.warn(
+                f"Existing file '{path}' was found and deleted.", UserWarning)
+
         # Run the OpenMC model
         statepoint = self.model.run(*args, **kwargs)
 
@@ -469,3 +479,40 @@ class OpenmcBenchmark(Benchmark):
         self.postprocess(statepoint=statepoint)
 
         return
+
+
+def _save_result(new_result: xr.DataArray, filename: str, group: str, realization_label: str):
+    """Append or initialize a 3D DataArray with 'realization' dimension in a NetCDF HDF5 file."""
+    path = Path(filename)
+
+    # Ensure the realization dimension exists
+    if "realization" not in new_result.dims:
+        new_result = new_result.expand_dims(
+            {"realization": [realization_label]})
+    else:
+        new_result = new_result.assign_coords(realization=[realization_label])
+
+    if not path.exists():
+        # File doesn't exist: write initial result
+        new_result.to_dataset(name=new_result.name).to_netcdf(
+            path, mode='w', group=group)
+        print(f"Saved new result to group '{group}' in '{filename}'")
+    else:
+        try:
+            existing = xr.open_dataset(path, group=group)
+            existing_da = existing.to_array().squeeze("variable", drop=True)
+
+            # Concatenate along realization dimension
+            combined = xr.concat([existing_da, new_result], dim="realization")
+
+            # Save the combined array back
+            combined.to_dataset(name=new_result.name).to_netcdf(
+                path, mode='a', group=group)
+            print(
+                f"Appended realization '{realization_label}' to group '{group}' in '{filename}'")
+
+        except KeyError:
+            # Group does not exist yet
+            new_result.to_dataset(name=new_result.name).to_netcdf(
+                path, mode='a', group=group)
+            print(f"Saved new result to new group '{group}' in '{filename}'")
