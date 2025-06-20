@@ -1,11 +1,105 @@
-from .data_conventions import get_nuclide_zaid, get_nuclide_gnds, get_reaction_mt
-import os
-import glob
-import argparse
-import sandy
-import openmc
 import openmc.data
 from typing import Union
+import os
+import glob
+import sandy
+import openmc
+
+
+def zaid_to_zam(zaid: int) -> tuple:
+    """Converts a ZAID to Z, A, and M.
+
+    Parameters
+    ----------
+    zaid : int
+    nuclide ZAID
+
+    Returns
+    -------
+    tuple
+        Z, A, and M values
+    """
+    zaid_str = str(zaid)
+
+    # Extract Z, A, and M based on ZAID length
+    if len(zaid_str) == 4:  # Handles cases like H-1 (1001)
+        Z = int(zaid_str[0])  # First digit for Z
+        A = int(zaid_str[1:])  # Last 3 digits for A
+        M = 0  # Assuming ground state if no additional digit
+    elif len(zaid_str) == 5:  # Typical ZAID with 5 digits
+        Z = int(zaid_str[:2])  # First 2 digits for Z
+        A = int(zaid_str[2:])  # Last 3 digits for A
+        M = 0  # Assuming ground state
+    elif len(zaid_str) == 6:  # ZAID with 6 digits, includes isomeric state
+        Z = int(zaid_str[:3])  # First 3 digits for Z
+        A = int(zaid_str[3:5])  # Next 2 digits for A
+        M = int(zaid_str[5])  # Last digit represents isomeric state
+
+    return (Z, A, M)
+
+
+def get_nuclide_zaid(nuclide):
+    """Gets the ZAID of a nuclide from its name as a GNDS string (e.g. 'H1',
+    'U238) or as a ZAM tuple (e.g. (1, 1, 0)).
+    See openmc.data.zam() for more details.
+
+    Parameters
+    ----------
+    nuclide : int or str or tuple
+        The nuclide identifier or name
+
+    Returns
+    -------
+    int
+        The ZAID of the nuclide
+    """
+    if type(nuclide) == int:
+        return nuclide
+    elif type(nuclide) == str:
+        return openmc.data.zam(nuclide)[0]*1000 + openmc.data.zam(nuclide)[1]
+    elif type(nuclide) == tuple:
+        return nuclide[0]*1000 + nuclide[1]
+
+
+def get_nuclide_gnds(nuclide: Union[str, int]) -> str:
+    """Gets the GNDS name from a nuclide ZAID
+
+    Parameters
+    ----------
+    nuclide : str or int
+        The nuclide ZAID or GNDS name
+
+    Returns
+    -------
+    str
+        The GNDS name of the nuclide
+    """
+    if type(nuclide) == str:
+        return nuclide
+    elif type(nuclide) == int:
+        zam = zaid_to_zam(nuclide)
+        return openmc.data.gnds_name(zam[0], zam[1], zam[2])
+
+
+def get_reaction_mt(reaction: Union[str, int]) -> int:
+    """Gets the MT value from a reaction name
+
+    Parameters
+    ----------
+    reaction : str or int
+        The reaction name or MT value
+
+    Returns
+    -------
+    int
+        The MT value of the reaction
+    """
+    try:
+        mt = openmc.data.REACTION_MT[reaction]
+    except KeyError:
+        mt = reaction
+
+    return mt
 
 
 def remove_ace_files(directory: str, lib_name: str):
@@ -170,31 +264,82 @@ def perturb_to_hdf5(nsamples: int, lib_name: str, nuclide: Union[str, int],
     ace_to_hdf5(nsamples,  lib_name, nuclide, remove_ace=True)
 
 
-def main():
-    """Main function to run the perturbation and conversion to HDF5
-    via command line.
+def get_env_variable(var_name: str) -> str:
+    """Get the value of an environment variable.
+
+    Parameters
+    ----------
+    var_name : str
+        The name of the environment variable.
+
+    Returns
+    -------
+    str
+        The value of the environment variable.
     """
-    parser = argparse.ArgumentParser(
-        description="Generate ACE files with perturbed nuclear data.")
-    parser.add_argument("-n", "--nuclide", required=True,
-                        help="Nuclide identifier (ZA number)")
-    parser.add_argument("-xs", "--lib_name", type=str, default=1,
-                        help="Cross section choice ['JEFF_32', 'JEFF_33', 'ENDFB_71', 'ENDFB_80', 'JENDL_40U', 'IRDFF_2']")
-    parser.add_argument("-r", "--reaction", type=Union[str, int],
-                        nargs='+', help="MT value for specific reaction")
-    parser.add_argument("-e", "--error", type=float,
-                        default=0.001, help="Error tolerance for processing")
-    parser.add_argument("-p", "--nprocesses", type=int, default=1,
-                        help="Number of processes for parallel processing")
-    parser.add_argument("-ns", "--nsamples", type=int,
-                        default=1, help="Number of perturbations")
-
-    args = parser.parse_args()
-
-    # Call function with arguments from command line
-    perturb_to_hdf5(args.nsamples, args.lib_name, args.nuclide, args.reaction,
-                    args.nprocesses)
+    value = os.getenv(var_name)
+    if value is None:
+        return f"Environment variable '{var_name}' is not set."
+    return value
 
 
-if __name__ == "__main__":
-    main()
+def rewrite_xs_xml(new_xs_file: str = 'cross_sections_mod.xml'):
+    """Rewrite the cross_sections.xml file locally, in order not to modify the
+    original file.
+
+    Parameters
+    ----------
+    new_xs_file : str, optional
+        Name of the new xs file to be created,
+        by default 'cross_sections_mod.xml'
+    """
+    # read xs file
+    model_xs_file = get_env_variable('OPENMC_CROSS_SECTIONS')
+    myxs = openmc.data.DataLibrary.from_xml(model_xs_file)
+    myxs.export_to_xml(new_xs_file)
+
+
+def create_xs_dict(xs_h5_file: str, nuclide: str, type: str = 'neutron') -> dict:
+    """Create a dictionary with the correct format for an cross_sections.xml file
+    for a given target nuclide and the path to its corresponding h5 xs file.
+
+
+    Parameters
+    ----------
+    xs_h5_file : str
+        Path to the target nuclide h5 xs file
+    nuclide : str
+        Nuclide name in gnds format
+    type : str, optional
+        Type of incident particle (i.e. neutron, photon), by default 'neutron'
+
+    Returns
+    -------
+    dict
+        Dictionary with the path to the h5 xs file, the type of incident
+        particle and the target nuclide
+    """
+    return {'path': xs_h5_file, 'type': type, 'materials': [nuclide]}
+
+
+def perturb_xs_xml(xs_file: str, xs_h5_file: str, nuclide: str):
+    """Perturb the cross_sections.xml file by replacing the original path of a
+    nuclide xs with a new path to a new (perturbed) h5 xs file.
+
+    Parameters
+    ----------
+    xs_file : str
+        Name of the xs xml file to perturb
+    xs_h5_file : str
+        Path to the new (perturbed) h5 xs file
+    nuclide : str
+        Nuclide name in gnds format
+    """
+    # read xs file
+    myxs = openmc.data.DataLibrary.from_xml(xs_file)
+    try:
+        myxs.libraries.get_by_material(nuclide)['path'] = xs_h5_file
+    except TypeError:
+        myxs.append(create_xs_dict(xs_h5_file, nuclide))
+    # export to modified cross_sections xml file
+    myxs.export_to_xml(xs_file)
