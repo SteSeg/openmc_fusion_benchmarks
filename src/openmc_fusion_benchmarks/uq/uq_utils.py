@@ -1,7 +1,7 @@
 import openmc.data
 from typing import Union
+from pathlib import Path
 import os
-import glob
 import sandy
 import openmc
 
@@ -116,11 +116,12 @@ def remove_ace_files(directory: str, lib_name: str):
     extensions = ['03c', '03c.xsd', lib_name]
 
     # Loop through each extension and remove matching files
+    directory_path = Path(directory)
+
     for ext in extensions:
-        files_to_remove = glob.glob(os.path.join(directory, f'*.{ext}'))
-        for file_path in files_to_remove:
+        for file_path in directory_path.glob(f'*.{ext}'):
             try:
-                os.remove(file_path)
+                file_path.unlink()  # equivalent to os.remove
                 print(f"Removed {file_path}")
             except Exception as e:
                 print(f"Error removing {file_path}: {e}")
@@ -218,8 +219,8 @@ def ace_to_hdf5(nsamples: int, lib_name: str, nuclide: Union[str, int],
     nuclide_zaid = get_nuclide_zaid(nuclide)
 
     directory = f"{nuclide_gnds}_{lib_name}"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    directory_path = Path(directory)
+    directory_path.mkdir(parents=True, exist_ok=True)
 
     for n in range(0, nsamples):
         acefile = f"{nuclide_zaid}_{n}.03c"
@@ -228,7 +229,7 @@ def ace_to_hdf5(nsamples: int, lib_name: str, nuclide: Union[str, int],
         # Convert ACE to HDF5 using OpenMC
         try:
             nuc_data = openmc.data.IncidentNeutron.from_ace(acefile)
-            print(f'Writing to {os.getcwd()}/{h5file}')
+            print(f'Writing to {Path.cwd() / h5file}')
             nuc_data.export_to_hdf5(h5file)
         except FileNotFoundError:
             print(f'Error: ACE file {acefile} not found.')

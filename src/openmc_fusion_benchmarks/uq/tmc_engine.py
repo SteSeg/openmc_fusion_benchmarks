@@ -1,5 +1,5 @@
 from .uq_utils import rewrite_xs_xml, perturb_xs_xml, get_nuclide_gnds, perturb_to_hdf5
-import os
+from pathlib import Path
 import openmc
 import numpy as np
 
@@ -67,5 +67,5 @@ def tmc_engine(model: openmc.Model, nsamples: int, lib_name: str, nuclide,
             tally_df.to_hdf(path_to_file, tally.name+f'_{n}', mode='a',
                             format='table', data_columns=True, index=False)
 
-        os.remove('summary.h5')
-        os.remove(sp_name)
+        Path('summary.h5').unlink(missing_ok=True)
+        Path(sp_name).unlink(missing_ok=True)
