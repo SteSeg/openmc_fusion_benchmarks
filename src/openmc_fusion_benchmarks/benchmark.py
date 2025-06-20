@@ -59,7 +59,7 @@ class Benchmark(ABC):
         pass
 
     @abstractmethod
-    def postprocess(self):
+    def _postprocess(self):
         """Post-process the model after running."""
         pass
 
@@ -394,7 +394,7 @@ class OpenmcBenchmark(Benchmark):
         )
         return model
 
-    def postprocess(self, statepoint: str = 'statepoint.100.h5', mesh: str = 'mesh.h5m'):
+    def _postprocess(self, statepoint: str = 'statepoint.100.h5', mesh: str = 'mesh.h5m'):
         """Post-process the model after running."""
         # Retrieve tallies data from specifications
         tallies_data = self._benchmark_spec['tallies']
@@ -476,7 +476,7 @@ class OpenmcBenchmark(Benchmark):
         statepoint = self.model.run(*args, **kwargs)
 
         # Post-process the results
-        self.postprocess(statepoint=statepoint)
+        self._postprocess(statepoint=statepoint)
 
         return
 
