@@ -4,7 +4,7 @@
 TEST
 
 ## CAD
-<model-viewer src="../../lfs/benchmarks/oktavian/oktavian_a.gltf/"
+<model-viewer src="/lfs/benchmarks/oktavian/oktavian_a.gltf/"
               alt="CAD model"
               auto-rotate
               camera-controls
