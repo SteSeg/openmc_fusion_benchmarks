@@ -29,3 +29,8 @@ repository:
 html:
   use_issues_button: true
   use_repository_button: true
+
+# Set citation style to numeric
+sphinx:
+  config:
+    bibtex_reference_style: label
