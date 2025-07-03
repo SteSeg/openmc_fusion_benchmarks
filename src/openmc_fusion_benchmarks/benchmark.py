@@ -68,6 +68,11 @@ class Benchmark(ABC):
         """Run the benchmark simulation."""
         pass
 
+    @abstractmethod
+    def _uncertainty_quantification(self):
+        """Perform uncertainty quantification for the benchmark."""
+        pass
+
     def _read_metadata(self):
         """Read metadata from the benchmark specification."""
         metadata = self._benchmark_spec['metadata']
@@ -479,6 +484,10 @@ class OpenmcBenchmark(Benchmark):
         self._postprocess(statepoint=statepoint)
 
         return
+
+    def _uncertainty_quantification(self):
+        """Perform uncertainty quantification for the benchmark."""
+        uq_data = self._benchmark_spec['uncertainty_quantification']
 
 
 def _save_result(new_result: xr.DataArray, filename: str, group: str, realization_label: str):
