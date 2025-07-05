@@ -3,11 +3,13 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import datetime
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'openmc_fusion_benchmarks'
-copyright = '2025, Stefano Segantin'
+copyright = f"{datetime.datetime.now().year}, MIT PSFC Neutronics Team"
 author = 'MIT PSFC Neutronics Team'
 release = '0.1.0'
 
