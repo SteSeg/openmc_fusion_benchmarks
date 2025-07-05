@@ -52,7 +52,7 @@ htmlcov
 build/
 dist/
 *.egg-info/
-docs/source/_build/
+docs/_build/
 
 # macOS
 *.DS_Store
@@ -64,10 +64,5 @@ docs/source/_build/
 .venv/
 venv/
 
-# Sphinx build
-docs/_build/
-
 # Cache
 __pycache__/
-*.py[cod]
-*.egg-info/
