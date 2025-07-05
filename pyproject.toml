@@ -46,4 +46,4 @@ docs = [
 "Bug Tracker" = "https://github.com/eepeterson/openmc_fusion_benchmarks/issues"
 
 [tool.setuptools.dynamic]
-version = {attr = "openmc_fusion_benchmarks.__version__"} 
+version = {attr = "openmc_fusion_benchmarks.__version__"}
