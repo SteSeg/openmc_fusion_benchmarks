@@ -32,8 +32,6 @@ fng_source = ["openmc_fusion_benchmarks/neutron_sources/fng_source/*.csv"]
 
 [project.optional-dependencies]
 tests = ["pytest>=5.4.3", "pytest-cov", "coveralls"]
-docs = ["jupyter-book"]
-[project.optional-dependencies]
 docs = [
   "sphinx",
   "myst-parser",
