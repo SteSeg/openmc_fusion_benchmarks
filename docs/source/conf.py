@@ -8,14 +8,14 @@
 
 project = 'openmc_fusion_benchmarks'
 copyright = '2025, Stefano Segantin'
-author = 'Stefano Segantin'
+author = 'MIT PSFC Neutronics Team'
 release = '0.1.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    "myst_parser",
+    # "myst_parser",
     "myst_nb"
 ]
 
