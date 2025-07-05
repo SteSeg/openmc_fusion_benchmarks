@@ -59,3 +59,15 @@ docs/source/_build/
 
 # Visual Studio Code configuration files
 .vscode/
+
+# Virtualenv
+.venv/
+venv/
+
+# Sphinx build
+docs/_build/
+
+# Cache
+__pycache__/
+*.py[cod]
+*.egg-info/
