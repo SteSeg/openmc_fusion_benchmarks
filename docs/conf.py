@@ -37,7 +37,7 @@ html_theme_options = {
 
 # Optional: add logo and favicon
 html_logo = "_static/logo.png"
-html_favicon = "_static/favicon.ico"
+# html_favicon = "_static/favicon.ico"
 
 # Enable static file path
 html_static_path = ["_static"]
