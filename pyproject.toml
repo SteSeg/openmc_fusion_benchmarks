@@ -36,6 +36,7 @@ docs = [
   "sphinx",
   "myst-parser",
   "myst-nb",
+  "sphinxcontrib-bibtex",
   "sphinx-book-theme"  # or other theme you use
 ]
 
