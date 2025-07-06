@@ -7,7 +7,7 @@ This repository provides standardized fusion neutronics benchmark models using C
 ## Sections
 
 - [Introduction](intro.md)
-- [Installation](installation.md)
+- [User Installation](installation.md)
 
 
 ```{toctree}
