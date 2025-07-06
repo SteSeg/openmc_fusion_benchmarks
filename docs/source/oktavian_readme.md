@@ -1,3 +1,0 @@
-# Oktavian general infomation
-
-TODO
