@@ -1,8 +1,9 @@
 # Welcome to Openmc Fusion Benchmarks Documentation
 
-```{toctree}
-:maxdepth: 2
-:hidden:
+Welcome to the **OpenMC Fusion Benchmarks** documentation!
 
-intro.md
-```
+This repository provides standardized fusion neutronics benchmark models using CAD geometry, OpenMC, and Total Monte Carlo uncertainty quantification.
+
+## Sections
+
+- [Introduction](intro.md)
