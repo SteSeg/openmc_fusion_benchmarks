@@ -13,15 +13,6 @@ OFB provides a fully automated pipeline for:
 It also includes a growing **database of experimental and numerical results** for quick comparison. Contributions to this database are encouraged and supported through an automated submission workflow.
 
 ---
-## Installation
-Currently, the way to install *ofb* is through:
-```shell
-git clone --recurse-submodules https://github.com/eepeterson/openmc_fusion_benchmarks.git
-cd openmc_fusion_benchmarks
-pip install .
-```
-
----
 
 ## Validation Framework
 
