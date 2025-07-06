@@ -17,7 +17,6 @@ release = '0.1.0'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    # "myst_parser",
     "myst_nb"
 ]
 
@@ -27,11 +26,19 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'pydata_sphinx_theme'
-html_static_path = ['_static']
+html_theme = "sphinx_book_theme"
 
-html_logo = "docs/source/images/logo.png"
 html_theme_options = {
-    "logo_only": True,
-    "display_version": False,
+    "repository_url": "https://github.com/SteSeg/openmc_fusion_benchmarks",
+    "use_repository_button": True,
+    "use_issues_button": True,
+    "use_edit_page_button": True,
+    "path_to_docs": "docs",  # Path from root to docs folder
 }
+
+# Optional: add logo and favicon
+html_logo = "_static/logo.png"
+html_favicon = "_static/favicon.ico"
+
+# Enable static file path
+html_static_path = ["_static"]
