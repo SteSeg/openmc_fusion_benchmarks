@@ -58,3 +58,4 @@ smv_remote_whitelist = r'^origin$'
 smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
 # Output folder is just the branch/tag name
 smv_outputdir_format = '{ref.name}'
+#
