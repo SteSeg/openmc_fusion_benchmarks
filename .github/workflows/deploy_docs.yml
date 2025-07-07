@@ -1,36 +1,33 @@
 name: Deploy Docs
-
 on:
   push:
-    branches: [to_ghpages]
-  workflow_dispatch:
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+    branches:
+      - main  # or 'develop' or any branch you want to trigger deployment from
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository (including all branches/tags for multiversion)
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for versioning (fetch all branches/tags)
+          fetch-depth: 0  # Required for sphinx-multiversion to see all refs
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install .[docs]
+          pip install .
+          pip install sphinx sphinx-book-theme myst-parser myst-nb sphinx-multiversion
 
-      - name: Build versioned docs
+      - name: Build documentation with sphinx-multiversion
         run: |
           sphinx-multiversion docs docs/_build/html
+          touch docs/_build/html/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
