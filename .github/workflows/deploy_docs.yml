@@ -33,6 +33,8 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
+          pip install --upgrade pip
+          pip install .[docs]
           pip install sphinx sphinx-book-theme myst-parser myst-nb sphinx-multiversion | 
           sphinxcontrib-bibtex
 
