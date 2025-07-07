@@ -49,7 +49,7 @@ html_theme_options = {
     "use_issues_button": True,
     "use_edit_page_button": True,
     "use_fullscreen_button": True,
-    "use_version_picker": True,
+    "switcher": True,
     "path_to_docs": "docs",  # Path from root to docs folder
 }
 
