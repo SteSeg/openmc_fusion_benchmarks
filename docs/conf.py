@@ -24,6 +24,20 @@ extensions = [
 templates_path = ['_templates']
 bibtex_bibfiles = ["references.bib"]
 
+# -- Options for Sphinx Multiversion ----------------------------------------
+# https://sphinx-multiversion.readthedocs.io/en/latest/configuration.html
+
+extensions.append("sphinx_multiversion")
+
+# Optional: control which tags/branches to build
+smv_tag_whitelist = r'^\d+\.\d+\.\d+$'  # Only tags like 0.1.0, 0.2.1, etc.
+smv_branch_whitelist = r'^.*$'  # Branches to include - all for the moment
+smv_remote_whitelist = r'^origin$'
+smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
+# Output folder is just the branch/tag name
+smv_outputdir_format = '{ref.name}'
+#
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
@@ -45,17 +59,3 @@ html_logo = "_static/logo.svg"
 
 # Enable static file path
 html_static_path = ["_static"]
-
-# -- Options for Sphinx Multiversion ----------------------------------------
-# https://sphinx-multiversion.readthedocs.io/en/latest/configuration.html
-
-extensions.append("sphinx_multiversion")
-
-# Optional: control which tags/branches to build
-smv_tag_whitelist = r'^\d+\.\d+\.\d+$'  # Only tags like 0.1.0, 0.2.1, etc.
-smv_branch_whitelist = r'^.*$'  # Branches to include - all for the moment
-smv_remote_whitelist = r'^origin$'
-smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
-# Output folder is just the branch/tag name
-smv_outputdir_format = '{ref.name}'
-#
