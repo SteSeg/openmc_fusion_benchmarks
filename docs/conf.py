@@ -43,3 +43,17 @@ html_logo = "_static/logo.svg"
 
 # Enable static file path
 html_static_path = ["_static"]
+
+# -- Options for Sphinx Multiversion ----------------------------------------
+# https://sphinx-multiversion.readthedocs.io/en/latest/configuration.html
+
+extensions.append("sphinx_multiversion")
+
+# Optional: control which tags/branches to build
+# Only tags like 0.1.0, 0.2.1, etc.
+smv_tag_whitelist = r'^\d+\.\d+\.\d+$'
+smv_branch_whitelist = r'^(main|develop)$'   # Branches to include
+smv_remote_whitelist = r'^origin$'
+smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
+# Output folder is just the branch/tag name
+smv_outputdir_format = '{ref.name}'

@@ -16,4 +16,8 @@ This repository provides standardized fusion neutronics benchmark models using C
 
 intro.md
 installation.md
+
+.. only:: html
+
+    **You are viewing the documentation for version:** |version|
 ```
