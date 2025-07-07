@@ -22,7 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install .
-          pip install sphinx sphinx-book-theme myst-parser myst-nb sphinx-multiversion
+          pip install sphinx sphinx-book-theme myst-parser myst-nb sphinx-multiversion | 
+          sphinxcontrib-bibtex
 
       - name: Build documentation with sphinx-multiversion
         run: |
