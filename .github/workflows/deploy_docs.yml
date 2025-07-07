@@ -2,7 +2,7 @@ name: Deploy Docs
 on:
   push:
     branches:
-      - main  # or 'develop' or any branch you want to trigger deployment from
+      - to_ghpages  # or 'develop' or any branch you want to trigger deployment from
 
 jobs:
   build-and-deploy:
