@@ -42,6 +42,7 @@ jobs:
           pip show sphinx-multiversion
 
       - name: Build documentation with sphinx-multiversion
+        shell: bash -l {0}
         run: |
           python -m sphinx_multiversion docs docs/_build/html
           touch docs/_build/html/.nojekyll
