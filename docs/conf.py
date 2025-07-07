@@ -52,7 +52,7 @@ extensions.append("sphinx_multiversion")
 # Optional: control which tags/branches to build
 # Only tags like 0.1.0, 0.2.1, etc.
 smv_tag_whitelist = r'^\d+\.\d+\.\d+$'
-smv_branch_whitelist = r'^(main|develop)$'   # Branches to include
+smv_branch_whitelist = r'^.*$'  # Branches to include - all for the moment
 smv_remote_whitelist = r'^origin$'
 smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
 # Output folder is just the branch/tag name
