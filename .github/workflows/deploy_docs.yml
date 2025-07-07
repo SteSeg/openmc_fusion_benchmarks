@@ -36,11 +36,6 @@ jobs:
           pip install --upgrade pip
           pip install .[docs]
 
-      - name: Confirm sphinx-multiversion install
-        shell: bash -l {0}
-        run: |
-          pip show sphinx-multiversion
-
       - name: Build documentation with sphinx-multiversion
         shell: bash -l {0}
         run: |
