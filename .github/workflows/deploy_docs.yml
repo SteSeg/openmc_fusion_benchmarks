@@ -37,9 +37,12 @@ jobs:
           pip install .[docs]
           pip install sphinx-multiversion
 
+      - name: Check sphinx-multiversion install
+        run: pip show sphinx-multiversion
+
       - name: Build documentation with sphinx-multiversion
         run: |
-          sphinx-multiversion docs docs/_build/html
+          python -m sphinx_multiversion docs docs/_build/html
           touch docs/_build/html/.nojekyll
 
       - name: Deploy to GitHub Pages
