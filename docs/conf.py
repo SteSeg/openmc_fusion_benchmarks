@@ -31,7 +31,6 @@ extensions.append("sphinx_multiversion")
 
 # Optional: control which tags/branches to build
 smv_tag_whitelist = r'^\d+\.\d+\.\d+$'  # Only tags like 0.1.0, 0.2.1, etc.
-smv_branch_whitelist = r"^to_ghpages$"  # JUST FOR FORK
 smv_remote_whitelist = r'^origin$'
 smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
 # Output folder is just the branch/tag name
