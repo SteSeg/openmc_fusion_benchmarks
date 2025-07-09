@@ -11,7 +11,7 @@ import datetime
 project = 'openmc_fusion_benchmarks'
 copyright = f"{datetime.datetime.now().year}, MIT PSFC Neutronics Team"
 author = 'MIT PSFC Neutronics Team'
-# release = '0.1.0'
+release = '0.1.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -31,6 +31,7 @@ extensions.append("sphinx_multiversion")
 
 # Optional: control which tags/branches to build
 smv_tag_whitelist = r'^\d+\.\d+\.\d+$'  # Only tags like 0.1.0, 0.2.1, etc.
+smv_branch_whitelist = r"^to_ghpages$"  # JUST FOR FORK
 smv_branch_whitelist = r'^.*$'  # Branches to include - all for the moment
 smv_remote_whitelist = r'^origin$'
 smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
