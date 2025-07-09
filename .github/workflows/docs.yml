@@ -10,11 +10,11 @@ jobs:
 
     steps:
 
-      - name: Clean old builds
-        run: rm -rf docs/_build
-
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      - name: Clean old builds
+        run: rm -rf docs/_build
 
       - name: Set up Python
         uses: actions/setup-python@v4
