@@ -11,7 +11,7 @@ import datetime
 project = 'openmc_fusion_benchmarks'
 copyright = f"{datetime.datetime.now().year}, MIT PSFC Neutronics Team"
 author = 'MIT PSFC Neutronics Team'
-release = '0.1.0'
+# release = '0.1.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
