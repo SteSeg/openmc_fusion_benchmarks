@@ -38,7 +38,7 @@ docs = [
   "myst-nb",
   "sphinxcontrib-bibtex",
   "sphinx-multiversion",
-  "sphinx-book-theme"  # or other theme you use
+  "pydata-sphinx-theme"
 ]
 
 [project.urls]

@@ -41,17 +41,26 @@ smv_outputdir_format = '{ref.name}'
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_book_theme"
+html_theme = "pydata_sphinx_theme"
 
 html_theme_options = {
-    "repository_url": "https://github.com/SteSeg/openmc_fusion_benchmarks",
-    "use_repository_button": True,
-    "use_issues_button": True,
+    "github_url": "https://github.com/SteSeg/openmc_fusion_benchmarks",
+    "show_nav_level": 2,
+    "navigation_with_keys": True,
     "use_edit_page_button": True,
-    "use_fullscreen_button": True,
-    "switcher": True,
-    "path_to_docs": "docs",  # Path from root to docs folder
+    "navbar_end": ["version-switcher", "theme-switcher"],
+    "footer_start": ["copyright"],
+    "footer_end": ["sphinx-version"],
 }
+
+html_context = {
+    "github_user": "SteSeg",
+    "github_repo": "openmc_fusion_benchmarks",
+    "github_version": "to_ghpages",
+    "doc_path": "docs",
+}
+
+html_show_sourcelink = True
 
 # Optional: add logo and favicon
 html_logo = "_static/logo.svg"

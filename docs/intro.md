@@ -37,7 +37,3 @@ Benchmark *specifications* point to **CAD geometry files**, which serve as the b
 - Alternatively, CAD-to-CSG conversion tools can be integrated for validating geometry translation workflows  
 
 This flexibility allows the same benchmark to support both mesh-based and CSG-based simulations, making it ideal for code-to-code comparisons and geometry tool validation.
-
-
-```{tableofcontents}
-```
