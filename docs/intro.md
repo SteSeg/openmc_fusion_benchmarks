@@ -1,4 +1,4 @@
-# Introduction PROVA
+# Introduction
 
 **OpenMC Fusion Benchmarks (OFB)** is a platform for **verification and validation (V&V)** of neutronics simulations in fusion energy research. It focuses on **fusion-relevant integral benchmarks** that use **CAD-based geometries**, enabling support for modern transport workflows.
 

@@ -31,8 +31,8 @@ bibtex_bibfiles = ["references.bib"]
 
 # Optional: control which tags/branches to build
 smv_tag_whitelist = r'^\d+\.\d+\.\d+$'  # Only tags like 0.1.0, 0.2.1, etc.
-smv_remote_whitelist = r'^origin$'
-smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
+smv_branch_whitelist = r'^docs-dev$'  # Only main and develop branches
+# smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
 # Output folder is just the branch/tag name
 smv_outputdir_format = '{ref.name}'
 #
@@ -55,7 +55,7 @@ html_theme_options = {
 html_context = {
     "github_user": "SteSeg",
     "github_repo": "openmc_fusion_benchmarks",
-    "github_version": "to_ghpages",
+    "github_version": "docs-dev",
     "doc_path": "docs",
 }
 
