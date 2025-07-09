@@ -27,7 +27,7 @@ bibtex_bibfiles = ["references.bib"]
 # -- Options for Sphinx Multiversion ----------------------------------------
 # https://sphinx-multiversion.readthedocs.io/en/latest/configuration.html
 
-extensions.append("sphinx_multiversion")
+# extensions.append("sphinx_multiversion")
 
 # Optional: control which tags/branches to build
 smv_tag_whitelist = r'^\d+\.\d+\.\d+$'  # Only tags like 0.1.0, 0.2.1, etc.
