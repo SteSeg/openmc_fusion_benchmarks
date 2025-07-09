@@ -14,7 +14,6 @@ This repository provides standardized fusion neutronics benchmark models using C
 :hidden:
 :maxdepth: 2
 
-Current theme: `{{ html_theme }}`
 intro.md
 installation.md
 ```
