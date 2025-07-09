@@ -19,6 +19,7 @@ author = 'MIT PSFC Neutronics Team'
 extensions = [
     "myst_nb",
     "sphinxcontrib.bibtex",
+    "sphinx_multiversion",
 ]
 
 templates_path = ['_templates']
@@ -27,13 +28,13 @@ bibtex_bibfiles = ["references.bib"]
 # -- Options for Sphinx Multiversion ----------------------------------------
 # https://sphinx-multiversion.readthedocs.io/en/latest/configuration.html
 
-# extensions.append("sphinx_multiversion")
-
-# Optional: control which tags/branches to build
-smv_tag_whitelist = r'^\d+\.\d+\.\d+$'  # Only tags like 0.1.0, 0.2.1, etc.
-smv_branch_whitelist = r'^docs-dev$'  # Only main and develop branches
-# smv_released_pattern = r'^tags/v\d+\.\d+$'   # Treat tags as "released"
-# Output folder is just the branch/tag name
+# Only build tags like 1.0.0, 0.2.1, etc.
+smv_tag_whitelist = r'^v?\d+\.\d+\.\d+$'
+# Only build the docs-dev branch
+smv_branch_whitelist = r'^docs-dev$'
+# Optional: treat tags as "released"
+smv_released_pattern = r'^tags/v?\d+\.\d+\.\d+$'
+# Optional: name subfolders after tag/branch
 smv_outputdir_format = '{ref.name}'
 #
 
@@ -59,11 +60,23 @@ html_context = {
     "doc_path": "docs",
 }
 
+html_context.update({
+    "current_version": "{{ smv_current_version }}",
+})
+
 html_show_sourcelink = True
 
 # Optional: add logo and favicon
-html_logo = "_static/logo.svg"
-# html_favicon = "_static/favicon.ico"
+html_theme_options = {
+    "logo": {
+        "image_light": "_static/logo.svg",
+        "image_dark": "_static/logo.svg",
+    },
+}
 
 # Enable static file path
 html_static_path = ["_static"]
+
+html_css_files = [
+    "custom.css",
+]
