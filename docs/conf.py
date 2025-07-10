@@ -168,8 +168,9 @@ html_theme_options = {
     "footer_start": ["copyright"],
     "footer_end": ["sphinx-version"],
     "secondary_sidebar_items": {
-        "**/*": ["page-toc", "edit-this-page", "sourcelink"],
-        "examples/no-sidebar": [],
+        # Keep default for all other pages
+        "**": ["page-toc", "edit-this-page", "sourcelink"],
+        "index": [],  # Disable on index
     },
     "switcher": {
         "json_url": json_url,
