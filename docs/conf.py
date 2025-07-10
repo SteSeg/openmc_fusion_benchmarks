@@ -57,6 +57,11 @@ myst_enable_extensions = ["colon_fence", "linkify", "substitution"]
 myst_heading_anchors = 2
 myst_substitutions = {"rtd": "[Read the Docs](https://readthedocs.org/)"}
 
+# -- Internationalization ----------------------------------------------------
+
+# specifying the natural language populates some key tags
+language = "en"
+
 # -- Options for Sphinx Multiversion ----------------------------------------
 # https://sphinx-multiversion.readthedocs.io/en/latest/configuration.html
 
@@ -69,6 +74,26 @@ smv_released_pattern = r'^tags/v?\d+\.\d+\.\d+$'
 # Optional: name subfolders after tag/branch
 smv_outputdir_format = '{ref.name}'
 #
+
+# -- sphinx_ext_graphviz options ---------------------------------------------
+
+graphviz_output_format = "svg"
+inheritance_graph_attrs = dict(
+    rankdir="LR",
+    fontsize=14,
+    ratio="compress",
+)
+
+# -- sphinx_togglebutton options ---------------------------------------------
+togglebutton_hint = str(_("Click to expand"))
+togglebutton_hint_hide = str(_("Click to collapse"))
+
+# -- Sphinx-copybutton options ---------------------------------------------
+# Exclude copy button from appearing over notebook cell numbers by using :not()
+# The default copybutton selector is `div.highlight pre`
+# https://github.com/executablebooks/sphinx-copybutton/blob/master/sphinx_copybutton/__init__.py#L82
+copybutton_exclude = ".linenos, .gp"
+copybutton_selector = ":not(.prompt) > div.highlight pre"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
