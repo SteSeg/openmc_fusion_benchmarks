@@ -157,6 +157,7 @@ html_theme_options = {
     },
     "use_edit_page_button": True,
     "show_toc_level": 1,
+    "show_nav_level": 2,
     "show_version_warning_banner": True,
     "icon_links_label": "Quick Links",
     "navbar_start": ["navbar-logo", "version-switcher"],
