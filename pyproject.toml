@@ -38,6 +38,7 @@ docs = [
   "myst-nb",
   "sphinxcontrib-bibtex",
   "sphinx-multiversion",
+  "jupyterlite-sphinx",
   "pydata-sphinx-theme"
 ]
 

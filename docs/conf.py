@@ -22,6 +22,8 @@ extensions = [
     "sphinx_multiversion",
 ]
 
+jupyterlite_config = "docs/_jupyterlite"
+
 templates_path = ['_templates']
 bibtex_bibfiles = ["references.bib"]
 
