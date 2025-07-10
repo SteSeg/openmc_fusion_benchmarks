@@ -42,6 +42,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install .[docs]
+          pip install linkify-it-py
 
       - name: Build documentation with sphinx-multiversion
         shell: bash -l {0}
