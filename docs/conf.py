@@ -3,6 +3,7 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
 import datetime
 
 # -- Project information -----------------------------------------------------
@@ -50,13 +51,48 @@ smv_outputdir_format = '{ref.name}'
 html_theme = "pydata_sphinx_theme"
 
 html_theme_options = {
-    "github_url": "https://github.com/SteSeg/openmc_fusion_benchmarks",
-    "show_nav_level": 2,
-    "navigation_with_keys": True,
+    "logo": {
+        "image_light": "_static/logo.svg",
+        "image_dark": "_static/logo.svg",
+    },
+    # https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/header-links.html#fontawesome-icons
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/SteSeg/openmc_fusion_benchmarks",
+            "icon": "fa-brands fa-github",
+        },
+        {
+            "name": "Download PDF",
+            "url": "_static/my_doc.pdf",
+            "icon": "fa-solid fa-file-pdf",
+            "attributes": {
+                "download": None,
+            }
+        },
+        {
+            "name": "Fullscreen",
+            "url": "#",
+            "icon": "fa-solid fa-expand",
+            "attributes": {
+                "onclick": "document.documentElement.requestFullscreen()",
+                "title": "Enter Fullscreen",
+            }
+        },
+    ],
+    "show_version_warning_banner": True,
+    "icon_links_label": "Quick Links",
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-nav"],
+    "navbar_end": ["version-switcher", "icon-links", "theme-switcher"],
+    "navbar_align": "content",
+    "header_links_before_dropdown": 5,
     "use_edit_page_button": True,
-    "navbar_end": ["version-switcher", "theme-switcher"],
+    "navigation_with_keys": True,
+    "analytics": {"google_analytics_id": "G-W1G68W77YV"},
     "footer_start": ["copyright"],
     "footer_end": ["sphinx-version"],
+    "default_mode": "light",
 }
 
 html_context = {
@@ -70,18 +106,11 @@ html_context.update({
     "current_version": "{{ smv_current_version }}",
 })
 
-html_show_sourcelink = True
-
-# Optional: add logo and favicon
-html_theme_options = {
-    "logo": {
-        "image_light": "_static/logo.svg",
-        "image_dark": "_static/logo.svg",
-    },
-}
+# html_show_sourcelink = True
 
 # Enable static file path
 html_static_path = ["_static"]
+html_js_files = ["version-switcher.js"]
 
 html_css_files = [
     "custom.css",

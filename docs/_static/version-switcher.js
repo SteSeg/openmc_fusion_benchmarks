@@ -1,0 +1,1 @@
+window.SPHINX_MULTIVERSION_JSON_URL = "_static/versions.json";
