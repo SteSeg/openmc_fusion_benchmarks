@@ -11,9 +11,8 @@ This repository provides standardized fusion neutronics benchmark models using C
 
 
 ```{toctree}
-:hidden:
 :maxdepth: 2
 
-intro.md
-installation.md
+intro
+installation
 ```

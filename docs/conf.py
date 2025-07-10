@@ -34,6 +34,8 @@ extensions = [
     "myst_nb",
     "sphinxcontrib.bibtex",
     "sphinx_multiversion",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
 ]
 
 jupyterlite_config = "docs/_jupyterlite"
@@ -47,6 +49,8 @@ bibtex_bibfiles = ["references.bib"]
 
 intersphinx_mapping = {"sphinx": (
     "https://www.sphinx-doc.org/en/master", None)}
+
+master_doc = "index"
 
 # -- MyST options ------------------------------------------------------------
 
@@ -158,6 +162,7 @@ html_theme_options = {
     "use_edit_page_button": True,
     "show_toc_level": 1,
     "show_nav_level": 2,
+    "navigation_depth": 2,
     "show_version_warning_banner": True,
     "icon_links_label": "Quick Links",
     "navbar_start": ["navbar-logo", "version-switcher"],
@@ -178,7 +183,6 @@ html_theme_options = {
         "version_match": version_match,
     },
     # "back_to_top_button": False,
-    "search_as_you_type": True,
 }
 
 html_context = {
