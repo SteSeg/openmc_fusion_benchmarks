@@ -25,28 +25,33 @@ class Benchmark(ABC):
         self._read_metadata()
 
     @abstractmethod
-    def build_materials(self):
+    def _build_materials(self):
         """Build materials for the benchmark."""
         pass
 
     @abstractmethod
-    def build_geometry(self):
+    def _build_geometry(self):
         """Build geometry for the benchmark."""
         pass
 
     @abstractmethod
-    def build_source(self):
+    def _build_source(self):
         """Build source for the benchmark."""
         pass
 
     @abstractmethod
-    def build_settings(self):
+    def _build_settings(self):
         """Build settings for the benchmark."""
         pass
 
     @abstractmethod
-    def build_tallies(self):
+    def _build_tallies(self):
         """Build tallies for the benchmark."""
+        pass
+
+    @abstractmethod
+    def _build_model(self):
+        """Build the whole model for the benchmark."""
         pass
 
     def _read_metadata(self):
@@ -108,7 +113,9 @@ class OpenmcBenchmark(Benchmark):
         self._settings = None
         self._tallies = None
 
-    def build_materials(self):
+        self.model = self._build_model()
+
+    def _build_materials(self):
         # Implement the logic to build materials for OpenMC
         material_data = self._benchmark_spec['materials']
 
@@ -135,7 +142,7 @@ class OpenmcBenchmark(Benchmark):
 
         return materials
 
-    def build_geometry(self):
+    def _build_geometry(self):
 
         def build_mesh(cad_file: str, material_tags, set_size: dict, global_mesh_size_min: float, global_mesh_size_max: float, mesh_file: str = "mesh.h5m"):
 
@@ -181,7 +188,7 @@ class OpenmcBenchmark(Benchmark):
 
         return openmc.Geometry(root=dag_universe)
 
-    def build_source(self):
+    def _build_source(self):
         source_data = self._benchmark_spec['sources']
 
         def energy_conversion(values, units):
@@ -296,7 +303,7 @@ class OpenmcBenchmark(Benchmark):
 
         return source
 
-    def build_tallies(self):
+    def _build_tallies(self):
         tallies_data = self._benchmark_spec['tallies']
 
         # Initialize openmc tallies
@@ -333,7 +340,7 @@ class OpenmcBenchmark(Benchmark):
 
         return tallies
 
-    def build_settings(self):
+    def _build_settings(self):
         settings_data = self._benchmark_spec['settings']
 
         settings = openmc.Settings()
@@ -353,3 +360,16 @@ class OpenmcBenchmark(Benchmark):
         settings.source = source
 
         return settings
+
+    def _build_model(self):
+        materials = self._build_materials()
+        geometry = self._build_geometry()
+        settings = self._build_settings()
+        tallies = self._build_tallies()
+        model = openmc.Model(
+            materials=materials,
+            geometry=geometry,
+            settings=settings,
+            tallies=tallies
+        )
+        return model
