@@ -155,7 +155,7 @@ html_theme_options = {
         },
     ],
     "logo": {
-        "text": "openfb",
+        "text": "ofb",
         "image_light": "_static/logo.svg",
         "image_dark": "_static/logo.svg",
     },
