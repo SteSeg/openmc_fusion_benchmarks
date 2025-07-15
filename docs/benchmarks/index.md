@@ -6,5 +6,5 @@ List of avaliable benchmarks
 :maxdepth: 2
 
 oktavian
-oktavian_test
+oktavian_prova
 ```
