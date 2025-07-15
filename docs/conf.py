@@ -60,9 +60,20 @@ master_doc = "index"
 # https://thebe.readthedocs.io/en/latest/configuration.html
 # Thebe is used to make code cells executable in the browser.
 
+# thebe_config = {
+#     "selector": "div.cell",
+#     "codemirror-config": {"theme": "abcdef"},
+# }
+
 thebe_config = {
     "selector": "div.cell",
-    "codemirror-config": {"theme": "abcdef"},
+    "repository_url": "https://github.com/SteSeg/openmc_fusion_benchmarks",
+    "repository_branch": "docs-dev",
+    "binder_options": {
+        "repo": "SteSeg/openmc_fusion_benchmarks",
+        "branch": "docs-dev",
+        "binderhub_url": "https://mybinder.org",  # or a custom BinderHub
+    },
 }
 
 # -- MyST options ------------------------------------------------------------
