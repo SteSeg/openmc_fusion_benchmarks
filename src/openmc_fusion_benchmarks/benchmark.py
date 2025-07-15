@@ -1,10 +1,14 @@
 import yaml
 from pathlib import Path
+import warnings
 from abc import ABC, abstractmethod
 import numpy as np
+import xarray as xr
+import h5py
 from .validate import validate_benchmark
 
 import openmc
+import pydagmc
 from cad_to_dagmc import CadToDagmc
 
 
@@ -52,6 +56,16 @@ class Benchmark(ABC):
     @abstractmethod
     def _build_model(self):
         """Build the whole model for the benchmark."""
+        pass
+
+    @abstractmethod
+    def postprocess(self):
+        """Post-process the model after running."""
+        pass
+
+    @abstractmethod
+    def run(self):
+        """Run the benchmark simulation."""
         pass
 
     def _read_metadata(self):
@@ -175,9 +189,13 @@ class OpenmcBenchmark(Benchmark):
         # Get the STEP file
         cad_file = LFS_DIR / "benchmarks" / f"{geometry_data['cad_file']}"
 
-        # Generate the mesh
-        build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
-                   global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
+        # Generate the mesh if mesh.h5m not already present
+        if Path("mesh.h5m").exists():
+            warnings.warn(
+                f"Mesh file already exists. Skipping mesh generation.")
+        else:
+            build_mesh(cad_file=cad_file, material_tags=material_tags, set_size=set_size,
+                       global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
 
         # download the h5m file
         # download_from_drive(benchmark_name=self.name, file_format='h5m')
@@ -251,7 +269,7 @@ class OpenmcBenchmark(Benchmark):
             angular_sources = []
             # Openmc needs one source per angle bin:
             angles = source['angular_energy_distribution']
-            abins = np.array(angles['angle']['bins'])
+            abins = np.cos(angles['angle']['bins'])
             for i in range(len(abins)-1):
                 lb = angular_conversion(
                     abins[i], angles['angle']['units'])
@@ -344,10 +362,13 @@ class OpenmcBenchmark(Benchmark):
         settings_data = self._benchmark_spec['settings']
 
         settings = openmc.Settings()
-        if settings_data['run_mode'] == 'fixed source':
+        if settings_data['run_mode'] == 'fixed_source':
             settings.run_mode = 'fixed source'
         elif settings_data['run_mode'] == 'k-eigenvalue':
             settings.run_mode = 'eigenvalue'
+        else:
+            raise ValueError(
+                f"Unsupported run mode: {settings_data['run_mode']}")
         settings.batches = int(settings_data['batches'])
         settings.particles = int(settings_data['particles_per_batch'])
         settings.photon_transport = settings_data['photon_transport']
@@ -356,7 +377,7 @@ class OpenmcBenchmark(Benchmark):
         # electron treatment
         settings.output = {'tallies': False}
 
-        source = self.build_source()
+        source = self._build_source()
         settings.source = source
 
         return settings
@@ -373,3 +394,78 @@ class OpenmcBenchmark(Benchmark):
             tallies=tallies
         )
         return model
+
+    def postprocess(self, statepoint: str = 'statepoint.100.h5', mesh: str = 'mesh.h5m'):
+        """Post-process the model after running."""
+        # Retrieve tallies data from specifications
+        tallies_data = self._benchmark_spec['tallies']
+        # Read openmc statepoint file
+        sp = openmc.StatePoint(statepoint)
+        # Read mesh file
+        mesh = pydagmc.DAGModel(mesh)
+
+        # Cycle tallies in specifications
+        for spec_t in tallies_data:
+            # Get corresponding tally from statepoint
+            df = sp.get_tally(name=spec_t['name']).get_pandas_dataframe()
+
+            # Preparing tally dataframe
+            df = df.drop(columns=['surface', 'cell', 'particle', 'nuclide',
+                                  'score', 'energyfunction'], errors='ignore')
+            # Cyle tally filters
+            norm = 1
+            for f in spec_t['filters']:
+                if f['type'] == 'cell':
+                    # Get cell volumes for normalization
+                    norm = [mesh.volumes_by_id[v].area for v in f['values']]
+                elif f['type'] == 'surface':
+                    # Get surface areas for normalization
+                    norm = [mesh.surfaces_by_id[v].area for v in f['values']]
+                elif f['type'] == 'material':
+                    raise NotImplementedError(
+                        'Material filter not implemented in postprocess yet.')
+
+                # Normalize the tally data
+                df['mean'] = df['mean'] / norm
+                df['std. dev.'] = df['std. dev.'] / norm
+
+            # Convert to xarray and add dimensions
+            t = xr.DataArray(
+                df.values[np.newaxis, :, :],  # shape: (1, r, c)
+                dims=["case", "row", "column"],
+                coords={
+                    "case": ["0"],
+                    "column": df.columns,
+                    "row": np.arange(df.shape[0])
+                },
+                name=spec_t['name']
+            )
+
+            # Save the tally data to a netCDF file
+            t.to_netcdf(f"benchmark_results.h5",
+                        group=f"{spec_t['name']}", mode='a')
+
+        # Add some metadata attributes
+        with h5py.File(f"benchmark_results.h5", "a") as f:
+            f.attrs['benchmark_name'] = self.name
+            # f.attrs['benchmark_version'] = self._benchmark_spec['metadata'].get(
+            #     'version', 'N/A')
+            # f.attrs['description'] = self._benchmark_spec['metadata'].get(
+            #     'description', 'N/A')
+            # f.attrs['title'] = self._benchmark_spec['metadata'].get(
+            #     'title', 'N/A')
+            # f.attrs['literature'] = self._benchmark_spec['metadata'].get(
+            #     'references', [])
+            f.attrs['code'] = f"openmc {sp.version[0]}.{sp.version[1]}.{sp.version[2]}"
+
+        return
+
+    def run(self, *args, **kwargs):
+        """Run the benchmark simulation."""
+        # Run the OpenMC model
+        statepoint = self.model.run(*args, **kwargs)
+
+        # Post-process the results
+        self.postprocess(statepoint=statepoint)
+
+        return

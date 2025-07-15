@@ -22,8 +22,10 @@ dependencies = [
     "openapi_schema_validator",
     "pydantic",
     "numpy",
+    "xarray",
     "tables",
     "cad-to-dagmc",
+    "pydagmc @ git+https://github.com/svalinn/pydagmc.git"
 ]
 
 [tool.setuptools.package-data]
