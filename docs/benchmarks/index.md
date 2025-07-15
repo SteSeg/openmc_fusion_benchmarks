@@ -7,4 +7,5 @@ List of avaliable benchmarks
 
 oktavian
 oktavian_prova
+cad_test
 ```
