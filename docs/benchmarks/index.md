@@ -1,3 +1,9 @@
+---
+title: My Thebe Test Page
+thebe: true
+---
+
+
 # Benchmarks
 
 List of avaliable benchmarks
