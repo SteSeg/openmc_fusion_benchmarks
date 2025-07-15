@@ -1,6 +1,7 @@
 ---
 title: My Thebe Test Page
 thebe: true
+thebe-launch-buttons: true
 ---
 
 
