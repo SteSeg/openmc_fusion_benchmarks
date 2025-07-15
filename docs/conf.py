@@ -217,7 +217,9 @@ html_context.update({
 
 # Enable static file path
 html_static_path = ["_static"]
-html_js_files = ["version-switcher.js"]
+html_js_files = ["version-switcher.js",
+                 "https://unpkg.com/thebe@latest/lib/index.js",
+                 ]
 
 html_css_files = [
     "custom.css",
