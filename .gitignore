@@ -4,6 +4,7 @@
 *.log
 *.out
 *.pkl
+*.db
 summary.*
 statepoint.*
 
