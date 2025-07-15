@@ -34,8 +34,9 @@ fng_source = ["openmc_fusion_benchmarks/neutron_sources/fng_source/*.csv"]
 tests = ["pytest>=5.4.3", "pytest-cov", "coveralls"]
 docs = [
   "sphinx",
-  "myst-parser",
   "myst-nb",
+  "sphinx_copybutton",
+  "sphinx_thebe",
   "sphinxcontrib-bibtex",
   "sphinx-multiversion",
   "jupyterlite-sphinx",

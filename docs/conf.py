@@ -36,8 +36,11 @@ extensions = [
     "sphinx_multiversion",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "jupyterlite_sphinx",
+    "sphinx_thebe",
 ]
 
+jupyterlite_dir = "docs/_jupyterlite"
 jupyterlite_config = "docs/_jupyterlite"
 
 exclude_patterns = [
@@ -51,6 +54,15 @@ intersphinx_mapping = {"sphinx": (
     "https://www.sphinx-doc.org/en/master", None)}
 
 master_doc = "index"
+
+# -- Thebe configuration -----------------------------------------------------
+# https://thebe.readthedocs.io/en/latest/configuration.html
+# Thebe is used to make code cells executable in the browser.
+
+thebe_config = {
+    "selector": "div.cell",
+    "codemirror-config": {"theme": "abcdef"},
+}
 
 # -- MyST options ------------------------------------------------------------
 
@@ -183,6 +195,9 @@ html_theme_options = {
         "version_match": version_match,
     },
     # "back_to_top_button": False,
+    "launch_buttons": {
+        "thebe": True,
+    },
 }
 
 html_context = {
@@ -206,7 +221,6 @@ html_js_files = ["version-switcher.js"]
 html_css_files = [
     "custom.css",
 ]
-
 
 # -- favicon options ---------------------------------------------------------
 
