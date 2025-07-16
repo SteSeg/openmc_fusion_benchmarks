@@ -181,7 +181,7 @@ html_theme_options = {
     "logo": {
         "text": "ofb",
         "image_light": "_static/logo.svg",
-        "image_dark": "_static/logo.svg",
+        "image_dark": "_static/logo_white.svg",
     },
     "use_edit_page_button": True,
     "show_toc_level": 1,
