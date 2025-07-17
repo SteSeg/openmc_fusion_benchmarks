@@ -135,7 +135,7 @@ json_url = "https://github.com/SteSeg/openmc_fusion_benchmarks/tree/docs-dev/doc
 
 # Define the version we use for matching in the version switcher.
 version_match = os.environ.get("READTHEDOCS_VERSION")
-release = "9.9.9"
+release = "0.1.0"
 # If READTHEDOCS_VERSION doesn't exist, we're not on RTD
 # If it is an integer, we're in a PR build and the version isn't correct.
 # If it's "latest" → change to "dev" (that's what we want the switcher to call it)
@@ -148,7 +148,7 @@ if not version_match or version_match.isdigit() or version_match == "latest":
         json_url = "_static/switcher.json"
     else:
         version_match = f"v{release}"
-elif version_match == "stable":
+elif version_match == "docs-dev":
     version_match = f"v{release}"
 
 html_theme_options = {
@@ -195,8 +195,8 @@ html_theme_options = {
         "index": [],  # Disable on index
     },
     "switcher": {
-        "json_url": json_url,
-        "version_match": version_match,
+        "json_url": "https://raw.githubusercontent.com/SteSeg/openmc_fusion_benchmarks/docs-dev/docs/_static/version-switcher.json",
+        "version_match": "docs-dev",
     },
     # "back_to_top_button": False,
 }
