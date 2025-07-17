@@ -161,11 +161,6 @@ html_theme_options = {
             "icon": "fa-brands fa-github",
         },
         {
-            "name": "Download PDF",
-            "url": "javascript:window.print();",
-            "icon": "fa-solid fa-file-pdf",
-        },
-        {
             "name": "Fullscreen",
             "url": "#",
             "icon": "fa-solid fa-expand",
