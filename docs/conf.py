@@ -162,11 +162,8 @@ html_theme_options = {
         },
         {
             "name": "Download PDF",
-            "url": "_static/my_doc.pdf",
+            "url": "javascript:window.print();",
             "icon": "fa-solid fa-file-pdf",
-            "attributes": {
-                "download": None,
-            }
         },
         {
             "name": "Fullscreen",
