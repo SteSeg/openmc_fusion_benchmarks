@@ -91,16 +91,20 @@ language = "en"
 # -- Options for Sphinx Multiversion ----------------------------------------
 # https://sphinx-multiversion.readthedocs.io/en/latest/configuration.html
 
-# Only build tags like 1.0.0, 0.2.1, etc.
-smv_tag_whitelist = r'^v?\d+\.\d+\.\d+$'
-# Only build the docs-dev branch
-smv_branch_whitelist = r'^docs-dev$'
-# Optional: treat tags as "released"
-smv_released_pattern = r'^tags/v?\d+\.\d+\.\d+$'
-# Optional: name subfolders after tag/branch
-smv_outputdir_format = '{ref.name}'
-#
-smv_remote_whitelist = r"^origin$"
+# # Only build tags like 1.0.0, 0.2.1, etc.
+# smv_tag_whitelist = r'^v?\d+\.\d+\.\d+$'
+# # Only build the docs-dev branch
+# smv_branch_whitelist = r'^docs-dev$'
+# # Optional: treat tags as "released"
+# smv_released_pattern = r'^tags/v?\d+\.\d+\.\d+$'
+# # Optional: name subfolders after tag/branch
+# smv_outputdir_format = '{ref.name}'
+# #
+# smv_remote_whitelist = r"^origin$"
+
+smv_tag_whitelist = r".*"        # accept all tags
+smv_branch_whitelist = r".*"     # accept all branches
+smv_remote_whitelist = r".*"     # accept all remotes
 
 # -- sphinx_ext_graphviz options ---------------------------------------------
 
@@ -196,7 +200,7 @@ html_theme_options = {
         "index": [],  # Disable on index
     },
     "switcher": {
-        "json_url": "https://raw.githubusercontent.com/SteSeg/openmc_fusion_benchmarks/docs-dev/docs/_static/version-switcher.json",
+        "json_url": "_static/version-switcher.json",
         "version_match": "docs-dev",
     },
     # "back_to_top_button": False,

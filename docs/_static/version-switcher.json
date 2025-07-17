@@ -1,0 +1,10 @@
+[
+  {
+    "version": "docs-dev",
+    "url": "https://steg.github.io/openmc_fusion_benchmarks/docs-dev/"
+  },
+  {
+    "version": "main",
+    "url": "https://steg.github.io/openmc_fusion_benchmarks/main/"
+  }
+]
