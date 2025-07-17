@@ -195,7 +195,7 @@ html_theme_options = {
         "index": [],  # Disable on index
     },
     "switcher": {
-        "json_url": "https://raw.githubusercontent.com/SteSeg/openmc_fusion_benchmarks/docs-dev/docs/_static/version-switcher.json",
+        "json_url": "https://steg.github.io/openmc_fusion_benchmarks/_static/version-switcher.json",
         "version_match": "docs-dev",
     },
     # "back_to_top_button": False,
