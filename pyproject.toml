@@ -44,6 +44,8 @@ docs = [
   "cadquery",
   "jupyterlab",
   "jupyter-cadquery",
+  "sphinxcadquery",
+  "sphinx-design",
 ]
 
 [project.urls]
