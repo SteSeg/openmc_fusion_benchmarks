@@ -138,23 +138,28 @@ html_last_updated_fmt = ""  # to reveal the build date in the pages meta
 # Define the json_url for our version switcher.
 json_url = "https://github.com/SteSeg/openmc_fusion_benchmarks/tree/docs-dev/docs/_static/version-switcher.json"
 
-# Define the version we use for matching in the version switcher.
-version_match = os.environ.get("READTHEDOCS_VERSION")
-release = "0.1.0"
-# If READTHEDOCS_VERSION doesn't exist, we're not on RTD
-# If it is an integer, we're in a PR build and the version isn't correct.
-# If it's "latest" → change to "dev" (that's what we want the switcher to call it)
-if not version_match or version_match.isdigit() or version_match == "latest":
-    # For local development, infer the version to match from the package.
-    if "dev" in release or "rc" in release:
-        version_match = "dev"
-        # We want to keep the relative reference if we are in dev mode
-        # but we want the whole url if we are effectively in a released version
-        json_url = "_static/switcher.json"
-    else:
-        version_match = f"v{release}"
-elif version_match == "docs-dev":
-    version_match = f"v{release}"
+# # Define the version we use for matching in the version switcher.
+# version_match = os.environ.get("READTHEDOCS_VERSION")
+# # print(f"READTHEDOCS_VERSION: {version_match}")
+# version_match = "docs-dev" if version_match is None else version_match
+# release = "0.1.0"
+# # If READTHEDOCS_VERSION doesn't exist, we're not on RTD
+# # If it is an integer, we're in a PR build and the version isn't correct.
+# # If it's "latest" → change to "dev" (that's what we want the switcher to call it)
+# if not version_match or version_match.isdigit() or version_match == "latest":
+#     # For local development, infer the version to match from the package.
+#     if "dev" in release or "rc" in release:
+#         version_match = "dev"
+#         # We want to keep the relative reference if we are in dev mode
+#         # but we want the whole url if we are effectively in a released version
+#         json_url = "_static/version-switcher.json"
+#     else:
+#         version_match = f"v{release}"
+# elif version_match == "docs-dev":
+#     version_match = f"v{release}"
+
+json_url = "_static/version-switcher.json"
+version_match = "docs-dev"
 
 html_theme_options = {
     "header_links_before_dropdown": 5,
@@ -200,8 +205,8 @@ html_theme_options = {
         "index": [],  # Disable on index
     },
     "switcher": {
-        "json_url": "_static/version-switcher.json",
-        "version_match": "docs-dev",
+        "json_url": json_url,
+        "version_match": version_match,
     },
     # "back_to_top_button": False,
 }
