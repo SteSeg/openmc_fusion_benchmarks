@@ -40,7 +40,8 @@ docs = [
   "sphinxcontrib-bibtex",
   "sphinx-multiversion",
   "jupyterlite-sphinx",
-  "pydata-sphinx-theme"
+  "pydata-sphinx-theme",
+  "jupyter-cadquery",
 ]
 
 [project.urls]
