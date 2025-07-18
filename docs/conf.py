@@ -39,6 +39,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "jupyterlite_sphinx",
     "sphinx_thebe",
+    "sphinxcadquery.sphinxcadquery",
 ]
 
 jupyterlite_dir = "docs/_jupyterlite"
