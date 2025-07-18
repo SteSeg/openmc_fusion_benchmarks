@@ -8,4 +8,5 @@ List of avaliable benchmarks
 oktavian_readme
 oktavian_al_benchmark
 cad_test
+cad_test2
 ```
