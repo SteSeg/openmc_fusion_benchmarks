@@ -41,7 +41,7 @@ docs = [
   "sphinx-multiversion",
   "jupyterlite-sphinx",
   "pydata-sphinx-theme",
-  "jupyter-cadquery",
+  "jupyter_cadquery",
 ]
 
 [project.urls]
