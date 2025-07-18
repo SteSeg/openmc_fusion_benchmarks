@@ -8,7 +8,7 @@ except NameError:
     # __file__ is not defined in Sphinx executed snippets — fallback
     base = os.path.abspath(".")
 
-step_path = os.path.abspath(os.path.join(base, 'oktavian_a.step'))
+step_path = os.path.abspath(os.path.join(base, '..', '_static',  'oktavian_a.step'))
 print("STEP path:", step_path)
 
 if not os.path.isfile(step_path):
