@@ -59,3 +59,7 @@ docs/source/_build/
 
 # Visual Studio Code configuration files
 .vscode/
+
+# Virtualenv
+.venv/
+venv/
