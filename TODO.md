@@ -8,6 +8,7 @@
 - UQ-TMC: the first realization should be the original xs "mean" (baseline)
 - UQ-TMC: allow more options to user (e.g. library to perturb)
 - UQ-TMC: allow a list of nuclides to perturb
+- UQ-TMC: allow list of nuclides and perturbations from specifications file
 - Add capability of merging multiple surface results for oktavian (should happen only with surface tallies)
 - Add expected tally results shape in `schema` and `specifications` to deal with the point here above
 - Try to manage results as numpy arrays instead of pandas dataframes in `OpenmcBenchmark.postprocess()`

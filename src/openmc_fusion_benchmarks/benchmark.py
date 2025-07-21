@@ -408,7 +408,7 @@ class OpenmcBenchmark(Benchmark):
         # Read openmc statepoint file
         sp = openmc.StatePoint(statepoint)
         # Read mesh file
-        mesh = pydagmc.DAGModel(mesh)
+        mesh = pydagmc.Model(mesh)
 
         _openmc_to_ofb(
             spec_tallies=tallies_data,
@@ -423,13 +423,13 @@ class OpenmcBenchmark(Benchmark):
         uq_data = self._benchmark_spec['uncertainty_quantification']
         tallies_data = self._benchmark_spec['tallies']
 
-        nuclides = uq_data['nuclides']
-        realizations = uq_data['realizations']
+        nuclides = uq_data[0]['nuclides'][0]
+        realizations = uq_data[0]['realizations'][0]
 
-        mesh = pydagmc.DAGModel('mesh.h5m')
+        mesh = pydagmc.Model('mesh.h5m')
 
         tmc_engine(model=self.model, realizations=realizations,
-                   lib_name='endfb80', nuclide=nuclides[0], reaction=None,
+                   lib_name='endfb_80', nuclide=nuclides[0], reaction=None,
                    perturb_xs=True, _is_benchmark=True, _spec_tallies=tallies_data,
                    _mesh=mesh, *args, **kwargs)
 

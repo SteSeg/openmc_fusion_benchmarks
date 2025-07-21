@@ -16,7 +16,7 @@ def tmc_engine(model: openmc.Model, realizations: int, lib_name: str, nuclide,
     specific nuclide and reaction from a given nuclear data library 
     automatically before the starting of the actual TMC simulation.
     The results of the TMC simulation are stored in a .h5 file as OpenMC
-    tallies in PandasDataFrame format.
+    tallies in Xarray DataArray format.
 
     Parameters
     ----------
