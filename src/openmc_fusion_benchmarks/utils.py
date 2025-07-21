@@ -8,8 +8,6 @@ import pydagmc
 def _openmc_to_ofb(spec_tallies: str, statepoint: str = 'statepoint.100.h5',
                    mesh: str = 'mesh.h5m', realization_label: str = 'baseline'):
 
-    # # Retrieve tallies data from specificationsS
-    # tallies_data = self._benchmark_spec['tallies']
     # Read openmc statepoint file
     sp = openmc.StatePoint(statepoint)
     # Read mesh file
