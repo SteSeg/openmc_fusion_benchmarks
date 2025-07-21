@@ -14,7 +14,7 @@ class DummyBenchmark(Benchmark):
     def _build_settings(self): return "settings"
     def _build_tallies(self): return "tallies"
     def _build_model(self): return "model"
-    def postprocess(self): return "postprocess"
+    def _postprocess(self): return "postprocess"
     def run(self): return "run"
 
 
