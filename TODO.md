@@ -3,7 +3,7 @@
 
 
 ## Benchmarks API
-- UQ-TMC: Handle the Sandy and NJOY dependency
+- UQ-TMC: Handle the NJOY dependency
 - UQ-TMC: Make a folder per sampled xs perturbation
 - UQ-TMC: the first realization should be the original xs "mean" (baseline)
 - UQ-TMC: allow more options to user (e.g. library to perturb)

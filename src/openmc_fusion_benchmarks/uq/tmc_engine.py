@@ -1,4 +1,4 @@
-from .uq_utils import rewrite_xs_xml, perturb_xs_xml, get_nuclide_gnds, perturb_to_hdf5
+from .uq_utils import perturb_xs_xml, get_nuclide_gnds, perturb_to_hdf5
 from pathlib import Path
 import openmc
 import numpy as np
@@ -50,8 +50,6 @@ def tmc_engine(model: openmc.Model, realizations: int, lib_name: str, nuclide,
                         error=.001)
 
     for n in np.arange(realizations):
-
-        rewrite_xs_xml(new_xs_file=xs_file)
 
         directory = f"{nuclide}_{lib_name}"
         xs_h5_file = f"{directory}/{nuclide}_{n}_{lib_name}.h5"
