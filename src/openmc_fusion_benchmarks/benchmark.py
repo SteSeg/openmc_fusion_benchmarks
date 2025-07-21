@@ -418,6 +418,23 @@ class OpenmcBenchmark(Benchmark):
 
         return
 
+    def _uncertainty_quantification(self, *args, **kwargs):
+        """Perform uncertainty quantification for the benchmark."""
+        uq_data = self._benchmark_spec['uncertainty_quantification']
+        tallies_data = self._benchmark_spec['tallies']
+
+        nuclides = uq_data['nuclides']
+        realizations = uq_data['realizations']
+
+        mesh = pydagmc.DAGModel('mesh.h5m')
+
+        tmc_engine(model=self.model, realizations=realizations,
+                   lib_name='endfb80', nuclide=nuclides[0], reaction=None,
+                   perturb_xs=True, _is_benchmark=True, _spec_tallies=tallies_data,
+                   _mesh=mesh, *args, **kwargs)
+
+        return
+
     def run(self, uq: bool = False, *args, **kwargs):
         """Run the benchmark simulation."""
 
@@ -439,20 +456,5 @@ class OpenmcBenchmark(Benchmark):
             statepoint = self.model.run(*args, **kwargs)
             # Post-process the results
             self._postprocess(statepoint=statepoint)
-
-        return
-
-    def _uncertainty_quantification(self, *args, **kwargs):
-        """Perform uncertainty quantification for the benchmark."""
-        uq_data = self._benchmark_spec['uncertainty_quantification']
-        tallies_data = self._benchmark_spec['tallies']
-
-        nuclides = uq_data['nuclides']
-        realizations = uq_data['realizations']
-
-        tmc_engine(model=self.model, realizations=realizations,
-                   lib_name='endfb80', nuclide=nuclides[0], reaction=None,
-                   perturb_xs=True, _is_benchmark=True, _spec_tallies=tallies_data,
-                   _mesh='mesh.h5m', *args, **kwargs)
 
         return
