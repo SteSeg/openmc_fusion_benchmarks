@@ -1,8 +1,6 @@
 import pytest
 import types
-from openmc_fusion_benchmarks.uq import (get_nuclide_zaid,
-                                         zaid_to_zam,
-                                         get_nuclide_gnds)
+from openmc_fusion_benchmarks.uq import get_nuclide_zaid, zaid_to_zam, get_nuclide_gnds
 
 
 def test_zaid_to_zam_len4():
@@ -75,25 +73,13 @@ def test_unsupported_type():
     with pytest.raises(TypeError, match="Unsupported nuclide type"):
         get_nuclide_zaid([92, 238])
 
-# Mock zaid_to_zam and openmc
-
-
-def fake_zaid_to_zam(zaid):
-    mapping = {
-        1001: (1, 1, 0),
-        92238: (92, 238, 0)
-    }
-    if zaid in mapping:
-        return mapping[zaid]
-    raise Exception("Invalid ZAID")
-
 
 def fake_gnds_name(z, a, m):
     return f"{'H' if z == 1 else 'U'}{a}"
 
 
 # Patch globally (or use monkeypatch fixture in pytest)
-globals()['zaid_to_zam'] = fake_zaid_to_zam
+globals()['zaid_to_zam'] = zaid_to_zam
 openmc = types.SimpleNamespace(
     data=types.SimpleNamespace(gnds_name=fake_gnds_name))
 globals()['openmc'] = openmc
