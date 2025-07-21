@@ -1,8 +1,8 @@
-from your_module import get_reaction_mt  # Replace with actual import
-from your_module import get_nuclide_gnds  # Replace with your actual module
 import pytest
 import types
-from openmc_fusion_benchmarks.uq import get_nuclide_zaid, zaid_to_zam
+from openmc_fusion_benchmarks.uq import (get_nuclide_zaid,
+                                         zaid_to_zam,
+                                         get_nuclide_gnds)
 
 
 def test_zaid_to_zam_len4():
