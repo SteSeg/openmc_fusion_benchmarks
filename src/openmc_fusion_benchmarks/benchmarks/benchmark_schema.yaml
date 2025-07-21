@@ -329,7 +329,9 @@ components:
               nuclides:
                 type: array
                 items:
-                  type: string
+                  type: array
+                  items:
+                    type: string
               reactions:
                 type: array
                 items:

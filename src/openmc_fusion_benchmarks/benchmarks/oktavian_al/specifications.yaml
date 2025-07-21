@@ -196,6 +196,6 @@ tallies:
 uncertainty_quantification:
   - type: nuclear_data
     description: "Uncertainty in nuclear data"
-    nuclides: [Al27]
+    nuclides: [[Al27]]
     reactions: [total]
     realizations: [500]
