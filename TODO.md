@@ -3,6 +3,9 @@
 
 
 ## Benchmarks API
+- UQ-TMC: Handle the Sandy and NJOY dependency
+- UQ-TMC: Make a folder per sampled xs perturbation
+- UQ-TMC: the first realization should be the original xs "mean" (baseline)
 - Add capability of merging multiple surface results for oktavian (should happen only with surface tallies)
 - Add expected tally results shape in `schema` and `specifications` to deal with the point here above
 - Try to manage results as numpy arrays instead of pandas dataframes in `OpenmcBenchmark.postprocess()`
