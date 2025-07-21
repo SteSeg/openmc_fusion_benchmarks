@@ -12,36 +12,47 @@ def zaid_to_zam(zaid: int) -> tuple:
     Parameters
     ----------
     zaid : int
-    nuclide ZAID
+        Nuclide ZAID
 
     Returns
     -------
     tuple
         Z, A, and M values
+
+    Raises
+    ------
+    ValueError
+        If ZAID is not a 4-, 5-, or 6-digit integer
+    TypeError
+        If ZAID is not an integer
     """
+    if not isinstance(zaid, int):
+        raise TypeError("ZAID must be an integer")
+
     zaid_str = str(zaid)
 
-    # Extract Z, A, and M based on ZAID length
-    if len(zaid_str) == 4:  # Handles cases like H-1 (1001)
-        Z = int(zaid_str[0])  # First digit for Z
-        A = int(zaid_str[1:])  # Last 3 digits for A
-        M = 0  # Assuming ground state if no additional digit
-    elif len(zaid_str) == 5:  # Typical ZAID with 5 digits
-        Z = int(zaid_str[:2])  # First 2 digits for Z
-        A = int(zaid_str[2:])  # Last 3 digits for A
-        M = 0  # Assuming ground state
-    elif len(zaid_str) == 6:  # ZAID with 6 digits, includes isomeric state
-        Z = int(zaid_str[:3])  # First 3 digits for Z
-        A = int(zaid_str[3:5])  # Next 2 digits for A
-        M = int(zaid_str[5])  # Last digit represents isomeric state
+    if len(zaid_str) == 4:
+        Z = int(zaid_str[0])
+        A = int(zaid_str[1:])
+        M = 0
+    elif len(zaid_str) == 5:
+        Z = int(zaid_str[:2])
+        A = int(zaid_str[2:])
+        M = 0
+    elif len(zaid_str) == 6:
+        Z = int(zaid_str[:3])
+        A = int(zaid_str[3:5])
+        M = int(zaid_str[5])
+    else:
+        raise ValueError(
+            f"Invalid ZAID length: {zaid} (must be 4, 5, or 6 digits)")
 
     return (Z, A, M)
 
 
 def get_nuclide_zaid(nuclide):
     """Gets the ZAID of a nuclide from its name as a GNDS string (e.g. 'H1',
-    'U238) or as a ZAM tuple (e.g. (1, 1, 0)).
-    See openmc.data.zam() for more details.
+    'U238') or as a ZAM tuple (e.g. (1, 1, 0)).
 
     Parameters
     ----------
@@ -52,33 +63,68 @@ def get_nuclide_zaid(nuclide):
     -------
     int
         The ZAID of the nuclide
+
+    Raises
+    ------
+    TypeError
+        If nuclide is not int, str, or tuple
+    ValueError
+        If nuclide is a malformed tuple or invalid string
     """
-    if type(nuclide) == int:
+    if isinstance(nuclide, int):
         return nuclide
-    elif type(nuclide) == str:
-        return openmc.data.zam(nuclide)[0]*1000 + openmc.data.zam(nuclide)[1]
-    elif type(nuclide) == tuple:
-        return nuclide[0]*1000 + nuclide[1]
+
+    elif isinstance(nuclide, str):
+        try:
+            z, a, *_ = openmc.data.zam(nuclide)
+            return z * 1000 + a
+        except Exception as e:
+            raise ValueError(f"Invalid GNDS nuclide string: {nuclide}") from e
+
+    elif isinstance(nuclide, tuple):
+        if len(nuclide) < 2:
+            raise ValueError(
+                f"Tuple must have at least two elements (Z, A): {nuclide}")
+        z, a = nuclide[0], nuclide[1]
+        return z * 1000 + a
+
+    else:
+        raise TypeError(f"Unsupported nuclide type: {type(nuclide).__name__}")
 
 
 def get_nuclide_gnds(nuclide: Union[str, int]) -> str:
-    """Gets the GNDS name from a nuclide ZAID
+    """Gets the GNDS name from a nuclide ZAID or GNDS string
 
     Parameters
     ----------
     nuclide : str or int
-        The nuclide ZAID or GNDS name
+        The nuclide ZAID (int) or GNDS name (str)
 
     Returns
     -------
     str
         The GNDS name of the nuclide
+
+    Raises
+    ------
+    TypeError
+        If the input is not a string or integer
+    ValueError
+        If the integer ZAID cannot be parsed into a valid GNDS name
     """
-    if type(nuclide) == str:
+    if isinstance(nuclide, str):
         return nuclide
-    elif type(nuclide) == int:
-        zam = zaid_to_zam(nuclide)
-        return openmc.data.gnds_name(zam[0], zam[1], zam[2])
+
+    elif isinstance(nuclide, int):
+        try:
+            z, a, m = zaid_to_zam(nuclide)
+            return openmc.data.gnds_name(z, a, m)
+        except Exception as e:
+            raise ValueError(
+                f"Invalid ZAID or failed to convert to GNDS name: {nuclide}") from e
+
+    else:
+        raise TypeError(f"Unsupported nuclide type: {type(nuclide).__name__}")
 
 
 def get_reaction_mt(reaction: Union[str, int]) -> int:
