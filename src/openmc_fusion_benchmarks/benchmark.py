@@ -6,7 +6,7 @@ import numpy as np
 import xarray as xr
 import h5py
 from .validate import validate_benchmark
-from .utils import _openmc_to_ofb, _save_result
+from ._utils import _openmc_to_ofb, _save_result
 from .uq.tmc_engine import tmc_engine
 
 import openmc

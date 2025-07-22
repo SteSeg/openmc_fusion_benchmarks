@@ -4,7 +4,7 @@ import openmc
 import numpy as np
 import xarray as xr
 
-from ..utils import _openmc_to_ofb, _save_result
+from .._utils import _openmc_to_ofb, _save_result
 
 
 def tmc_engine(model: openmc.Model, realizations: int, lib_name: str, nuclide,
