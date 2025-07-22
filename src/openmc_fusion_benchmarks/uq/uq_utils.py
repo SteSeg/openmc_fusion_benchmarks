@@ -330,7 +330,8 @@ def perturb_xs_xml(xs_file: str, xs_h5_file: str, nuclide: str, particle: str = 
 
     # Read the original xs file from the 'OPENMC_CROSS_SECTIONS' env variable
     # and copy it locally for perturbation
-    model_xs_file = os.getenv('OPENMC_CROSS_SECTIONS')
+    # model_xs_file = os.getenv('OPENMC_CROSS_SECTIONS')
+    model_xs_file = openmc.config['cross_sections']
     myxs = openmc.data.DataLibrary.from_xml(model_xs_file)
     myxs.export_to_xml(xs_file)
 

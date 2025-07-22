@@ -4,7 +4,8 @@
 
 ## Benchmarks API
 - UQ-TMC: Handle the NJOY dependency
-- UQ-TMC: Make a folder per sampled xs perturbation
+- UQ-TMC: separate the preparation of run from the execution of the tmc loops (xml files outside the loop, tmc-manager like this: https://github.com/openmc-dev/openmc/pull/3508)
+- UQ-TMC: implement list of models in tmc engine
 - UQ-TMC: the first realization should be the original xs "mean" (baseline)
 - UQ-TMC: allow more options to user (e.g. library to perturb)
 - UQ-TMC: allow a list of nuclides to perturb
