@@ -328,9 +328,7 @@ def perturb_xs_xml(xs_file: str, xs_h5_file: str, nuclide: str, particle: str = 
     if particle not in ['neutron', 'photon']:
         raise ValueError("Particle type must be either 'neutron' or 'photon'.")
 
-    # Read the original xs file from the 'OPENMC_CROSS_SECTIONS' env variable
-    # and copy it locally for perturbation
-    # model_xs_file = os.getenv('OPENMC_CROSS_SECTIONS')
+    # Read the original xs and copy it locally for perturbation
     model_xs_file = openmc.config['cross_sections']
     myxs = openmc.data.DataLibrary.from_xml(model_xs_file)
     myxs.export_to_xml(xs_file)
@@ -344,3 +342,15 @@ def perturb_xs_xml(xs_file: str, xs_h5_file: str, nuclide: str, particle: str = 
                     'materials': [nuclide]})
     # export to modified cross_sections xml file
     myxs.export_to_xml(xs_file)
+
+
+def perturb_cross_sections(xs_file: str, nuclide: Union[str, int], lib_name: str,
+                           realizations: int, particle: str = 'neutron'):
+
+    for r in range(realizations):
+
+        directory = f"{nuclide}_{lib_name}"
+        xs_h5_file = f"{directory}/{nuclide}_{r}_{lib_name}.h5"
+        perturb_xs_xml(xs_file, xs_h5_file, nuclide)
+        nuclide = get_nuclide_gnds(nuclide)
+        perturb_xs_xml(xs_file, xs_h5_file, nuclide, particle)
