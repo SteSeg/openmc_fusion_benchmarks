@@ -41,11 +41,11 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: str = 'statepoint.100.h5',
         # Convert to xarray and add dimensions
         t = xr.DataArray(
             df.values[np.newaxis, :, :],  # shape: (1, r, c)
-            dims=["realization", "row", "column"],
+            dims=["realizations", "rows", "columns"],
             coords={
-                "realization": [realization_label],
-                "column": df.columns,
-                "row": np.arange(df.shape[0]),
+                "realizations": [realization_label],
+                "columns": df.columns,
+                "rows": np.arange(df.shape[0]),
             },
             name=spec_t['name']
         )
@@ -56,15 +56,15 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: str = 'statepoint.100.h5',
 
 
 def _save_result(new_result: xr.DataArray, filename: str, group: str, realization_label: str):
-    """Append or initialize a 3D DataArray with 'realization' dimension in a NetCDF HDF5 file."""
+    """Append or initialize a 3D DataArray with 'realizations' dimension in a NetCDF HDF5 file."""
     path = Path(filename)
 
     # Ensure the realization dimension exists
-    if "realization" not in new_result.dims:
+    if "realizations" not in new_result.dims:
         new_result = new_result.expand_dims(
-            {"realization": [realization_label]})
+            {"realizations": [realization_label]})
     else:
-        new_result = new_result.assign_coords(realization=[realization_label])
+        new_result = new_result.assign_coords(realizations=[realization_label])
 
     if not path.exists():
         # File doesn't exist: write initial result
@@ -76,8 +76,8 @@ def _save_result(new_result: xr.DataArray, filename: str, group: str, realizatio
             existing = xr.open_dataset(path, group=group)
             existing_da = existing.to_array().squeeze("variable", drop=True)
 
-            # Concatenate along realization dimension
-            combined = xr.concat([existing_da, new_result], dim="realization")
+            # Concatenate along realizations dimension
+            combined = xr.concat([existing_da, new_result], dim="realizations")
 
             # Save the combined array back
             combined.to_dataset(name=new_result.name).to_netcdf(
