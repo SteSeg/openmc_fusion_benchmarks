@@ -1,39 +1,44 @@
 # Introduction
 
-**OpenMC Fusion Benchmarks (OFB)** is a platform for **verification and validation (V&V)** of neutronics simulations in fusion energy research. It focuses on **fusion-relevant integral benchmarks** that use **CAD-based geometries**, enabling support for modern transport workflows.
+**OpenMC Fusion Benchmarks** builds on a modular and schema-driven approach to radiation transport benchmarking, with a focus on reproducibility, extensibility, and automation. Each benchmark is fully defined by a standardized `specifications.yaml` file, which captures all aspects of the model — including CAD-based geometry, materials, source definitions, simulation parameters, and reference results.
 
-OFB provides a fully automated pipeline for:
-
-- Model setup  
-- Simulation execution  
-- Postprocessing  
-- Visualization  
-- Analysis  
-
-It also includes a growing **database of experimental and numerical results** for quick comparison. Contributions to this database are encouraged and supported through an automated submission workflow.
+This approach enables consistent validation, execution, and postprocessing of benchmarks across tools and workflows. The repository is also designed to facilitate the implementation and testing of new neutronics methods in a code-agnostic environment.
 
 ---
 
-## Validation Framework
+## 🔧 Key Features
 
-OFB promotes a rigorous and standardized validation process. Each benchmark begins with a clearly defined **specification**, formally described as:
-
-> *“The minimum amount of technical information necessary to unambiguously model a benchmark and collect results.”*
-
-Each benchmark is defined in a `specification.yml` file, which includes all information about geometry, materials, sources, and results.
-
-To ensure compliance and consistency, OFB provides a `benchmark_schema.yml` file that defines the required structure and syntax of a valid specification. The OFB Python API can be used to:
-
-- Load and inspect specification files  
-- Validate them against the schema  
+- **Standardized benchmark definitions** via `specifications.yaml`
+- **Validation** of `specifications.yaml` against a strict `benchmark_schema.yaml`
+- **CAD-based geometries** and automatic meshing tools
+- **Automated workflow** for benchmark building, running and analysis through Python APIs
+- **Unified results format** for comparing experimental, historical, and simulated data
+- **Embedded Uncertainty Quantification** for *best estimate plus uncertainty* approach
+- **Benchmark and results libraries** with descriptions, *specifications* and results
 
 ---
 
-## Geometry Integration
+## 🚀 Get Started
 
-Benchmark *specifications* point to **CAD geometry files**, which serve as the basis for simulation:
+- [Quickstart Guide](quickstart.md)
+- [Available Benchmarks](benchmarks.md)
+- [Benchmark Specification Format](benchmark-spec/overview.md)
+- [Workflows: from definition to analysis](workflows/define-benchmark.md)
+- [Python API](api.md)
+- [Example Notebooks](notebooks.md)
 
-- CAD files can be directly meshed for **unstructured mesh transport workflows**  
-- Alternatively, CAD-to-CSG conversion tools can be integrated for validating geometry translation workflows  
+---
 
-This flexibility allows the same benchmark to support both mesh-based and CSG-based simulations, making it ideal for code-to-code comparisons and geometry tool validation.
+## 💬 How to Contribute
+
+We welcome contributions of new benchmarks, improvements to the schema, and extensions to the tools and analysis pipelines. See our [Contributing Guidelines](https://github.com/your-org/your-repo/blob/main/CONTRIBUTING.md) for more.
+
+For questions, ideas, or bug reports, please open an [issue](https://github.com/your-org/your-repo/issues) or reach out to the maintainers.
+
+---
+
+## 📄 License and Citation
+
+This project is open source under the [MIT License](https://github.com/your-org/your-repo/blob/main/LICENSE).
+
+If you use this benchmark format or collection in your work, please cite:
