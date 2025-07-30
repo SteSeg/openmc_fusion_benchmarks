@@ -27,11 +27,16 @@ geometry:
 
 or
 
-| Version A                                  | Version B                                  |
-|-------------------------------------------|--------------------------------------------|
-| ```yaml                                    | ```yaml                                     |
-| geometry:                                  | geometry:                                   |
-|   file: example_a.step                     |   file: example_b.step                      |
-|   mesh:                                    |   mesh:                                     |
-|     max_size: 5.0                          |     max_size: 10.0                          |
-| ```                                        | ```                                         |
+| Version A | Version B |
+|-----------|-----------|
+| ```yaml
+geometry:
+  file: example_a.step
+  mesh:
+    max_size: 5.0
+``` | ```yaml
+geometry:
+  file: example_b.step
+  mesh:
+    max_size: 10.0
+``` |
