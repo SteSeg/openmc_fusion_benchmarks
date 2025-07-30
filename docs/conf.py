@@ -205,6 +205,9 @@ html_context.update({
     "current_version": "{{ smv_current_version }}",
 })
 
+pygments_style = "sphinx"  # or "friendly", "monokai", etc.
+highlight_language = "yaml"
+
 # html_show_sourcelink = True
 
 # Enable static file path
