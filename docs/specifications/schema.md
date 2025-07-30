@@ -1,6 +1,6 @@
 # Schema
 
-```
+```html
 <table>
     <tr>
         <td>
