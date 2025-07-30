@@ -16,6 +16,22 @@ General information such as benchmark name, description, references, authors, an
 Example:
 
 ```yaml
+metadata:
+  title: Example Benchmark
+  type: experimental
+  category: fusion
+  version: 1.0.0
+  description: >
+    The Example Benchmark is just for documentation.
+  date: "2025-01-01"
+  location:
+    facility: MIT
+    city: Cambridge, MA
+    country: US
+  references:
+    - title: "A Reference Paper"
+      doi: "https://doi.org/a_doi_code"
+
 ```
 
 ### Materials
@@ -23,6 +39,28 @@ It is a list of `Material` objects. Each one contains, composition, temperature,
 Example:
 
 ```yaml
+Materials:
+    - id: 1
+    name: Water
+    composition:
+        composition_type: element
+        fraction_type: atomic
+        data:
+        H: 0.67
+        O: 0.33
+    density:
+        value: 0.997
+        units: g/cm3
+    - id: 2
+    name: Aluminum
+    composition:
+    composition_type: nuclide
+    fraction_type: atomic
+    data:
+    Al27: 1.0
+    density:
+    value: 2.7
+    units: g/cm3
 ```
 
 ### Geometry
