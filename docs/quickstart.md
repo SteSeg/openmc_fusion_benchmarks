@@ -38,3 +38,19 @@ import openmc_fusion_benchmarks as ofb
 benchmark = ofb.OpenmcBenchmark(name='oktavian_al')
 benchmark.run(uq=True)
 ```
+
+## Read Results
+
+Results from an OFB benchmark simulation follow a standardized [Xarray](https://docs.xarray.dev/en/stable/) structure and are easily accessible as DataArray objects through the OFB Python API.
+
+```python
+import openmc_fusion_benchmarkas as ofb
+```
+
+## Extract Results From Database
+
+OFB features a standardized, continuously updated database that includes both experimental and computational benchmark results.
+
+```python
+import openmc_fusion_benchmarkas as ofb
+```
