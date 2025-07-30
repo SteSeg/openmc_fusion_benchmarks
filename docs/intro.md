@@ -21,7 +21,7 @@ This approach enables consistent validation, execution, and postprocessing of be
 ## Get Started
 
 - [Quickstart Guide](quickstart.md)
-- [Benchmark Specification Format](specifications/overview.md)
+- [Benchmark Specifications Format](specifications/overview.md)
 - [Available Benchmarks]()
 - [Workflows: from definition to analysis]()
 - [Python API]()

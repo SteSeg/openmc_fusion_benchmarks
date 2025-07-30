@@ -1,1 +1,1 @@
-# Benchmark Schema
+# Schema
