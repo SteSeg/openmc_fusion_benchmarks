@@ -3,10 +3,10 @@
 <table>
     <tr>
         <td>
-        ```python
-            import numpy as np
-            arr = np.array([1, 2, 3])
-            print(arr)
+        <pre><code class="language-yaml">
+        try:
+          - yamls stuff
+        </code></pre>
         </td>
         <td>
         ```python
