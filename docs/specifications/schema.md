@@ -1,3 +1,5 @@
+# Schema
+
 <div style="display: flex; gap: 1em;">
   <div style="flex: 1;">
     <h4>Version A</h4>
