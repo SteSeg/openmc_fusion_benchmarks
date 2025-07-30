@@ -13,8 +13,8 @@ This approach enables consistent validation, execution, and postprocessing of be
 - **CAD-based geometries** and automatic meshing tools
 - **Automated workflow** for benchmark building, running and analysis through Python APIs
 - **Unified results format** for comparing experimental, historical, and simulated data
-- **Embedded Uncertainty Quantification** for *best estimate plus uncertainty* approach
-- **Benchmark and results libraries** with descriptions, *specifications* and results
+- **Embedded Uncertainty Quantification** for _best estimate plus uncertainty_ approach
+- **Benchmark and results libraries** with descriptions, _specifications_ and results
 
 ---
 

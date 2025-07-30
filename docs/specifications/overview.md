@@ -35,7 +35,7 @@ The `specifications.yaml` file captures all essential aspects of a benchmark, in
 
 ## Schema Validation
 
-To guarantee interoperability and catch user errors early, every `specifications.yaml` file must conform to the [`benchmark_schema.yaml`](../benchmark_schema.yaml). The schema:
+To guarantee interoperability and catch user errors early, every `specifications.yaml` file must conform to the `benchmark_schema.yaml`. The schema:
 
 - Enforces required fields and correct types
 - Validates units, formats, and structure
@@ -56,6 +56,5 @@ Validation is automatically handled by the OFB Python API.
 
 ## 📖 Learn More
 
-- [Schema Reference](schema-reference.md) — detailed documentation of every schema section  
-- [Examples](../benchmarks.md) — browse real benchmark specifications  
-- [Workflows](../workflows/define-benchmark.md) — how specifications fit into modeling and analysis pipelines
+- [Specifications Structure](structure.md) — detailed documentation of `specifications.yaml` structure and syntax
+- [Benchmark Schema](schema.md) — documentation of the `benchmark_schema.yaml` and _specifications_ validation
