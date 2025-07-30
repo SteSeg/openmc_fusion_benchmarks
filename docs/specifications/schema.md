@@ -3,22 +3,24 @@
 <div style="display: flex; gap: 1em;">
   <div style="flex: 1;">
     <h4>Version A</h4>
-    <pre><code class="language-yaml">
+    <div class="highlight highlight-yaml">
+      <pre><code class="language-yaml">
 geometry:
   file: example_a.step
   mesh:
     max_size: 5.0
-    ...
-    </code></pre>
+      </code></pre>
+    </div>
   </div>
   <div style="flex: 1;">
     <h4>Version B</h4>
-    <pre><code class="language-yaml">
+    <div class="highlight highlight-yaml">
+      <pre><code class="language-yaml">
 geometry:
   file: example_b.step
   mesh:
     max_size: 10.0
-    ...
-    </code></pre>
+      </code></pre>
+    </div>
   </div>
 </div>
