@@ -83,7 +83,6 @@ Some of them can be optional:
 
 ```yaml
         ...
-        # Optional entries
         irradiation_schedule:
           $ref: '#/components/schemas/IrradiationSchedule'
         uncertainty_quantification:
@@ -121,7 +120,7 @@ density:
     units: g/cm3
 ```
 
-Is defined like this in the `schema`:
+The corresponding `schema` is defined like this:
 
 ```yaml
 density:
