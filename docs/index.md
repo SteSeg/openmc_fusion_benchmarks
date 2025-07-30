@@ -8,6 +8,6 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 intro
 quickstart
-specifications
+specifications/index
 benchmarks/index
 ```
