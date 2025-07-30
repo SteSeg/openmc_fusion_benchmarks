@@ -3,7 +3,7 @@
 Each benchmark in Openmc Fusion Benchmarks (OFB) is defined by a single specifications.yaml file located at the root of its benchmark folder:
 
 > src/openmc_fusion_benchmarks/benchmarks/benchmark_name/
-                                                └── specifications.yaml
+>                                                └── specifications.yaml
 
 This file is modular and schema-driven, ensuring consistent structure and validation across all benchmarks. Below is a description of each main section in the YAML file, along with minimal examples.
 
