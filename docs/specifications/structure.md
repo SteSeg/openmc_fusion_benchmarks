@@ -35,7 +35,7 @@ metadata:
 ```
 
 ### Materials
-It is a list of `Material` objects. Each one contains, composition, temperature, density, and other nuclear properties defined in a structured format. 
+It is a list of `material` objects. Each one contains, composition, temperature, density, and other nuclear properties defined in a structured format. 
 Example:
 
 ```yaml
@@ -65,7 +65,7 @@ Materials:
 ```
 
 ### Geometry
-The `Geometry` object links to a `.step` file located in the repository’s `lfs` _submodule_ and includes information on material assignment and suggested meshing parameters, such as the maximum element size.
+The `geometry` object links to a `.step` file located in the repository’s `lfs` _submodule_ and includes information on material assignment and suggested meshing parameters, such as the maximum element size.
 Example: 
 
 ```yaml
@@ -83,7 +83,7 @@ geometry:
 ```
 
 ### Sources
-List of `Source` objects. Provides specification of the neutron or photon source, including spatial, angular, and energy distributions.
+List of `source` objects. Provides specification of the neutron or photon source, including spatial, angular, and energy distributions.
 
 ```yaml
 sources:
@@ -127,7 +127,7 @@ settings:
 ```
 
 ### Tallies
-List of `Tally` objects. Definition of observables to be recorded during the simulation (e.g., flux, dose, reaction rates), including spatial, energy, and material filters. Tallies are structured to ensure consistent output formats across different transport codes.
+List of `tally` objects. Definition of observables to be recorded during the simulation (e.g., flux, dose, reaction rates), including spatial, energy, and material filters. Tallies are structured to ensure consistent output formats across different transport codes.
 
 ```yaml
   - name: neutron_spectrum

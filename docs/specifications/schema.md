@@ -31,7 +31,7 @@ Or in case of validation errors:
 
 In the example above, the material with `id` 1 is missing a defined composition.
 
-Validation is also automatically triggered when instantiating a `Benchmark` object:
+Validation is also automatically triggered when instantiating a `benchmark` object:
 
 ```python
 import openmc_fusion_benchmarks as ofb
@@ -93,73 +93,90 @@ Some of them can be optional:
 The `schema` defines also object _structure_ and _type_ in a hierarchical fashion:
 
 ```yaml
-    Tally:
-      type: object
-      required: [name, particle, filters, scores]
-      properties:
-        name: 
-          type: string
-          ...
-        particle:
-          type: string
-          enum: [neutron, photon, electron, positron]
-        filters:
-          type: array
-          items:
-            type: object
-            required: [type, values]
-        ...
+Tally:
+  type: object
+  required: [name, particle, filters, scores]
+  properties:
+    name: 
+      type: string
+      ...
+    particle:
+      type: string
+      enum: [neutron, photon, electron, positron]
+    filters:
+      type: array
+      items:
+        type: object
+        required: [type, values]
+    ...
 ```
 
-Each section in a benchmark’s `specifications.yaml` file is validated against the corresponding part of the unified `benchmark_schema.yaml`. For example, for a `Material` object that looks like this in the `specifications`:
+Each section in a benchmark’s `specifications.yaml` file is validated against the corresponding part of the unified `benchmark_schema.yaml`. 
+
+
+For example, for a material `density` object that in the `specifications` looks like this:
+```yaml
+density:
+    value: 0.997
+    units: g/cm3
+```
+
+Is defined like this in the `schema`:
 
 ```yaml
-  - id: 1
-    name: Water
-    composition:
-        composition_type: element
-        fraction_type: atomic
-        data:
-        H: 0.67
-        O: 0.33
-    density:
-        value: 0.997
-        units: g/cm3
+density:
+  type: object
+  properties:
+    value:
+      type: number
+    units:
+      type: string
+      enum: [g/cm3]
+  required: [value, units]
+```
+
+And for a whole `material` object in the list of `materials` in the `specifications`:
+
+```yaml
+- id: 1
+  name: Water
+  composition:
+      composition_type: element
+      fraction_type: atomic
+      data:
+      H: 0.67
+      O: 0.33
+  density:
+      value: 0.997
+      units: g/cm3
 ```
 
 The corresponding definition in the `schema` looks like this:
 
 ```yaml
-    Material:
+Material:
+  type: object
+  required: [id, name, composition, density]
+  properties:
+    id:
+      type: integer
+    name:
+      type: string
+    composition:
       type: object
-      required: [id, name, composition, density]
       properties:
-        id:
-          type: integer
-        name:
+        composition_type:
           type: string
-        composition:
+        fraction_type:
+          type: string
+          enum: [atomic, weight]
+        data:
           type: object
-          properties:
-            composition_type:
-              type: string
-            fraction_type:
-              type: string
-              enum: [atomic, weight]
-            data:
-              type: object
-              additionalProperties:
-                type: number
-          required: [composition_type, fraction_type, data]
-        density:
-          type: object
-          properties:
-            value:
-              type: number
-            units:
-              type: string
-              enum: [g/cm3]
-          required: [value, units]
+          additionalProperties:
+            type: number
+      required: [composition_type, fraction_type, data]
+    density:
+      ...
 ```
 
 ## Unified Schema Format
