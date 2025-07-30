@@ -1,55 +1,64 @@
 # Structure
 
 Each benchmark in Openmc Fusion Benchmarks (OFB) is defined by a single specifications.yaml file located at the root of its benchmark folder:
+
 ```
 src/openmc_fusion_benchmarks/benchmarks/benchmark_name/
                                                └── specifications.yaml
 ```
 
-This file is modular and schema-driven, ensuring consistent structure and validation across all benchmarks. Below is a description of each main section in the YAML file, along with minimal examples.
+This modular, schema-driven YAML file ensures consistency and validation across all benchmarks. Each section is described below with minimal examples. The format is human-readable, transport-code agnostic, and can be parsed by the OFB Python API to automatically generate code-specific models.
 
 ## Sections Overview
 
 ### Metadata  
 General information such as benchmark name, description, references, authors, and version. 
 Example:
+
 ```yaml
 ```
 
 ### Materials
 It is a list of `Material` objects. Each one contains, composition, temperature, density, and other nuclear properties defined in a structured format. 
 Example:
+
 ```yaml
 ```
 
 ### Geometry
-The `geometry` object links to a `.step` file located in the repository’s `lfs` _submodule_ and includes suggested meshing parameters, such as the maximum element size.
+The `Geometry` object links to a `.step` file located in the repository’s `lfs` _submodule_ and includes suggested meshing parameters, such as the maximum element size.
 Example: 
 
 ```yaml
 ```
 
 ### Sources
+List of `Source` objects. Provides specification of the neutron or photon source, including spatial, angular, and energy distributions.
 
 ```yaml
 ```
 
 ### Settings
+Code-independent configuration of simulation controls, such as number of particles, batches, source distribution settings, and physics options. These parameters define how the simulation should be run, regardless of the underlying transport code.
 
 ```yaml
 ```
 
 ### Tallies
+List of `Tally` objects. Definition of observables to be recorded during the simulation (e.g., flux, dose, reaction rates), including spatial, energy, and material filters. Tallies are structured to ensure consistent output formats across different transport codes.
 
 ```yaml
 ```
 
 ### Uncertainty Quantification
-
+Setup for input perturbations, sampling strategies, and metrics for uncertainty propagation.
 ```yaml
 ```
 
 ### Irradiation Schedule
+Time-dependent irradiation and cooling sequences for activation and shutdown dose rate analysis.
+```yaml
+```
 
 ## Notes
 

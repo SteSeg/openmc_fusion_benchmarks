@@ -14,7 +14,7 @@ This approach enables consistent validation, execution, and postprocessing of be
 - **Automated workflow** for benchmark building, running and analysis through Python APIs
 - **Unified results format** for comparing experimental, historical, and simulated data
 - **Embedded Uncertainty Quantification** for _best estimate plus uncertainty_ approach
-- **Benchmark and results libraries** with descriptions, _specifications_ and results
+- **Benchmark and results libraries** with descriptions, `specifications` and results
 
 ---
 

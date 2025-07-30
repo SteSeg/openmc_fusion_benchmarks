@@ -2,7 +2,7 @@
 
 The **OpenMC Fusion Benchmarks (OFB)** project uses a structured, YAML-based specification format to define every component of a radiation transport benchmark. This approach ensures **clarity, reproducibility, and automation** in defining, running, and analyzing benchmarks.
 
-Each benchmark is defined by a `specifications.yaml` file that is **validated against a strict schema (`benchmark_schema.yaml`)** to enforce consistency and completeness across the benchmark suite. We define a benchmark _specifications_ as:
+Each benchmark is defined by a `specifications.yaml` file that is **validated against a strict schema (`benchmark_schema.yaml`)** to enforce consistency and completeness across the benchmark suite. We define a benchmark `specifications` as:
 
 > The minimum amount of technical data necessary to unambiguously model a benchmark and collect standardized results.
 
@@ -62,4 +62,4 @@ Validation is automatically handled by the OFB Python API.
 ## Learn More
 
 - [Specifications Structure](structure.md) — detailed documentation of `specifications.yaml` structure and syntax
-- [Benchmark Schema](schema.md) — documentation of the `benchmark_schema.yaml` and _specifications_ validation
+- [Benchmark Schema](schema.md) — documentation of the `benchmark_schema.yaml` and `specifications` validation
