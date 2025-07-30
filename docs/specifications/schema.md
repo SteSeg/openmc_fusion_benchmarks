@@ -1,19 +1,22 @@
-# Schema
-
-<table>
-    <tr>
-        <td>
-        <pre><code class="language-yaml">
-try:
-- yamls stuff
-        </code></pre>
-        </td>
-        <td>
-        <pre><code class="language-yaml">
-try:
-- yamls stuff
-- other yaml stuff
-        </code></pre>
-        </td>
-    </tr>
-</table>
+<div style="display: flex; gap: 1em;">
+  <div style="flex: 1;">
+    <h4>Version A</h4>
+    <pre><code class="language-yaml">
+geometry:
+  file: example_a.step
+  mesh:
+    max_size: 5.0
+    ...
+    </code></pre>
+  </div>
+  <div style="flex: 1;">
+    <h4>Version B</h4>
+    <pre><code class="language-yaml">
+geometry:
+  file: example_b.step
+  mesh:
+    max_size: 10.0
+    ...
+    </code></pre>
+  </div>
+</div>
