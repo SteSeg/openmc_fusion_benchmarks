@@ -21,11 +21,11 @@ This approach enables consistent validation, execution, and postprocessing of be
 ## Get Started
 
 - [Quickstart Guide](quickstart.md)
-- [Available Benchmarks](benchmarks.md)
-- [Benchmark Specification Format](benchmark-spec/overview.md)
-- [Workflows: from definition to analysis](workflows/define-benchmark.md)
-- [Python API](api.md)
-- [Example Notebooks](notebooks.md)
+- [Benchmark Specification Format](specifications/overview.md)
+- [Available Benchmarks]()
+- [Workflows: from definition to analysis]()
+- [Python API]()
+- [Example Notebooks]()
 
 ---
 
