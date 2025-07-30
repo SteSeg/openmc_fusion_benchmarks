@@ -1,9 +1,10 @@
 # Structure
 
 Each benchmark in Openmc Fusion Benchmarks (OFB) is defined by a single specifications.yaml file located at the root of its benchmark folder:
-
-> src/openmc_fusion_benchmarks/benchmarks/benchmark_name/
->                                                └── specifications.yaml
+```
+src/openmc_fusion_benchmarks/benchmarks/benchmark_name/
+                                               └── specifications.yaml
+```
 
 This file is modular and schema-driven, ensuring consistent structure and validation across all benchmarks. Below is a description of each main section in the YAML file, along with minimal examples.
 
@@ -22,8 +23,7 @@ Example:
 ```
 
 ### Geometry
-`Geometry` object that points to the `.step` file currently contained in the `lfs` _submodule_ of the repository.
-Additional paramters for automatic meshing (e.g. maximum mesh element size) are specified.
+The `geometry` object links to a `.step` file located in the repository’s `lfs` _submodule_ and includes suggested meshing parameters, such as the maximum element size.
 Example: 
 
 ```yaml
