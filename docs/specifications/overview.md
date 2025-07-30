@@ -4,7 +4,7 @@ The **OpenMC Fusion Benchmarks (OFB)** project uses a structured, YAML-based spe
 
 Each benchmark is defined by a `specifications.yaml` file that is **validated against a strict schema (`benchmark_schema.yaml`)** to enforce consistency and completeness across the benchmark suite. We define a benchmark _specifications_ as:
 
-> The minimum amount of technical data necessary to unambiguously model a benchmark and collect standardized results
+> The minimum amount of technical data necessary to unambiguously model a benchmark and collect standardized results.
 
 ---
 
