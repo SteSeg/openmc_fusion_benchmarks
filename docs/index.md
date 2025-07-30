@@ -4,7 +4,7 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 ## Sections
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 1
 
 intro
 quickstart

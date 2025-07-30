@@ -6,7 +6,7 @@ This guide walks you through the basic steps to install the package, load a benc
 
 ---
 
-## 1. Install the Package
+## Install the Package
 
 Clone the repository and install dependencies in a clean Python environment:
 
@@ -19,7 +19,7 @@ pip install .
 You may wish to make use of a virtual environment using [Conda](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html), [Mamba](https://mamba.readthedocs.io/en/latest/user_guide/mamba.html) or [Venv](https://docs.python.org/3/library/venv.html).
 
 
-## 2. Run a Benchmark Simulation
+## Run a Benchmark Simulation
 
 Minimal working example of instantiating and running a benchmark with the [OpenMC](https://docs.openmc.org/en/stable/) transport code. 
 
