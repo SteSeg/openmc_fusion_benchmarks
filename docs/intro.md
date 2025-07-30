@@ -6,7 +6,7 @@ This approach enables consistent validation, execution, and postprocessing of be
 
 ---
 
-## 🔧 Key Features
+## Key Features
 
 - **Standardized benchmark definitions** via `specifications.yaml`
 - **Validation** of `specifications.yaml` against a strict `benchmark_schema.yaml`
@@ -18,7 +18,7 @@ This approach enables consistent validation, execution, and postprocessing of be
 
 ---
 
-## 🚀 Get Started
+## Get Started
 
 - [Quickstart Guide](quickstart.md)
 - [Available Benchmarks](benchmarks.md)
@@ -29,7 +29,7 @@ This approach enables consistent validation, execution, and postprocessing of be
 
 ---
 
-## 💬 How to Contribute
+## How to Contribute
 
 We welcome contributions of new benchmarks, improvements to the schema, and extensions to the tools and analysis pipelines. See our [Contributing Guidelines](https://github.com/your-org/your-repo/blob/main/CONTRIBUTING.md) for more.
 
@@ -37,7 +37,7 @@ For questions, ideas, or bug reports, please open an [issue](https://github.com/
 
 ---
 
-## 📄 License and Citation
+## License and Citation
 
 This project is open source under the [MIT License](https://github.com/eepeterson/openmc_fusion_benchmarks/blob/develop/LICENSE).
 
