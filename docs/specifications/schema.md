@@ -34,7 +34,8 @@ geometry:
   file: example_a.step
   mesh:
     max_size: 5.0
-``` | ```yaml
+``` | 
+```yaml
 geometry:
   file: example_b.step
   mesh:
