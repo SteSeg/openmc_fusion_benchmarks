@@ -1,1 +1,5 @@
 # Structure
+
+```yaml
+Example
+```

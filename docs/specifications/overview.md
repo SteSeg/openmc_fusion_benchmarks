@@ -12,14 +12,14 @@ The `specifications.yaml` file captures all essential aspects of a benchmark, in
 
 - **Metadata**  
   General information such as benchmark name, description, references, authors, and version.
+  
+- **Materials**  
+  Composition, temperature, density, and other nuclear properties defined in a structured format.
 
 - **Geometry**  
   CAD-based geometry definitions, including references to CAD files and meshing parameters.
 
-- **Materials**  
-  Composition, temperature, density, and other nuclear properties defined in a structured format.
-
-- **Source**  
+- **Sources**  
   Neutron or photon source definitions, including energy, spatial, and angular distributions.
 
 - **Settings**  
@@ -33,7 +33,7 @@ The `specifications.yaml` file captures all essential aspects of a benchmark, in
 
 - **Irradiation Schedule (Optional)**  
   Time-dependent irradiation and cooling steps for activation and shutdown dose rate analysis.
-  
+
 ---
 
 ## Schema Validation
