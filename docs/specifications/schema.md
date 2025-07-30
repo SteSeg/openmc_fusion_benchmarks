@@ -1,6 +1,5 @@
 # Schema
 
-```html
 <table>
     <tr>
         <td>
@@ -17,4 +16,3 @@
         </td>
     </tr>
 </table>
-```
