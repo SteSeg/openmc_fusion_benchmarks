@@ -7,7 +7,7 @@ src/openmc_fusion_benchmarks/benchmarks/benchmark_name/
                                                └── specifications.yaml
 ```
 
-This modular, schema-driven YAML file ensures consistency and validation across all benchmarks. Each section is described below with minimal examples. The format is human-readable, transport-code agnostic, and can be parsed by the OFB Python API to automatically generate code-specific models.
+The `specifications.yaml` file is at the core of each benchmark. It follows a **modular**, **schema-validated**, and **code-independent** structure, making benchmarks consistent, extensible, and easy to maintain. Designed to be **human-readable** and **automation-ready**, it enables the OFB Python API to generate transport-specific models directly from the specification. Each section is described below with minimal examples. Its modular design also supports future extensions for testing advanced neutronics workflows.
 
 ## Sections Overview
 
