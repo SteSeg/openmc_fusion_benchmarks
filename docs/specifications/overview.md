@@ -1,4 +1,4 @@
-# Benchmark Specification Overview
+# Benchmark Specifications Overview
 
 The **OpenMC Fusion Benchmarks (OFB)** project uses a structured, YAML-based specification format to define every component of a radiation transport benchmark. This approach ensures **clarity, reproducibility, and automation** in defining, running, and analyzing benchmarks.
 
