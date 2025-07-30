@@ -3,16 +3,14 @@
 <table>
     <tr>
         <td>
-        <pre><code class="language-yaml">
-        try:
+        <pre><code class="language-yaml">try:
           - yamls stuff
         </code></pre>
         </td>
-        <td>
-        ```python
-            import pandas as pd
-            df = pd.DataFrame({'A': [1, 2, 3]})
-            print(df)
+        <td><code class="language-yaml">try:
+          - yamls stuff
+          - other yaml stuff
+        </code></pre>
         </td>
     </tr>
 </table>
