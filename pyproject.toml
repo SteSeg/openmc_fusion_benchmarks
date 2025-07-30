@@ -39,7 +39,7 @@ docs = [
   "sphinx_thebe",
   "sphinxcontrib-bibtex",
   "sphinx-multiversion",
-  "sphinx_tabs.tabs",
+  "sphinx-tabs",
   "jupyterlite-sphinx",
   "pydata-sphinx-theme",
   "cadquery",
