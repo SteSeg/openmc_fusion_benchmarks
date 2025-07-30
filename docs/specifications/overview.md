@@ -22,16 +22,16 @@ The `specifications.yaml` file captures all essential aspects of a benchmark, in
 - **Source**  
   Neutron or photon source definitions, including energy, spatial, and angular distributions.
 
-- **Settings**
+- **Settings**  
   Transport code configuration such as particle count, batches, seeds, and other run control parameters.
 
-- **Tallies**
+- **Tallies**  
   Specification of observables to record (e.g., flux, dose, reaction rates) including spatial, energy, and material filters, including expected data structure.
 
-- **Uncertainty Quantification - Optional**
+- **Uncertainty Quantification (Optional)**  
   Definition of input data perturbation, sampling strategies, and metrics for propagating uncertainties through the benchmark.
 
-- **Irradiation Schedule - Optional**
+- **Irradiation Schedule (Optional)**  
   Time-dependent exposure and cooling sequences for activation, decay heat, etc. Optional for shutdown dose rate benchmarks.
 
 ---
