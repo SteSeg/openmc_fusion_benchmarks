@@ -46,7 +46,10 @@ docs = [
   "jupyterlab",
   "jupyter-cadquery",
   "sphinxcadquery",
-  "sphinx-design",    
+  "sphinx-design",
+  "nbsphinx",
+  "ipywidgets",
+  "jupyterlab",  
 ]
 
 [project.urls]
