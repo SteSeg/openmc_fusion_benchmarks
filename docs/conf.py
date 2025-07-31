@@ -41,7 +41,11 @@ extensions = [
     "sphinx_thebe",
     "sphinxcadquery.sphinxcadquery",
     "sphinx_design",
+    "nbsphinx",
+    "sphinx.ext.mathjax",
 ]
+
+nbsphinx_execute = 'always'
 
 jupyterlite_dir = "docs/_jupyterlite"
 jupyterlite_config = "docs/_jupyterlite"

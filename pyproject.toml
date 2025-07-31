@@ -47,9 +47,6 @@ docs = [
   "jupyter-cadquery",
   "sphinxcadquery",
   "sphinx-design",    
-  "nbsphinx",
-  "sphinx.ext.mathjax",
-  "sphinx.ext.autodoc",
 ]
 
 [project.urls]
