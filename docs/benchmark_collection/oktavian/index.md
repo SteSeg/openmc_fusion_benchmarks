@@ -1,7 +1,5 @@
 # OKTAVIAN Benchmarks
 
-## General Information
-
 | **Aspect**                     | **Details**                                                                 |
 |-------------------------------|-----------------------------------------------------------------------------|
 | **Facility**                  | Osaka University, operational since 1981                                    |
@@ -18,8 +16,6 @@
 | **Calibration**               | Cf-252 TOF + graphite leakage spectra; Nb foil activation (Nb-92m)          |
 | **Gamma-Ray Measurement Mode**| Pulsed (500 kHz, 3 ns); TOF separation ~90 ns from 14 MeV neutrons         |
 | **Gamma Reactions Observed**  | Mainly (n,n’), (n,2n); minimal (n,xγ) contribution                          |
-
-## Benchmarks
 
 ```{toctree}
 :maxdepth: 1
