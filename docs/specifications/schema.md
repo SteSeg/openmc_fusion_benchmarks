@@ -54,7 +54,7 @@ To guarantee interoperability and automation, each `specifications.yaml` file mu
 
 ## Schema-to-Specifications Mapping
 
-The `benchmark_schema` defines _sections_ of the `specifications`:
+The `benchmark_schema` outlines the main _sections_ expected in a `specifications.yaml` file:
 
 ```yaml
 $ref: "#/components/schemas/Benchmark"
@@ -79,7 +79,7 @@ components:
         ...
 ```
 
-Some of them can be optional:
+Some sections are optional and included only when relevant to the benchmark:
 
 ```yaml
         ...
@@ -89,7 +89,7 @@ Some of them can be optional:
           $ref: '#/components/schemas/UncertaintyQuantification'
 ```
 
-The `schema` defines also object _structure_ and _type_ in a hierarchical fashion:
+Beyond defining the structure at a high level, the `schema` specifies the internal _hierarchy_ and _data types_ for each object:
 
 ```yaml
 Tally:
@@ -110,17 +110,16 @@ Tally:
     ...
 ```
 
-Each section in a benchmark’s `specifications.yaml` file is validated against the corresponding part of the unified `benchmark_schema.yaml`. 
+Each section in a benchmark’s `specifications.yaml` is _validated_ against its corresponding `schema` definition.
 
-
-For example, for a material `density` object that in the `specifications` looks like this:
+For example, a `density` object in the `specifications` might appear as:
 ```yaml
 density:
     value: 0.997
     units: g/cm3
 ```
 
-The corresponding `schema` is defined like this:
+Its `schema` counterpart ensures the expected structure and value types:
 
 ```yaml
 density:
@@ -134,7 +133,7 @@ density:
   required: [value, units]
 ```
 
-And for a whole `material` object in the list of `materials` in the `specifications`:
+Likewise, a complete `material` entry in the `materials` list could be:
 
 ```yaml
 - id: 1
@@ -150,7 +149,7 @@ And for a whole `material` object in the list of `materials` in the `specificati
       units: g/cm3
 ```
 
-The corresponding definition in the `schema` looks like this:
+And its definition in the `schema` would be:
 
 ```yaml
 Material:
