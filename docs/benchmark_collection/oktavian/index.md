@@ -1,6 +1,6 @@
 # OKTAVIAN Benchmarks
 
-General information on the OKTAVIAN integral benchmark series.
+## General Information
 
 | **Aspect**                     | **Details**                                                                 |
 |-------------------------------|-----------------------------------------------------------------------------|
@@ -19,7 +19,7 @@ General information on the OKTAVIAN integral benchmark series.
 | **Gamma-Ray Measurement Mode**| Pulsed (500 kHz, 3 ns); TOF separation ~90 ns from 14 MeV neutrons         |
 | **Gamma Reactions Observed**  | Mainly (n,n’), (n,2n); minimal (n,xγ) contribution                          |
 
-
+## Benchmarks
 
 ```{toctree}
 :maxdepth: 1
