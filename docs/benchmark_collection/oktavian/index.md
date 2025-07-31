@@ -32,10 +32,6 @@ For gamma-ray measurements, OKTAVIAN was operated in pulsed mode at 500 kHz repe
 
 The recorded gamma-ray spectra were mainly dominated by emissions from (n,n') and (n,2n) reactions, rather than (n,xγ) processes. These data provide valuable input for evaluating nuclear data related to gamma-ray energy distributions resulting from non-elastic scattering of high-energy neutrons.
 
-## References
-
-```{bibliography}
-
 
 
 ```{toctree}
