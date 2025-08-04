@@ -8,7 +8,7 @@ Each benchmark is defined by a `specifications.yaml` file that is **validated ag
 
 ---
 
-## Specifications Components
+## Specifications Sections
 
 The `specifications.yaml` file captures all essential aspects of a benchmark, including:
 
