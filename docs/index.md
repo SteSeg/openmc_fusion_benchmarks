@@ -8,7 +8,7 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 <div class="card">
   <a href="benchmark-spec/overview.html">
-    <img src="_static/icons/specs.svg" alt="Specification Format" width="60">
+    <img src="_static/logo.svg" alt="Specification Format" width="60">
     <h3>Benchmark Specification</h3>
     <p>Learn about the schema-driven YAML format to define a benchmark.</p>
   </a>
@@ -16,7 +16,7 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 <div class="card">
   <a href="benchmarks.html">
-    <img src="_static/icons/list.svg" alt="Benchmarks" width="60">
+    <img src="_static/logo.svg" alt="Benchmarks" width="60">
     <h3>Available Benchmarks</h3>
     <p>Explore the library of validated fusion neutronics benchmarks.</p>
   </a>
@@ -24,15 +24,13 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 <div class="card">
   <a href="api.html">
-    <img src="_static/icons/api.svg" alt="API" width="60">
+    <img src="_static/logo.svg" alt="API" width="60">
     <h3>Python API</h3>
     <p>Use the OFB Python interface to load, validate, and run benchmarks.</p>
   </a>
 </div>
 
 </div>
-
----
 
 
 ## Sections
