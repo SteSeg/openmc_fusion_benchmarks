@@ -6,29 +6,31 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 :gutter: 3
 
 :::{grid-item-card}
-:octicon:`gear` **Benchmark Specs**
+:octicon:`gear` **Benchmark Specification**
 ^
-See the structure of schema-based specifications.
+Learn about the schema-driven YAML format used to define fusion neutronics benchmarks.
 +++
-[Go to specs](benchmark-spec/overview.md)
+[Specification Format](benchmark-spec/overview.md)
 :::
 
 :::{grid-item-card}
-:octicon:`checklist` **Available Benchmarks**
+:octicon:`list-unordered` **Available Benchmarks**
 ^
-Browse the validated fusion benchmarks.
+Explore the library of validated fusion benchmark experiments and simulations.
 +++
-[Explore benchmarks](benchmarks.md)
+[Benchmarks List](benchmarks.md)
 :::
 
 :::{grid-item-card}
 :octicon:`code` **Python API**
 ^
-Use OFB programmatically to load and simulate.
+Use the OFB Python interface to load, validate, and run benchmarks.
 +++
-[Read API docs](api.md)
+[API Reference](api.md)
 :::
+
 :::
+
 
 ## Sections
 ```{toctree}
