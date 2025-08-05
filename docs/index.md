@@ -10,7 +10,7 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 ^
 Learn about the schema-driven YAML format used to define fusion neutronics benchmarks.
 +++
-[Specification Format](benchmark-spec/overview.md)
+[📄 Specification Format](benchmark-spec/overview.md)
 :::
 
 :::{grid-item-card}
@@ -18,7 +18,7 @@ Learn about the schema-driven YAML format used to define fusion neutronics bench
 ^
 Explore the library of validated fusion benchmark experiments and simulations.
 +++
-[Benchmarks List](benchmarks.md)
+[📚 Benchmarks List](benchmarks.md)
 :::
 
 :::{grid-item-card}
@@ -26,7 +26,7 @@ Explore the library of validated fusion benchmark experiments and simulations.
 ^
 Use the OFB Python interface to load, validate, and run benchmarks.
 +++
-[API Reference](api.md)
+[🧰 API Reference](api.md)
 :::
 
 :::
