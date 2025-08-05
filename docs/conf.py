@@ -32,6 +32,7 @@ author = 'MIT PSFC Neutronics Team'
 
 extensions = [
     "myst_nb",
+    "myst_parser",
     "sphinx_copybutton",
     "sphinxcontrib.bibtex",
     "sphinx_multiversion",
