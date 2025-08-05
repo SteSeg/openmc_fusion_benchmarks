@@ -5,6 +5,16 @@
     width: auto !important;
 }
 
+/* Make custom cards background theme-aware */
+div.cards .card {
+  background-color: var(--pst-color-surface);
+  color: var(--pst-color-text-base);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: var(--pst-shadow);
+  transition: background-color 0.3s ease;
+}
+
 .cards {
   display: flex;
   flex-wrap: wrap;
@@ -12,7 +22,7 @@
   margin-top: 2rem;
 }
 
-.card {
+/* .card {
   flex: 1 1 250px;
   max-width: 300px;
   border: 1px solid #eee;
@@ -21,7 +31,7 @@
   text-align: center;
   box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
   transition: 0.2s ease;
-}
+} */
 
 .card:hover {
   box-shadow: 4px 4px 12px rgba(0,0,0,0.15);
