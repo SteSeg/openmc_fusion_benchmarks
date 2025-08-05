@@ -4,13 +4,15 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 :::{grid} 2
 :gutter: 2
+:class: sd-card sd-shadow-sm sd-equal-height
+:cards:
 
 :::{grid-item-card}
 :octicon:`rocket` **Launch**
 ^^^
 Start your simulation workflow.
 +++
-[Quickstart](quickstart.md)
+[🚀 Quickstart](quickstart.md)
 :::
 
 :::{grid-item-card}
@@ -18,7 +20,7 @@ Start your simulation workflow.
 ^^^
 Browse and compare benchmark data.
 +++
-[Results](results.md)
+[📊 Results](results.md)
 :::
 
 :::
