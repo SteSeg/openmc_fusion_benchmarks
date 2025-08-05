@@ -2,7 +2,28 @@
 
 Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic, and automation-ready repository for defining, executing, and analyzing radiation transport benchmarks in fusion energy systems. Benchmarks are described through a rigorous, schema-driven YAML specification, and include detailed **CAD-based geometries** with automatic meshing support. The framework is designed for **easy integration and testing of new neutronics methods**, facilitating rapid development, comparison, and validation across codes, workflows, and datasets.
 
-:::{grid} 3
+:::{grid} 2
+:gutter: 2
+
+:::{grid-item-card}
+:octicon:`rocket` **Launch**
+^
+Start your simulation workflow.
++++
+[Quickstart](quickstart.md)
+:::
+
+:::{grid-item-card}
+:octicon:`graph` **Results**
+^
+Browse and compare benchmark data.
++++
+[Results](results.md)
+:::
+
+:::
+
+<!-- :::{grid} 3
 :gutter: 3
 
 :::{grid-item-card}
@@ -29,7 +50,7 @@ Use the OFB Python interface to load, validate, and run benchmarks.
 [🧰 API Reference](api.md)
 :::
 
-:::
+::: -->
 
 
 ## Sections
