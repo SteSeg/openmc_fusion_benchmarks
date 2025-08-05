@@ -7,7 +7,7 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 :::{grid-item-card}
 :octicon:`rocket` **Launch**
-^
+^^^
 Start your simulation workflow.
 +++
 [Quickstart](quickstart.md)
@@ -15,7 +15,7 @@ Start your simulation workflow.
 
 :::{grid-item-card}
 :octicon:`graph` **Results**
-^
+^^^
 Browse and compare benchmark data.
 +++
 [Results](results.md)
