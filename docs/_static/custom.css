@@ -22,7 +22,7 @@ div.cards .card {
   margin-top: 2rem;
 }
 
-/* .card {
+.card {
   flex: 1 1 250px;
   max-width: 300px;
   border: 1px solid #eee;
@@ -31,7 +31,7 @@ div.cards .card {
   text-align: center;
   box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
   transition: 0.2s ease;
-} */
+}
 
 .card:hover {
   box-shadow: 4px 4px 12px rgba(0,0,0,0.15);
