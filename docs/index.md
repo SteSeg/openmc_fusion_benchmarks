@@ -7,19 +7,17 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 :class: sd-equal-height
 
 :::{grid-item-card}
-:class: sd-shadow-md
-:header: :octicon:`rocket` **Launch**
+:header: 🚀 Launch
 Start your simulation workflow.
 +++
-[🚀 Quickstart Guide](quickstart.md)
+[Quickstart Guide](quickstart.md)
 :::
 
 :::{grid-item-card}
-:class: sd-shadow-md
-:header: :octicon:`graph` **Results**
+:header: 📊 Results
 Browse and compare benchmark data.
 +++
-[📊 View Results](results.md)
+[View Results](results.md)
 :::
 
 :::
