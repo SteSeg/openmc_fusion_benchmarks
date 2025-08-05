@@ -7,7 +7,7 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 <div class="cards">
 
 <div class="card">
-  <a href="benchmark-spec/overview.html">
+  <a href="specifications/overview.md">
     <img src="_static/logo.svg" alt="Specification Format" width="60">
     <h3>Benchmark Specification</h3>
     <p>Learn about the schema-driven YAML format to define a benchmark.</p>
