@@ -3,24 +3,23 @@
 Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic, and automation-ready repository for defining, executing, and analyzing radiation transport benchmarks in fusion energy systems. Benchmarks are described through a rigorous, schema-driven YAML specification, and include detailed **CAD-based geometries** with automatic meshing support. The framework is designed for **easy integration and testing of new neutronics methods**, facilitating rapid development, comparison, and validation across codes, workflows, and datasets.
 
 :::{grid} 2
-:gutter: 2
-:class: sd-card sd-shadow-sm sd-equal-height
-:cards:
+:gutter: 3
+:class: sd-equal-height
 
 :::{grid-item-card}
-:octicon:`rocket` **Launch**
-^^^
+:class: sd-shadow-md
+:header: :octicon:`rocket` **Launch**
 Start your simulation workflow.
 +++
-[🚀 Quickstart](quickstart.md)
+[🚀 Quickstart Guide](quickstart.md)
 :::
 
 :::{grid-item-card}
-:octicon:`graph` **Results**
-^^^
+:class: sd-shadow-md
+:header: :octicon:`graph` **Results**
 Browse and compare benchmark data.
 +++
-[📊 Results](results.md)
+[📊 View Results](results.md)
 :::
 
 :::
