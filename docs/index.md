@@ -7,7 +7,8 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 
 <div class="card">
   <a href="quickstart.html">
-    <img src="_static/icons/rocket-24.svg" alt="Quickstart" width="60">
+    <img src="http://www.w3.org/2000/svg" alt="Quickstart" width="60">
+
     <h3>Python API</h3>
     <p>Install, validate and run a benchmark.</p>
   </a>
