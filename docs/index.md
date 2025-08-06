@@ -2,30 +2,7 @@
 
 Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic, and automation-ready repository for defining, executing, and analyzing radiation transport benchmarks in fusion energy systems. Benchmarks are described through a rigorous, schema-driven YAML specification, and include detailed **CAD-based geometries** with automatic meshing support. The framework is designed for **easy integration and testing of new neutronics methods**, facilitating rapid development, comparison, and validation across codes, workflows, and datasets.
 
-
-:::{div} .cards
-
-:::{div} .card
-![Quickstart](_static/icons/rocket-24.svg){width="60"}
-### [Python API](quickstart.md)
-Install, validate and run a benchmark.
-:::
-
-:::{div} .card
-![Specification Format](_static/icons/gear-24.svg){width="60"}
-### [Benchmark Specification](specifications/overview.md)
-Learn about the schema-driven format to standardize a benchmark.
-:::
-
-:::{div} .card
-![Benchmarks](_static/icons/list-unordered-24.svg){width="60"}
-### [Available Benchmarks](benchmark_collection/index.md)
-Explore the library of validated fusion neutronics benchmarks.
-:::
-
-:::
-
-<!-- Shortcut cards
+<!-- Shortcut cards -->
 <div class="cards">
 
 <div class="card">
@@ -52,7 +29,7 @@ Explore the library of validated fusion neutronics benchmarks.
   </a>
 </div>
 
-</div> -->
+</div>
 
 
 ## Sections
