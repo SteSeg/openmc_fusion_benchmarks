@@ -1,0 +1,75 @@
+{
+  "name": "cad-viewer-widget",
+  "version": "3.0.2",
+  "description": "A Jupyter widget to view cad objects",
+  "license": "MIT",
+  "author": {
+    "name": "Bernhard Walter",
+    "email": "b_waltrer@arcor.de"
+  },
+  "main": "lib/index.js",
+  "style": "style/index.css",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bernhard-42/cad-viewer-widget.git"
+  },
+  "keywords": [
+    "jupyter",
+    "widgets",
+    "ipython",
+    "ipywidgets",
+    "jupyterlab-extension"
+  ],
+  "files": [
+    "lib/**/*.js",
+    "dist/*.js",
+    "style/*.css"
+  ],
+  "scripts": {
+    "clean": "rimraf dist/ && rimraf ../cad_viewer_widget/labextension/ && rimraf ../cad_viewer_widget/nbextension",
+    "prepublish": "yarn run clean && yarn run build:prod",
+    "build": "webpack --mode=development && yarn run build:labextension:dev",
+    "build:prod": "webpack --mode=production && yarn run build:labextension",
+    "build:labextension": "jupyter labextension build .",
+    "build:labextension:dev": "jupyter labextension build --development True | sed '/^WARNING/,/^$/d'",
+    "watch": "webpack --watch --mode=development",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prettier": "npx prettier lib --check",
+    "prettier:fix": "npx prettier lib --write"
+  },
+  "dependencies": {
+    "@jupyter-widgets/base": "^6.0.10",
+    "@jupyter-widgets/jupyterlab-manager": "^5.0.13",
+    "@jupyterlab/apputils": "^4.4.5",
+    "three-cad-viewer": "3.3.4"
+  },
+  "devDependencies": {
+    "@jupyterlab/builder": "^4.3.5",
+    "css-loader": "^7.1.2",
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.0.2",
+    "prettier": "3.5.2",
+    "rimraf": "^6.0.1",
+    "style-loader": "^4.0.0",
+    "svg-inline-loader": "^0.8.2",
+    "terser-webpack-plugin": "^5.3.9",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^6.0.1"
+  },
+  "jupyterlab": {
+    "extension": "lib/labplugin",
+    "outputDir": "../cad_viewer_widget/labextension",
+    "sharedPackages": {
+      "@jupyter-widgets/base": {
+        "bundled": false,
+        "singleton": true
+      }
+    },
+    "_build": {
+      "load": "static/remoteEntry.1ad5770e16800f5d3c93.js",
+      "extension": "./extension",
+      "style": "./style"
+    }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}
