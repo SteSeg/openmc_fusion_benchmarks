@@ -6,7 +6,7 @@ Welcome to the **OpenMC Fusion Benchmarks** project — a modular, code-agnostic
 :::{div} .cards
 
 :::{div} .card
-[a href="quickstart.html"]
+[a href="quickstart.md"]
 ![Quickstart](_static/icons/rocket-24.svg){width="60"}
 
 ### Python API
@@ -15,7 +15,7 @@ Install, validate and run a benchmark.
 :::
 
 :::{div} .card
-[a href="specifications/overview.html"]
+[a href="specifications/overview.md"]
 ![Specification Format](_static/icons/gear-24.svg){width="60"}
 
 ### Benchmark Specification
@@ -24,7 +24,7 @@ Learn about the schema-driven format to standardize a benchmark.
 :::
 
 :::{div} .card
-[a href="benchmark_collection/index.html"]
+[a href="benchmark_collection/index.md"]
 ![Benchmarks](_static/icons/list-unordered-24.svg){width="60"}
 
 ### Available Benchmarks
