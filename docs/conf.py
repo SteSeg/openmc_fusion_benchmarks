@@ -43,6 +43,10 @@ extensions = [
     "sphinx_design",
     "nbsphinx",
     "sphinx.ext.mathjax",
+    "attrs_block",
+    "colon_fence",
+    "deflist",
+    "linkify",
 ]
 
 nbsphinx_execute = 'always'
