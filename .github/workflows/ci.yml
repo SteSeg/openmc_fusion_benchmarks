@@ -28,6 +28,7 @@ jobs:
           miniforge-version: latest
           # use-mamba: true
           channels: conda-forge
+          python-version: "3.12"
 
       - name: Create Conda environment
         shell: bash -l {0}
