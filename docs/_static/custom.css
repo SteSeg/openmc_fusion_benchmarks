@@ -39,6 +39,7 @@ div.cards .card {
 }
 
 .card img {
+  background-color: transparent;
   margin-bottom: 1rem;
 }
 
