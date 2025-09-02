@@ -421,8 +421,8 @@ class OpenmcBenchmark(Benchmark):
 
         mesh = 'mesh.h5m'
 
+        # Run a TMC for every nuclide present in specifications
         for n, r in zip(uq_data[0]['nuclides'], uq_data[0]['realizations']):
-
             tmc_engine(model=self.model, realizations=r,
                        lib_name='endfb_80', nuclide=n[0], reaction=None,
                        perturb_xs=True, _is_benchmark=True, _spec_tallies=tallies_data,
