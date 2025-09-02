@@ -419,15 +419,16 @@ class OpenmcBenchmark(Benchmark):
         uq_data = self._benchmark_spec['uncertainty_quantification']
         tallies_data = self._benchmark_spec['tallies']
 
-        nuclides = uq_data[0]['nuclides'][0]
-        realizations = uq_data[0]['realizations'][0]
-
         mesh = 'mesh.h5m'
 
-        tmc_engine(model=self.model, realizations=realizations,
-                   lib_name='endfb_80', nuclide=nuclides[0], reaction=None,
-                   perturb_xs=True, _is_benchmark=True, _spec_tallies=tallies_data,
-                   _mesh=mesh, *args, **kwargs)
+        for n, r in zip(uq_data[0]['nuclides'], uq_data[0]['realizations']):
+            # nuclides = uq_data[0]['nuclides'][0]
+            # realizations = uq_data[0]['realizations'][0]
+
+            tmc_engine(model=self.model, realizations=r,
+                       lib_name='endfb_80', nuclide=n[0], reaction=None,
+                       perturb_xs=True, _is_benchmark=True, _spec_tallies=tallies_data,
+                       _mesh=mesh, *args, **kwargs)
 
         return
 
