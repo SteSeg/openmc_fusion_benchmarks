@@ -422,8 +422,6 @@ class OpenmcBenchmark(Benchmark):
         mesh = 'mesh.h5m'
 
         for n, r in zip(uq_data[0]['nuclides'], uq_data[0]['realizations']):
-            # nuclides = uq_data[0]['nuclides'][0]
-            # realizations = uq_data[0]['realizations'][0]
 
             tmc_engine(model=self.model, realizations=r,
                        lib_name='endfb_80', nuclide=n[0], reaction=None,
