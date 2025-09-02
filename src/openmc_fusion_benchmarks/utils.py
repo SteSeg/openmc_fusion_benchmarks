@@ -52,7 +52,7 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: openmc.StatePoint,
             name=spec_t['name']
         )
 
-        # # Save the tally data to a netCDF file
+        # Save the tally data to a netCDF file
         _save_result(new_result=t, filename="benchmark_results.h5",
                      group=spec_t['name'], realization_label=realization_label)
 
@@ -91,30 +91,3 @@ def _save_result(new_result: xr.DataArray, filename: str, group: str, realizatio
     print(
         f"Updated group '{group}' in '{filename}' with realization '{realization_label}'")
     return
-
-    # if not path.exists():
-    #     # First time -> create file with this group
-    #     new_result.to_dataset(name=new_result.name).to_netcdf(
-    #         path, mode="w", engine="h5netcdf", group=group, unlimited_dims=["realization"]
-    #     )
-    #     print(f"Created file '{filename}' with group '{group}'")
-    #     return
-
-    # # File exists -> try to read & merge
-    # try:
-    #     with xr.open_dataset(path, group=group, engine="h5netcdf") as existing:
-    #         existing_da = xr.load_dataarray(path, group=group)
-
-    #         # Align coords explicitly so realization labels don’t clash
-    #         combined = xr.concat([existing_da, new_result], dim="realization")
-    # except (OSError, ValueError):
-    #     # Group missing or bad -> just use new_result
-    #     combined = new_result
-
-    # # Save back (overwrite only this group)
-    # combined.to_dataset(name=new_result.name).to_netcdf(
-    #     path, mode="a", engine="h5netcdf", group=group, unlimited_dims=["realization"]
-    # )
-    # print(
-    #     f"Updated group '{group}' in '{filename}' with realization '{realization_label}'")
-    # return
