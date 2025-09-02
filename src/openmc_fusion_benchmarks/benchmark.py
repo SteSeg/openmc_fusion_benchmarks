@@ -401,18 +401,14 @@ class OpenmcBenchmark(Benchmark):
         )
         return model
 
-    def _postprocess(self, statepoint: str = 'statepoint.100.h5', mesh: str = 'mesh.h5m'):
+    def _postprocess(self, statepoint: openmc.StatePoint, mesh: str = 'mesh.h5m'):
         """Post-process the model after running."""
         # Retrieve tallies data from specifications
         tallies_data = self._benchmark_spec['tallies']
-        # Read openmc statepoint file
-        sp = openmc.StatePoint(statepoint)
-        # Read mesh file
-        mesh = pydagmc.Model(mesh)
 
         _openmc_to_ofb(
             spec_tallies=tallies_data,
-            statepoint=sp,
+            statepoint=statepoint,
             mesh=mesh
         )
 
@@ -426,7 +422,7 @@ class OpenmcBenchmark(Benchmark):
         nuclides = uq_data[0]['nuclides'][0]
         realizations = uq_data[0]['realizations'][0]
 
-        mesh = pydagmc.Model('mesh.h5m')
+        mesh = 'mesh.h5m'
 
         tmc_engine(model=self.model, realizations=realizations,
                    lib_name='endfb_80', nuclide=nuclides[0], reaction=None,
@@ -451,7 +447,7 @@ class OpenmcBenchmark(Benchmark):
             self._uncertainty_quantification(*args, **kwargs)
         else:
             # Run the OpenMC model
-            self._run_model(*args, **kwargs)
+            # self._run_model(*args, **kwargs)
             # Run the OpenMC model
             statepoint = self.model.run(*args, **kwargs)
             # Post-process the results

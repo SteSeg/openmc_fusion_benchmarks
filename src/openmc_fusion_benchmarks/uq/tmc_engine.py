@@ -68,6 +68,8 @@ def tmc_engine(model: openmc.Model, realizations: int, lib_name: str, nuclide,
             # Postprocess results in case of OFB benchmark model
             _openmc_to_ofb(statepoint=sp,
                            realization_label=realization_label,
+                           mesh=_mesh,
+                           spec_tallies=_spec_tallies,
                            *args, **kwargs)
         else:
             # open tally and push to netcdf ofb style

@@ -1,22 +1,24 @@
+from fileinput import filename
 import numpy as np
 import openmc
 from pathlib import Path
 import xarray as xr
 import pydagmc
+import h5py
 
 
-def _openmc_to_ofb(spec_tallies: str, statepoint: str = 'statepoint.100.h5',
+def _openmc_to_ofb(spec_tallies: str, statepoint: openmc.StatePoint,
                    mesh: str = 'mesh.h5m', realization_label: str = 'baseline'):
 
     # Read openmc statepoint file
-    sp = openmc.StatePoint(statepoint)
+    # sp = openmc.StatePoint(statepoint)
     # Read mesh file
-    mesh = pydagmc.DAGModel(mesh)
+    msh = pydagmc.Model(mesh)
 
     # Cycle tallies in specifications
     for spec_t in spec_tallies:
         # Get corresponding tally from statepoint
-        df = sp.get_tally(name=spec_t['name']).get_pandas_dataframe()
+        df = statepoint.get_tally(name=spec_t['name']).get_pandas_dataframe()
 
         # Preparing tally dataframe
         df = df.drop(columns=['surface', 'cell', 'particle', 'nuclide',
@@ -26,10 +28,10 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: str = 'statepoint.100.h5',
         for f in spec_t['filters']:
             if f['type'] == 'cell':
                 # Get cell volumes for normalization
-                norm = [mesh.volumes_by_id[v].area for v in f['values']]
+                norm = [msh.volumes_by_id[v].area for v in f['values']]
             elif f['type'] == 'surface':
                 # Get surface areas for normalization
-                norm = [mesh.surfaces_by_id[v].area for v in f['values']]
+                norm = [msh.surfaces_by_id[v].area for v in f['values']]
             elif f['type'] == 'material':
                 raise NotImplementedError(
                     'Material filter not implemented in postprocess yet.')
@@ -56,37 +58,63 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: str = 'statepoint.100.h5',
 
 
 def _save_result(new_result: xr.DataArray, filename: str, group: str, realization_label: str):
-    """Append or initialize a 3D DataArray with 'realization' dimension in a NetCDF HDF5 file."""
+    """Save or append a DataArray to a NetCDF file under a given group,
+    extending along the 'realization' dimension if present."""
+
+    # Path to filename
     path = Path(filename)
 
-    # Ensure the realization dimension exists
-    if "realization" not in new_result.dims:
-        new_result = new_result.expand_dims(
-            {"realization": [realization_label]})
-    else:
-        new_result = new_result.assign_coords(realization=[realization_label])
-
     if not path.exists():
-        # File doesn't exist: write initial result
-        new_result.to_dataset(name=new_result.name).to_netcdf(
-            path, mode='w', group=group)
-        print(f"Saved new result to group '{group}' in '{filename}'")
-    else:
-        try:
-            existing = xr.open_dataset(path, group=group)
-            existing_da = existing.to_array().squeeze("variable", drop=True)
+        # First time -> create file with this group
+        new_result.to_netcdf(
+            path, mode="w", engine="netcdf4", group=group)
+        print(f"Created file '{filename}' with group '{group}'")
+        return
 
-            # Concatenate along realization dimension
+    # File exists -> try to read & merge
+    try:
+        with xr.open_dataset(path, group=group, engine="netcdf4") as existing:
+            existing_da = xr.load_dataarray(path, group=group)
+
+            # Align coords explicitly so realization labels don’t clash
             combined = xr.concat([existing_da, new_result], dim="realization")
+    except (OSError, ValueError):
+        # Group missing or bad -> just use new_result
+        combined = new_result
 
-            # Save the combined array back
-            combined.to_dataset(name=new_result.name).to_netcdf(
-                path, mode='a', group=group)
-            print(
-                f"Appended realization '{realization_label}' to group '{group}' in '{filename}'")
+    # Save back (overwrite only this group)
+    with h5py.File(path, "a") as f:
+        if group in f:
+            del f[group]
+    combined.to_netcdf(
+        path, mode="a", engine="netcdf4", group=group)
+    print(
+        f"Updated group '{group}' in '{filename}' with realization '{realization_label}'")
+    return
 
-        except KeyError:
-            # Group does not exist yet
-            new_result.to_dataset(name=new_result.name).to_netcdf(
-                path, mode='a', group=group)
-            print(f"Saved new result to new group '{group}' in '{filename}'")
+    # if not path.exists():
+    #     # First time -> create file with this group
+    #     new_result.to_dataset(name=new_result.name).to_netcdf(
+    #         path, mode="w", engine="h5netcdf", group=group, unlimited_dims=["realization"]
+    #     )
+    #     print(f"Created file '{filename}' with group '{group}'")
+    #     return
+
+    # # File exists -> try to read & merge
+    # try:
+    #     with xr.open_dataset(path, group=group, engine="h5netcdf") as existing:
+    #         existing_da = xr.load_dataarray(path, group=group)
+
+    #         # Align coords explicitly so realization labels don’t clash
+    #         combined = xr.concat([existing_da, new_result], dim="realization")
+    # except (OSError, ValueError):
+    #     # Group missing or bad -> just use new_result
+    #     combined = new_result
+
+    # # Save back (overwrite only this group)
+    # combined.to_dataset(name=new_result.name).to_netcdf(
+    #     path, mode="a", engine="h5netcdf", group=group, unlimited_dims=["realization"]
+    # )
+    # print(
+    #     f"Updated group '{group}' in '{filename}' with realization '{realization_label}'")
+    # return
