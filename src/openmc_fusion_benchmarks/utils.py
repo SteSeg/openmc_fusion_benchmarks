@@ -68,6 +68,8 @@ def _save_result(new_result: xr.DataArray, filename: str, group: str, realizatio
         # First time -> create file with this group
         new_result.to_netcdf(
             path, mode="w", engine="netcdf4", group=group)
+        new_result = new_result.assign_coords(
+            realization=new_result.realization.astype(object))
         print(f"Created file '{filename}' with group '{group}'")
         return
 
@@ -75,6 +77,8 @@ def _save_result(new_result: xr.DataArray, filename: str, group: str, realizatio
     try:
         with xr.open_dataset(path, group=group, engine="netcdf4") as existing:
             existing_da = xr.load_dataarray(path, group=group)
+            existing_da = existing_da.assign_coords(
+                realization=existing_da.realization.astype(object))
 
             # Align coords explicitly so realization labels don’t clash
             combined = xr.concat([existing_da, new_result], dim="realization")
