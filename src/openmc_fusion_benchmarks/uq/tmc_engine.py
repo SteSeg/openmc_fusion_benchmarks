@@ -77,8 +77,11 @@ def tmc_engine(model: openmc.Model, realizations: int, lib_name: str, nuclide,
                 tally = sp.get_tally(id=t)
                 df = tally.get_pandas_dataframe()
 
+                df = df.drop(columns=['surface', 'cell', 'particle', 'nuclide',
+                              'score', 'energyfunction'], errors='ignore')
+
                 # Convert to xarray and add dimensions
-                t = xr.DataArray(
+                da = xr.DataArray(
                     df.values[np.newaxis, :, :],  # shape: (1, r, c)
                     dims=["realization", "row", "column"],
                     coords={
@@ -86,11 +89,11 @@ def tmc_engine(model: openmc.Model, realizations: int, lib_name: str, nuclide,
                         "column": df.columns,
                         "row": np.arange(df.shape[0]),
                     },
-                    name=t.name
+                    name=tally.name
                 )
 
-                _save_result(new_result=t, filename="tmc_results.h5",
-                             group=t.name, realization_label=f'{nuclide}_{n}_{lib_name}')
+                _save_result(new_result=da, filename="tmc_results.h5",
+                             group=tally.name, realization_label=f'{nuclide}_{n}_{lib_name}')
 
         Path('summary.h5').unlink(missing_ok=True)
         Path(statepoint).unlink(missing_ok=True)
