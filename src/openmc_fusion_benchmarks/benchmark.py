@@ -204,13 +204,13 @@ class OpenmcBenchmark(Benchmark):
                        global_mesh_size_min=global_mesh_size_min, global_mesh_size_max=global_mesh_size_max)
 
         # download the h5m file
-        # download_from_drive(benchmark_name=self.name, file_format='h5m')
         mesh_file = Path("mesh.h5m")
-        # Implement the logic to build geometry for OpenMC
-        dag_universe = openmc.DAGMCUniverse(
-            mesh_file).bounded_universe(starting_id=90000)
+        
+        xdg_mesh = openmc.XDGMesh(mesh_file, library='moab')
+        xdg_universe = openmc.XDGUniverse(xdg_mesh).bounded_universe(starting_id=90000)
+        xdg_universe.type = 'surface_mesh'
 
-        return openmc.Geometry(root=dag_universe)
+        return openmc.Geometry(root=xdg_universe)
 
     def _build_source(self):
         source_data = self._benchmark_spec['sources']
