@@ -1,3 +1,0 @@
-# Oktavian Benchmark
-
-TODO
