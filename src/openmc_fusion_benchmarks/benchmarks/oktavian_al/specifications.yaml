@@ -192,3 +192,10 @@ tallies:
                 6500000.,  7000000.,  7500000.,  8000000.,  8500000.,  9000000.,
                 9500000., 10000000., 10500000., 11000000.]
         units: particle/src/cm**2
+
+uncertainty_quantification:
+  - type: nuclear_data
+    description: "Uncertainty in nuclear data"
+    nuclides: [[Al27]]
+    reactions: [total]
+    realizations: [500]

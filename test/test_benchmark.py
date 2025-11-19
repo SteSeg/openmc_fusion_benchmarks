@@ -8,13 +8,30 @@ from openmc_fusion_benchmarks import Benchmark
 
 # Minimal subclass for testing abstract class
 class DummyBenchmark(Benchmark):
-    def _build_materials(self): return "materials"
-    def _build_geometry(self): return "geometry"
-    def _build_source(self): return "source"
-    def _build_settings(self): return "settings"
-    def _build_tallies(self): return "tallies"
-    def _build_model(self): return "model"
-    def postprocess(self): return "postprocess"
+    def _build_materials(self):
+        return "materials"
+
+    def _build_geometry(self):
+        return "geometry"
+
+    def _build_source(self):
+        return "source"
+
+    def _build_settings(self):
+        return "settings"
+
+    def _build_tallies(self):
+        return "tallies"
+
+    def _build_model(self):
+        return "model"
+
+    def _postprocess(self):
+        return "postprocess"
+
+    def _uncertainty_quantification(self):
+        return "uncertainty_quantification"
+
     def run(self): return "run"
 
 

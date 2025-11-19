@@ -43,7 +43,9 @@ components:
         irradiation_schedule:
           $ref: '#/components/schemas/IrradiationSchedule'
         uncertainty_quantification:
-          $ref: '#/components/schemas/UncertaintyQuantification'
+          type: array
+          items:
+            $ref: '#/components/schemas/UncertaintyQuantification'
 
     Metadata:
       type: object
@@ -312,21 +314,37 @@ components:
     UncertaintyQuantification:
       type: object
       properties:
-        # nuclear_data:
-        #   type: boolean
-        # materials:
-        #   type: object
-        #   properties:
-        #     density:
-        #       type: boolean
-        #     composition:
-        #       type: boolean
-        # source:
-        #   type: object
-        #   properties:
-        #     geometry:
-        #       type: boolean
-        #     angle:
-        #       type: boolean
-        #     energy:
-        #       type: boolean
+        realizations:
+          type: array
+          items:
+            type: integer
+      required: [realizations]
+      allOf:
+        - oneOf:
+          - type: object
+            properties:
+              type:
+                type: string
+                const: nuclear_data
+              nuclides:
+                type: array
+                items:
+                  type: array
+                  items:
+                    type: string
+              reactions:
+                type: array
+                items:
+                  type: string
+            required: [type, nuclides, reactions]
+
+          # - type: object
+          #   properties:
+          #     type:
+          #       type: string
+          #       const: material
+          #     materials:
+          #       type: array
+          #       items:
+          #         type: string
+          #   required: [type, materials]

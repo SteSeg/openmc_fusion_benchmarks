@@ -6,6 +6,8 @@ import numpy as np
 import xarray as xr
 import h5py
 from .validate import validate_benchmark
+from .utils import _openmc_to_ofb, _save_result
+from .uq.tmc_engine import tmc_engine
 
 import openmc
 import pydagmc
@@ -59,13 +61,18 @@ class Benchmark(ABC):
         pass
 
     @abstractmethod
-    def postprocess(self):
+    def _postprocess(self):
         """Post-process the model after running."""
         pass
 
     @abstractmethod
     def run(self):
         """Run the benchmark simulation."""
+        pass
+
+    @abstractmethod
+    def _uncertainty_quantification(self):
+        """Perform uncertainty quantification for the benchmark."""
         pass
 
     def _read_metadata(self):
@@ -137,8 +144,7 @@ class OpenmcBenchmark(Benchmark):
 
         materials = openmc.Materials()
         for m in material_data:
-            mat = openmc.Material(name=m['name'])
-            mat.id = m['id']
+            mat = openmc.Material(material_id=m['id'], name=m['name'])
             mat.set_density(m['density']['units'], m['density']['value'])
 
             # Ensure fraction type is valid
@@ -395,77 +401,55 @@ class OpenmcBenchmark(Benchmark):
         )
         return model
 
-    def postprocess(self, statepoint: str = 'statepoint.100.h5', mesh: str = 'mesh.h5m'):
+    def _postprocess(self, statepoint: openmc.StatePoint, mesh: str = 'mesh.h5m'):
         """Post-process the model after running."""
         # Retrieve tallies data from specifications
         tallies_data = self._benchmark_spec['tallies']
-        # Read openmc statepoint file
-        sp = openmc.StatePoint(statepoint)
-        # Read mesh file
-        mesh = pydagmc.DAGModel(mesh)
 
-        # Cycle tallies in specifications
-        for spec_t in tallies_data:
-            # Get corresponding tally from statepoint
-            df = sp.get_tally(name=spec_t['name']).get_pandas_dataframe()
-
-            # Preparing tally dataframe
-            df = df.drop(columns=['surface', 'cell', 'particle', 'nuclide',
-                                  'score', 'energyfunction'], errors='ignore')
-            # Cyle tally filters
-            norm = 1
-            for f in spec_t['filters']:
-                if f['type'] == 'cell':
-                    # Get cell volumes for normalization
-                    norm = [mesh.volumes_by_id[v].area for v in f['values']]
-                elif f['type'] == 'surface':
-                    # Get surface areas for normalization
-                    norm = [mesh.surfaces_by_id[v].area for v in f['values']]
-                elif f['type'] == 'material':
-                    raise NotImplementedError(
-                        'Material filter not implemented in postprocess yet.')
-
-                # Normalize the tally data
-                df['mean'] = df['mean'] / norm
-                df['std. dev.'] = df['std. dev.'] / norm
-
-            # Convert to xarray and add dimensions
-            t = xr.DataArray(
-                df.values[np.newaxis, :, :],  # shape: (1, r, c)
-                dims=["case", "row", "column"],
-                coords={
-                    "case": ["0"],
-                    "column": df.columns,
-                    "row": np.arange(df.shape[0])
-                },
-                name=spec_t['name']
-            )
-
-            # Save the tally data to a netCDF file
-            t.to_netcdf(f"benchmark_results.h5",
-                        group=f"{spec_t['name']}", mode='a')
-
-        # Add some metadata attributes
-        with h5py.File(f"benchmark_results.h5", "a") as f:
-            f.attrs['benchmark_name'] = self.name
-            # f.attrs['benchmark_version'] = self._benchmark_spec['metadata'].get(
-            #     'version', 'N/A')
-            # f.attrs['description'] = self._benchmark_spec['metadata'].get(
-            #     'description', 'N/A')
-            # f.attrs['title'] = self._benchmark_spec['metadata'].get(
-            #     'title', 'N/A')
-            # f.attrs['literature'] = self._benchmark_spec['metadata'].get(
-            #     'references', [])
-            f.attrs['code'] = f"openmc {sp.version[0]}.{sp.version[1]}.{sp.version[2]}"
+        _openmc_to_ofb(
+            spec_tallies=tallies_data,
+            statepoint=statepoint,
+            mesh=mesh
+        )
 
         return
 
-    def run(self, *args, **kwargs):
-        """Run the benchmark simulation."""
-        # Run the OpenMC model
-        statepoint = self.model.run(*args, **kwargs)
+    def _uncertainty_quantification(self, *args, **kwargs):
+        """Perform uncertainty quantification for the benchmark."""
+        uq_data = self._benchmark_spec['uncertainty_quantification']
+        tallies_data = self._benchmark_spec['tallies']
 
-        # Post-process the results
-        self.postprocess(statepoint=statepoint)
+        mesh = 'mesh.h5m'
+
+        # Run a TMC for every nuclide present in specifications
+        for n, r in zip(uq_data[0]['nuclides'], uq_data[0]['realizations']):
+            tmc_engine(model=self.model, realizations=r,
+                       lib_name='endfb_80', nuclide=n[0], reaction=None,
+                       perturb_xs=True, _is_benchmark=True, _spec_tallies=tallies_data,
+                       _mesh=mesh, *args, **kwargs)
+
+        return
+
+    def run(self, uq: bool = False, *args, **kwargs):
+        """Run the benchmark simulation."""
+
+        # Check if benchmark_results.h5 already exists and delete it
+        path = Path("benchmark_results.h5")
+        if path.exists():
+            path.unlink()
+            warnings.warn(
+                f"Existing file '{path}' was found and deleted.", UserWarning)
+
+        # Run the model
+        if uq:
+            # Perform uncertainty quantification
+            self._uncertainty_quantification(*args, **kwargs)
+        else:
+            # Run the OpenMC model
+            # self._run_model(*args, **kwargs)
+            # Run the OpenMC model
+            statepoint = self.model.run(*args, **kwargs)
+            # Post-process the results
+            self._postprocess(statepoint=statepoint)
 
         return

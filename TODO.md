@@ -3,6 +3,13 @@
 
 
 ## Benchmarks API
+- UQ-TMC: Handle the NJOY dependency
+- UQ-TMC: separate the preparation of run from the execution of the tmc loops (xml files outside the loop, tmc-manager like this: https://github.com/openmc-dev/openmc/pull/3508)
+- UQ-TMC: implement list of models in tmc engine
+- UQ-TMC: the first realization should be the original xs "mean" (baseline)
+- UQ-TMC: allow more options to user (e.g. library to perturb)
+- UQ-TMC: allow a list of nuclides to perturb
+- UQ-TMC: allow list of nuclides and perturbations from specifications file
 - Add capability of merging multiple surface results for oktavian (should happen only with surface tallies)
 - Add expected tally results shape in `schema` and `specifications` to deal with the point here above
 - Try to manage results as numpy arrays instead of pandas dataframes in `OpenmcBenchmark.postprocess()`
