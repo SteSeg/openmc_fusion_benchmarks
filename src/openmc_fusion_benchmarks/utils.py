@@ -28,7 +28,7 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: openmc.StatePoint,
         for f in spec_t['filters']:
             if f['type'] == 'cell':
                 # Get cell volumes for normalization
-                norm = [msh.volumes_by_id[v].area for v in f['values']]
+                norm = [msh.volumes_by_id[v].volume for v in f['values']]
             elif f['type'] == 'surface':
                 # Get surface areas for normalization
                 norm = [msh.surfaces_by_id[v].area for v in f['values']]
