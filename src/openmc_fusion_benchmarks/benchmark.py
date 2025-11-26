@@ -446,9 +446,8 @@ class OpenmcBenchmark(Benchmark):
             self._uncertainty_quantification(*args, **kwargs)
         else:
             # Run the OpenMC model
-            # self._run_model(*args, **kwargs)
-            # Run the OpenMC model
-            statepoint = self.model.run(*args, **kwargs)
+            sp = self.model.run(*args, **kwargs)
+            statepoint = openmc.StatePoint(sp)
             # Post-process the results
             self._postprocess(statepoint=statepoint)
 
