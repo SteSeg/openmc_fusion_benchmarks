@@ -24,7 +24,6 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: openmc.StatePoint,
         df = df.drop(columns=['surface', 'cell', 'particle', 'nuclide',
                               'score', 'energyfunction'], errors='ignore')
         # Cycle tally filters
-        norm = 1
         for f in spec_t['filters']:
             if f['type'] == 'cell':
                 # Get cell volumes for normalization
@@ -35,8 +34,10 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: openmc.StatePoint,
             elif f['type'] == 'material':
                 raise NotImplementedError(
                     'Material filter not implemented in postprocess yet.')
+            else:
+                norm = 1
 
-            # Normalize the tally data
+            # Normalize the tally data 
             df['mean'] = df['mean'] / norm
             df['std. dev.'] = df['std. dev.'] / norm
 
