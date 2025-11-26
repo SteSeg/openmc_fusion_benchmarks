@@ -17,56 +17,68 @@ class BenchmarkResults:
         return xr.load_dataarray(self.filepath, group=name)
     
 
-# ResultArray class maybe not necessary, leaving it as xarray.DataArray for now:
-# 1 list the labels of any dimension (e.g. realization, column, row etc.): da.realization.values
-# 2 select a slice of the data: slice2d = da.sel(realization='label1')
-# 3 get a pandas dataframe from a slice (if the slice is 2D): df = slice2d.to_pandas()
-# 4 Further slice down to 1d: slice1d = slice2d.sel(column='mean')
+# # Some utilities for data analysis
+# def get_means(tally: xr.DataArray) -> xr.DataArray:
+#     """Extract tally means from the tally DataArray."""
+#     return tally.sel(column='mean').squeeze()
+
+# def get_stds(tally: xr.DataArray) -> xr.DataArray:
+#     """Extract tally standard deviations from the tally DataArray."""
+#     return tally.sel(column='std. dev.').squeeze()
+
+# def get_rstds(tally: xr.DataArray) -> xr.DataArray:
+#     """Compute tally relative standard deviations from the tally DataArray."""
+#     mean_vals = get_means(tally)
+#     std_vals = get_stds(tally)
+#     return std_vals / mean_vals
 
 
-class ResultArray:
-    def __init__(self, data: xr.DataArray):
-        self.data = data
+# # UQ-TMC base analysis functions - Move in uq/ ?
+# def mean_of_means(tally: xr.DataArray) -> xr.DataArray:
+#     """Compute the mean of the means across realizations."""
+#     means = get_means(tally)
+#     return means.mean(dim='realization')
 
-    @property
-    def realizations(self):
-        return self.data.realization.values
+# def std_of_means(tally: xr.DataArray) -> xr.DataArray:
+#     """Compute the standard deviation of the means across realizations."""
+#     means = get_means(tally)
+#     return means.std(dim='realization')
 
-    @property
-    def rows(self):
-        return self.data.row.values
+# def rstd_of_means(tally: xr.DataArray) -> xr.DataArray:
+#     """Compute the relative standard deviation of the means across realizations."""
+#     mean_vals = mean_of_means(tally)
+#     std_vals = std_of_means(tally)
+#     return std_vals / mean_vals
 
-    @property
-    def columns(self):
-        return self.data.column.values
+# # UQ-TMC dynamic realization analysis functions - Move in uq/ ?
+# def dynamic_mean_of_means(tally: xr.DataArray) -> np.ndarray:
+#     """Compute the dynamic mean of the means across realizations."""
+#     means = get_means(tally)
+#     return np.array([means[:i].mean(dim='realization') for i in range(2, len(means.realization) + 1)])
 
-    def get_realization(self, label) -> xr.DataArray:
-        return self.data.sel(realization=label)
-    
-    def get_row(self, index) -> xr.DataArray:
-        return self.data.sel(row=index)
-    
-    def get_column(self, name) -> xr.DataArray:
-        return self.data.sel(column=name)
+# def dynamic_std_of_means(tally: xr.DataArray) -> np.ndarray:
+#     """Compute the dynamic standard deviation of the means across realizations."""
+#     means = get_means(tally)
+#     return np.array([
+#         means[:i].std(dim='realization') for i in range(2, len(means.realization) + 1)
+#     ])
 
-    def mean_of_stds(self) -> np.ndarray:
-        std_da = self.get_column('std. dev.')
-        return std_da.values.mean(axis=0)
-    
-    def mean_of_rstds(self) -> np.ndarray:
-        mean_da = self.get_column('mean')
-        std_da = self.get_column('std. dev.')
-        rstd = std_da.values / mean_da.values
-        return rstd.mean(axis=0)
+# def dynamic_rstd_of_means(tally: xr.DataArray) -> np.ndarray:
+#     """Compute the dynamic relative standard deviation of the means across realizations."""
+#     means = get_means(tally)
+#     return np.array([
+#         means[:i].std(dim='realization') / means[:i].mean(dim='realization')
+#         for i in range(2, len(means.realization) + 1)
+#     ])
 
-    def mean_of_means(self) -> np.ndarray:
-        mean_da = self.get_column('mean')
-        return mean_da.values.mean(axis=0)
-    
-    def std_of_means(self) -> np.ndarray:
-        mean_da = self.get_column('mean')
-        return mean_da.values.std(axis=0)
-    
-    def evolution_of_means(self) -> np.ndarray:
-        mean_da = self.get_column('mean')
-        return np.cumsum(mean_da.values, axis=0) / np.arange(1, len(mean_da.values)+1)[:, None]
+# def dynamic_rstd_of_rstds(tally: xr.DataArray) -> np.ndarray:
+#     """Compute the dynamic relative standard deviation of the relative standard deviations across realizations."""
+#     rstds = dynamic_rstd_of_means(tally)
+#     return np.array([
+#         rstds[:i].std() / rstds[:i].mean() for i in range(2, len(rstds) + 1)
+#     ])
+
+# def derivative_of_dynamic_rstds(tally: xr.DataArray) -> np.ndarray:
+#     """Compute the derivative of the dynamic relative standard deviations."""
+#     dynamic_rstds = dynamic_rstd_of_means(tally)
+#     return np.gradient(dynamic_rstds, axis=0)
