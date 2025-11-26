@@ -35,8 +35,10 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: openmc.StatePoint,
             elif f['type'] == 'material':
                 raise NotImplementedError(
                     'Material filter not implemented in postprocess yet.')
+            else:
+                norm = 1
 
-            # Normalize the tally data
+            # Normalize the tally data 
             df['mean'] = df['mean'] / norm
             df['std. dev.'] = df['std. dev.'] / norm
 
