@@ -1,11 +1,41 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Union
 import h5py
 import xarray as xr
-import numpy as np
 
+from .database import _resolve_database_path
 
 class BenchmarkResults:
-    def __init__(self, filepath: str):
-        self.filepath = filepath
+    """Class to handle benchmark results stored in HDF5 files.
+    usage:
+        - Load from arbitrary file path: `BenchmarkResults.from_file(filepath)`
+        - Load from run directory: `BenchmarkResults.from_run_dir(run_dir, filename)`
+        - Load from package database: `BenchmarkResults.from_database(benchmark, filename)`
+    """
+
+    def __init__(self, filepath: Union[str, Path]):
+        self.filepath = Path(filepath)
+        if not self.filepath.exists():
+            raise FileNotFoundError(f"Results file not found: {self.filepath}")
+
+    @classmethod
+    def from_file(cls, filepath: Union[str, Path]) -> "BenchmarkResults":
+        """Load results from an arbitrary file path."""
+        return cls(filepath)
+
+    @classmethod
+    def from_run_dir(cls, run_dir: Union[str, Path] = ".", filename: str = "results.h5") -> "BenchmarkResults":
+        """Load results from a run directory (default: current directory)."""
+        path = Path(run_dir) / filename
+        return cls(path)
+
+    @classmethod
+    def from_database(cls, benchmark: str, filename: str = "reference_results.h5") -> "BenchmarkResults":
+        """Load reference results from the package database."""
+        db_path = _resolve_database_path(benchmark, filename)
+        return cls(db_path)
 
     @property
     def tallies(self):
