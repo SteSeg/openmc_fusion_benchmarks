@@ -1,1 +1,4 @@
-jupyter-book
+sphinx>=7.0.0
+myst-parser
+sphinx-book-theme
+sphinxcontrib-bibtex

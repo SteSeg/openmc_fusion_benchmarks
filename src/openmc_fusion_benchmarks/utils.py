@@ -28,15 +28,17 @@ def _openmc_to_ofb(spec_tallies: str, statepoint: openmc.StatePoint,
         for f in spec_t['filters']:
             if f['type'] == 'cell':
                 # Get cell volumes for normalization
-                norm = [msh.volumes_by_id[v].area for v in f['values']]
+                norm = [msh.volumes_by_id[v].volume for v in f['values']]
             elif f['type'] == 'surface':
                 # Get surface areas for normalization
                 norm = [msh.surfaces_by_id[v].area for v in f['values']]
             elif f['type'] == 'material':
                 raise NotImplementedError(
                     'Material filter not implemented in postprocess yet.')
+            else:
+                norm = 1
 
-            # Normalize the tally data
+            # Normalize the tally data 
             df['mean'] = df['mean'] / norm
             df['std. dev.'] = df['std. dev.'] / norm
 
@@ -68,6 +70,8 @@ def _save_result(new_result: xr.DataArray, filename: str, group: str, realizatio
         # First time -> create file with this group
         new_result.to_netcdf(
             path, mode="w", engine="netcdf4", group=group)
+        new_result = new_result.assign_coords(
+            realization=new_result.realization.astype(object))
         print(f"Created file '{filename}' with group '{group}'")
         return
 
@@ -75,6 +79,8 @@ def _save_result(new_result: xr.DataArray, filename: str, group: str, realizatio
     try:
         with xr.open_dataset(path, group=group, engine="netcdf4") as existing:
             existing_da = xr.load_dataarray(path, group=group)
+            existing_da = existing_da.assign_coords(
+                realization=existing_da.realization.astype(object))
 
             # Align coords explicitly so realization labels don’t clash
             combined = xr.concat([existing_da, new_result], dim="realization")
