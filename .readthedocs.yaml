@@ -13,8 +13,9 @@ build:
   commands:
     - pip install -r requirements.txt
     - jupyter-book build docs/source
+    - ls -R docs/source/_build
     - mkdir -p $READTHEDOCS_OUTPUT/html
-    - if [ -d "docs/source/_build/html" ]; then cp -r docs/source/_build/html/* $READTHEDOCS_OUTPUT/html/; elif [ -d "docs/source/_build" ]; then cp -r docs/source/_build/* $READTHEDOCS_OUTPUT/html/; else find docs/source -name "_build" -o -name "build"; fi
+    - if [ -f "docs/source/_build/html/index.html" ]; then cp -r docs/source/_build/html/* $READTHEDOCS_OUTPUT/html/; elif [ -f "docs/source/_build/index.html" ]; then cp -r docs/source/_build/* $READTHEDOCS_OUTPUT/html/; else echo "Build output not found"; find docs/source/_build -name "*.html" | head -5; fi
         
 # Build documentation with Jupyter Book
 # Output will be in docs/source/_build/html
