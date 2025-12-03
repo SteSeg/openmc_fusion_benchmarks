@@ -10,8 +10,8 @@ build:
   tools:
     python: "3.12"
   jobs:
-    pre_build:
-      - cd docs/source && jb config sphinx .
+    post_install:
+      - cd docs/source && jupyter-book config sphinx .
 
 python:
   install:
