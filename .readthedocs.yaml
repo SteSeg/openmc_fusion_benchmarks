@@ -10,15 +10,11 @@ build:
   tools:
     python: "3.13"
     nodejs: "20"
-  jobs:
-    pre_build:
-      - "jupyter-book config sphinx docs/source"
-
-python:
-  install:
-  - requirements: requirements.txt
+  commands:
+    - pip install -r requirements.txt
+    - jupyter-book build docs/source --builder html
+    - mkdir -p $READTHEDOCS_OUTPUT/html
+    - cp -r docs/source/_build/html/* $READTHEDOCS_OUTPUT/html/
         
-# Build documentation in the "docs/source" directory with Sphinx
-sphinx:
-  builder: html
-  configuration: docs/source/_config.yml
+# Build documentation with Jupyter Book
+# Output will be in docs/source/_build/html
