@@ -1,6 +1,10 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
+# Jupyter Book version
+# This is required for jupyter-book < 1.0
+version: 0.15.1
+
 title: OpenMC Fusion Benchmarks
 logo: images/logo.svg
 
