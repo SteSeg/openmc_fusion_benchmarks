@@ -15,6 +15,9 @@ extensions = [
     'sphinxcontrib.bibtex',
 ]
 
+# The master document (entry point)
+master_doc = 'index'
+
 # Bibliography files
 bibtex_bibfiles = ['references.bib']
 bibtex_reference_style = 'label'
@@ -24,7 +27,7 @@ templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_config.yml', '_toc.yml']
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'sphinx_book_theme'
@@ -44,7 +47,13 @@ myst_enable_extensions = [
     'colon_fence',
     'deflist',
     'dollarmath',
+    'html_image',
 ]
+
+# Allow HTML in Markdown
+myst_html_meta = {
+    "description lang=en": "OpenMC Fusion Benchmarks documentation",
+}
 
 # Don't execute notebooks (set to 'off' to disable)
 # This is equivalent to jupyter-book's execute_notebooks: false
