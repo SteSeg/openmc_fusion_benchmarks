@@ -52,7 +52,9 @@ results = ofb.BenchmarkResults(filepath='benchmark_results.h5')
 # Print tallies names available
 print(results.tallies)
 ```
+```shell
 ['neutron_leakage', 'photon_leakage']
+```
 
 And here it is how to extract a specific tally result as __xarray.DataArray__:
 
