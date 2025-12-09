@@ -8,7 +8,7 @@ The experimental setup employed hollow stainless-steel spherical vessels filled 
 
 ## Description of Source and Experimental Configuration
 
-![Experimental configuration of OKTAVIAN experiments.](images/oktavian_exp_config.png)
+![Experimental configuration of OKTAVIAN experiments.](../../images/oktavian_exp_config.png)
 
 The experimental configuration is illustrated in the figure above {cite}`konno2023jendl`.
 
