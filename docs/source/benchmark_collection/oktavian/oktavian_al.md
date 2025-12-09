@@ -1,4 +1,4 @@
-# Oktavian Aluminium Benchmark
+# Oktavian Aluminium
 
 ## CAD
 The following link opens an interactive 3D visualization of the CAD model used in the benchmark:

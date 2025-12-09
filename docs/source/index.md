@@ -9,7 +9,6 @@ Welcome to the **OpenMC Fusion Benchmarks** project - a modular, code-agnostic, 
 
 intro
 quickstart
-user_installation
 specifications/index
 benchmark_collection/index
 ```
