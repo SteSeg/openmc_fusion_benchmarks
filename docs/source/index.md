@@ -8,7 +8,8 @@ Welcome to the **OpenMC Fusion Benchmarks** project - a modular, code-agnostic, 
 :maxdepth: 2
 
 intro
+quickstart
 user_installation
-oktavian_readme
-oktavian_al_benchmark
+specifications/index
+benchmark_collection/index
 ```
