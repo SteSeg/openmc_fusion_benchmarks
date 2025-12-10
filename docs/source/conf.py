@@ -31,10 +31,13 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_config.yml', '_toc.yml
 
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'sphinx_book_theme'
-html_logo = 'images/logo.svg'
 html_title = 'OpenMC Fusion Benchmarks'
 
 html_theme_options = {
+    'logo': {
+        'image_light': 'images/logo.svg',
+        'image_dark': 'images/logo_white.svg',
+    },
     'repository_url': 'https://github.com/eepeterson/openmc_fusion_benchmarks',
     'use_repository_button': True,
     'use_issues_button': True,
