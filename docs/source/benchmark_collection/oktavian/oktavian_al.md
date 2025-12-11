@@ -12,7 +12,7 @@ The following link opens an interactive 3D visualization of the CAD model used i
 ### Comparison of CAD vs CSG results
 
 <p align="center">
-  <img src="images/al_neutron_leakage_csg_cad.svg" width="700" alt="Neutron flux">
+  <img src="images/al_neutron_leakage_csg_cad.svg" width="200" alt="Neutron flux">
 </p>
 
 <p align="center">
