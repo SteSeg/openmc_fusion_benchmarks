@@ -33,9 +33,9 @@ The following link opens an interactive 3D visualization of the CAD model used i
 ### Uncertainty Quantification analysis
 
 <p align="center">
-  <img src="images/al_neutron_leakage_uq.svg" width="600" alt="Neutron flux">
+  <img src="images/al_neutron_leakage_uq.svg" width="800" alt="Neutron flux">
 </p>
 
 <p align="center">
-  <img src="images/al_photon_leakage_uq.svg" width="600" alt="Gamma flux">
+  <img src="images/al_photon_leakage_uq.svg" width="800" alt="Gamma flux">
 </p>
