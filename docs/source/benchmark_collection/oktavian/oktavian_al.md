@@ -11,10 +11,16 @@ The following link opens an interactive 3D visualization of the CAD model used i
 
 ### Comparison of CAD vs CSG results
 
-![Neutron flux.](images/oktavian_al_neutron_leakage_csg_cad.png)
-![Gamma flux.](images/oktavian_al_photon_leakage_csg_cad.png)
+![Neutron flux.](images/al_neutron_leakage_csg_cad.svg)
+![Gamma flux.](images/al_photon_leakage_csg_cad.png)
 
 
 ### Nuclear data comparison with CAD results
 
+![Neutron flux.](images/al_neutron_leakage_nuclear_data.svg)
+![Gamma flux.](images/al_photon_leakage_nuclear_data.svg)
+
 ### Uncertainty Quantification analysis
+
+![Neutron flux.](images/al_neutron_leakage_uq.svg)
+![Gamma flux.](images/al_photon_leakage_uq.svg)
