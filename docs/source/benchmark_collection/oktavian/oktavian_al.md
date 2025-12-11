@@ -1,6 +1,6 @@
 # Oktavian Aluminium
 
-Here it is possible to find the analysis of Oktavian aluminum (`oktavian_al`) benchmark run with `ofb`.
+Here it is possible to find the analysis of Oktavian aluminum (`oktavian_al`) benchmark run with `OFB`.
 
 ## CAD
 
@@ -29,7 +29,7 @@ Comparison of Experimental, MCNP-CSG, OpenMC-CSG and OpenMC-CAD (from OFB) resul
 
 
 ### Nuclear Data on CAD analysis
-Comparison of ENDF\B-8.0, ENDF\B-8.1, FENDL-3.2b and JEFF-3.3 nuclear data libraries results run with OFB (OpenMC-CAD model) {cite}`brown2018endf80` {cite}`nobre2025endfb8.1` {cite}`schnabel2024fendl` {cite}`plompen2020jeff3.3`. 
+Comparison of ENDF\B-8.0, ENDF\B-8.1, FENDL-3.2b and JEFF-3.3 nuclear data libraries results run with OFB (OpenMC-CAD model) {cite}`brown2018endf80` {cite}`nobre2025endfb8.1` {cite}`schnabel2024fendl` {cite}`plompen2020jeff3.3`.
 
 <p align="center">
   <img src="images/al_neutron_leakage_nuclear_data.svg" width="400" alt="Neutron leakage spectrum">
