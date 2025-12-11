@@ -11,33 +11,31 @@ The following link opens an interactive 3D visualization of the CAD model used i
 
 ### Comparison of CAD vs CSG results
 
-```{image} images/al_neutron_leakage_csg_cad.svg
-:width: 700px
-:align: center
-```
+<p align="center">
+  <img src="images/al_neutron_leakage_csg_cad.svg" width="700" alt="Neutron flux">
+</p>
 
-```{image} images/al_photon_leakage_csg_cad.svg
-:width: 700px
-:align: center
-```
+<p align="center">
+  <img src="images/al_photon_leakage_csg_cad.svg" width="700" alt="Gamma flux">
+</p>
 
 
 ### Nuclear data comparison with CAD results
 
-```{image} images/al_neutron_leakage_nuclear_data.svg
-:width: 700px
-:align: center
-```
+<p align="center">
+  <img src="images/al_neutron_leakage_nuclear_data.svg" width="700" alt="Neutron flux">
+</p>
 
-```{image} images/al_photon_leakage_nuclear_data.svg
-:width: 700px
-:align: center
-```
+<p align="center">
+  <img src="images/al_photon_leakage_nuclear_data.svg" width="700" alt="Gamma flux">
+</p>
 
 ### Uncertainty Quantification analysis
 
-```{image} images/al_neutron_leakage_uq.svg
-:width: 700px
-:align: center
-```
-![Gamma flux.](images/al_photon_leakage_uq.svg)
+<p align="center">
+  <img src="images/al_neutron_leakage_uq.svg" width="700" alt="Neutron flux">
+</p>
+
+<p align="center">
+  <img src="images/al_photon_leakage_uq.svg" width="700" alt="Gamma flux">
+</p>
