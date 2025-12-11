@@ -29,7 +29,7 @@ Comparison of Experimental, MCNP-CSG, OpenMC-CSG and OpenMC-CAD (from OFB) resul
 
 
 ### Nuclear Data on CAD analysis
-Comparison of ENDF\B-8.0, ENDF\B-8.01, FENDL-3.2b and JEFF-3.3 nuclear data libraries results run with OFB (OpenMC-CAD model). 
+Comparison of ENDF\B-8.0, ENDF\B-8.01, FENDL-3.2b and JEFF-3.3 nuclear data libraries results run with OFB (OpenMC-CAD model) {cite}`brown2018endf80`{cite}`nobre2025endfb8.1`{cite}`schnabel2024fendl`{cite}`plompen2020jeff3.3`. 
 
 <p align="center">
   <img src="images/al_neutron_leakage_nuclear_data.svg" width="400" alt="Neutron leakage spectrum">
@@ -44,7 +44,7 @@ Comparison of ENDF\B-8.0, ENDF\B-8.01, FENDL-3.2b and JEFF-3.3 nuclear data libr
 </p>
 
 ### Uncertainty Quantification analysis
-Total Monte Carlo Uncertainty Quantification (TMC-UQ) results obtained performing 500 perturbations of Al27 cross sections in ENF\B-8.0 and run the OpenMC CAD model. The center panels and right panels of the two figfures give an insight of statistics at the ~14 MeV energy group for neutrons and ~7.5 MeV energy group for photons.
+Total Monte Carlo Uncertainty Quantification (TMC-UQ) results obtained performing 500 perturbations of Al27 cross sections in ENDF\B-8.0 and run the OpenMC CAD model. The center panels and right panels of the two figfures give an insight of statistics at the ~14 MeV energy group for neutrons and ~7.5 MeV energy group for photons.
 
 <p align="center">
   <img src="images/al_neutron_leakage_uq.svg" width="800" alt="Neutron leakage spectrum with uncertainty">
@@ -57,3 +57,7 @@ Total Monte Carlo Uncertainty Quantification (TMC-UQ) results obtained performin
   <br>
   <em>Figure 7: Photon leakage spectrum with with TMC-UQ results.</em>
 </p>
+
+## References
+
+```{bibliography}
