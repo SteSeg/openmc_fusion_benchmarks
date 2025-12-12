@@ -37,8 +37,17 @@ def list_database_benchmarks() -> list[str]:
     """List all benchmarks available in the database."""
     try:
         db_root = files("openmc_fusion_benchmarks.results_database")
-        with as_file(db_root) as real_path:
-            return [p.name for p in real_path.iterdir() if p.is_dir()]
+        # Try using as_file, but fall back if it's a directory in dev mode
+        try:
+            with as_file(db_root) as real_path:
+                return [p.name for p in real_path.iterdir() if p.is_dir()]
+        except (FileNotFoundError, IsADirectoryError):
+            # In development mode, as_file fails with directories
+            # Use the path directly
+            db_root = Path(__file__).parent / "results_database"
+            if db_root.exists():
+                return [p.name for p in db_root.iterdir() if p.is_dir()]
+            return []
     except (TypeError, ModuleNotFoundError):
         db_root = Path(__file__).parent / "results_database"
         if db_root.exists():
@@ -51,8 +60,18 @@ def list_database_files(benchmark: str) -> list[str]:
     try:
         db_root = files("openmc_fusion_benchmarks.results_database")
         bench_dir = db_root / benchmark
-        with as_file(bench_dir) as real_path:
-            return [p.name for p in real_path.iterdir() if p.is_file() and p.suffix == ".h5"]
+        # Try using as_file, but fall back if it's a directory in dev mode
+        try:
+            with as_file(bench_dir) as real_path:
+                return [p.name for p in real_path.iterdir() if p.is_file() and p.suffix == ".h5"]
+        except (FileNotFoundError, IsADirectoryError):
+            # In development mode, as_file fails with directories
+            # Use the path directly
+            db_root = Path(__file__).parent / "results_database"
+            bench_dir = db_root / benchmark
+            if bench_dir.exists():
+                return [p.name for p in bench_dir.iterdir() if p.is_file() and p.suffix == ".h5"]
+            return []
     except (TypeError, ModuleNotFoundError):
         db_root = Path(__file__).parent / "results_database"
         bench_dir = db_root / benchmark
