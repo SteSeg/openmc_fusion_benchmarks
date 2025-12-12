@@ -29,6 +29,12 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_config.yml', '_toc.yml']
 
+# Add any paths that contain custom static files (such as style sheets)
+html_static_path = ['_static']
+
+# Configure MyST to handle images in subdirectories
+myst_url_schemes = ['http', 'https', 'mailto', 'ftp']
+
 # -- Options for HTML output -------------------------------------------------
 html_theme = 'sphinx_book_theme'
 html_title = 'OpenMC Fusion Benchmarks'

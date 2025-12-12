@@ -52,6 +52,7 @@ build/
 dist/
 *.egg-info/
 docs/source/_build/
+docs/_build/
 
 # macOS
 *.DS_Store
@@ -62,3 +63,4 @@ docs/source/_build/
 # Virtualenv
 .venv/
 venv/
+docs_venv/
