@@ -25,7 +25,6 @@ delete*
 *.swp
 
 # Images
-*.png
 *.ppm
 *.voxel
 *.vti
