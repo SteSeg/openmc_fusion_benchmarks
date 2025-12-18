@@ -256,3 +256,37 @@ def test_openmc_to_ofb_material_filter_raises_error(temp_dir, monkeypatch):
         with pytest.raises(NotImplementedError, match="Material filter not implemented"):
             _openmc_to_ofb(spec_tallies, mock_sp, mesh='dummy.h5m')
 
+
+def test_openmc_to_ofb_no_normalization_filter(temp_dir, monkeypatch):
+    """Test _openmc_to_ofb with a filter that doesn't need normalization."""
+    monkeypatch.chdir(temp_dir)
+    
+    mock_sp = Mock()
+    mock_tally = Mock()
+    
+    # Create proper pandas DataFrame
+    import pandas as pd
+    df = pd.DataFrame({
+        'mean': [42.0],
+        'std. dev.': [4.2]
+    })
+    mock_tally.get_pandas_dataframe = Mock(return_value=df)
+    mock_sp.get_tally = Mock(return_value=mock_tally)
+    
+    mock_mesh = Mock()
+    
+    # Spec tallies with energy filter (no normalization needed)
+    spec_tallies = [{
+        'name': 'energy_tally',
+        'filters': [{'type': 'energy', 'values': [0.0, 1e6]}]
+    }]
+    
+    # Mock pydagmc.Model to avoid loading actual mesh
+    with patch('openmc_fusion_benchmarks.utils.pydagmc.Model', return_value=mock_mesh):
+        _openmc_to_ofb(spec_tallies, mock_sp, mesh='dummy.h5m', realization_label='no_norm')
+    
+    # Verify values are unchanged (norm = 1)
+    result = xr.load_dataarray(temp_dir / "benchmark_results.h5", group="energy_tally")
+    assert result.sel(column='mean', realization='no_norm').values[0] == pytest.approx(42.0)
+    assert result.sel(column='std. dev.', realization='no_norm').values[0] == pytest.approx(4.2)
+

@@ -118,6 +118,14 @@ def test_get_reaction_mt_with_int():
     with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc.data.REACTION_MT', {}):
         from openmc_fusion_benchmarks.uq.uq_utils import get_reaction_mt
         assert get_reaction_mt(16) == 16
+
+
+def test_get_nuclide_gnds_unsupported_type():
+    """Test get_nuclide_gnds with unsupported type."""
+    with pytest.raises(TypeError, match="Unsupported nuclide type"):
+        get_nuclide_gnds([1, 2, 3])
+    with pytest.raises(TypeError, match="Unsupported nuclide type"):
+        get_nuclide_gnds({'z': 1, 'a': 1})
         assert get_reaction_mt(102) == 102
 
 

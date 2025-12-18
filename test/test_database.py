@@ -55,3 +55,13 @@ def test_resolve_database_path_existing_file():
             assert isinstance(path, Path)
             assert path.exists()
             assert path.suffix == '.h5'
+
+
+def test_resolve_database_path_provides_helpful_error():
+    """Test that FileNotFoundError contains helpful benchmark list."""
+    try:
+        _resolve_database_path("fake_benchmark", "fake_file.h5")
+        assert False, "Should have raised FileNotFoundError"
+    except FileNotFoundError as e:
+        # Error message should contain available benchmarks
+        assert "Available benchmarks:" in str(e)
