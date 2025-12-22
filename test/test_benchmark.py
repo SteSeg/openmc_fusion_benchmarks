@@ -1,9 +1,11 @@
 import pytest
 import yaml
+import numpy as np
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import patch, mock_open, Mock, MagicMock
 
 from openmc_fusion_benchmarks import Benchmark
+from openmc_fusion_benchmarks.benchmark import OpenmcBenchmark
 
 
 # Minimal subclass for testing abstract class
@@ -63,3 +65,192 @@ def test_benchmark_file_not_found(mock_validate):
     with patch.object(Path, "open", side_effect=FileNotFoundError):
         with pytest.raises(FileNotFoundError):
             DummyBenchmark("nonexistent")
+
+
+@patch("openmc_fusion_benchmarks.benchmark.validate_benchmark")
+def test_benchmark_metadata_parsing(mock_validate, valid_yaml):
+    """Test that metadata is parsed and formatted correctly."""
+    metadata_yaml = yaml.dump({
+        "metadata": {
+            "title": "Test Benchmark",
+            "type": "experimental",
+            "category": "fusion",
+            "version": "1.0",
+            "description": "Test description",
+            "date": "2025-01-01",
+            "location": {
+                "facility": "Test Facility",
+                "city": "Test City",
+                "country": "Test Country"
+            },
+            "references": [
+                {"title": "Test Paper", "doi": "10.1234/test"}
+            ],
+            "authors": [
+                {"name": "Test Author", "affiliation": "Test Org", "email": "test@test.com"}
+            ]
+        },
+        "materials": [],
+        "geometry": {},
+        "sources": [],
+        "tallies": [],
+    })
+    
+    with patch.object(Path, "open", mock_open(read_data=metadata_yaml)):
+        bench = DummyBenchmark("test")
+    
+    assert "Test Benchmark" in bench.metadata
+    assert "experimental" in bench.metadata
+    assert "fusion" in bench.metadata
+    assert "Test Facility" in bench.metadata
+    assert "Test Author" in bench.metadata
+
+
+def test_read_metadata_with_full_spec():
+    """Test _read_metadata with complete metadata including authors."""
+    metadata_yaml = yaml.dump({
+        "metadata": {
+            "title": "Full Test",
+            "type": "experimental",
+            "category": "fusion",
+            "version": "2.0",
+            "description": "Complete test",
+            "date": "2025-01-01",
+            "location": {
+                "facility": "Test Lab",
+                "city": "Boston",
+                "country": "USA"
+            },
+            "references": [
+                {"title": "Paper 1", "doi": "10.1234/test", "url": "http://example.com"}
+            ],
+            "authors": [
+                {"name": "Alice", "affiliation": "MIT", "email": "alice@mit.edu"},
+                {"name": "Bob", "affiliation": "Harvard", "email": "bob@harvard.edu"}
+            ]
+        },
+        "materials": [],
+        "geometry": {},
+        "sources": [],
+        "tallies": [],
+    })
+    
+    with patch("openmc_fusion_benchmarks.benchmark.validate_benchmark"):
+        with patch.object(Path, "open", mock_open(read_data=metadata_yaml)):
+            bench = DummyBenchmark("test")
+    
+    assert "Full Test" in bench.metadata
+    assert "experimental" in bench.metadata
+    assert "Alice" in bench.metadata
+    assert "Bob" in bench.metadata
+    assert "MIT" in bench.metadata
+
+
+@pytest.mark.skipif(not hasattr(__import__('openmc'), '__version__'), reason="OpenMC not installed")
+def test_openmc_benchmark_build_materials():
+    """Test OpenmcBenchmark._build_materials with atomic fractions."""
+    import openmc
+    
+    spec = {
+        "metadata": {"title": "Test"},
+        "materials": [
+            {
+                "id": 1,
+                "name": "aluminum",
+                "density": {"value": 2.7, "units": "g/cm3"},
+                "composition": {
+                    "composition_type": "nuclide",
+                    "fraction_type": "atomic",
+                    "data": {"Al27": 1.0}
+                }
+            }
+        ],
+        "geometry": {"cad_file": "test.step", "meshing": {"volumes": [], "global_mesh_size_min": 0.1, "global_mesh_size_max": 10}},
+        "settings": {"run_mode": "fixed_source", "batches": 10, "particles_per_batch": 100, "photon_transport": False},
+        "sources": [],
+        "tallies": []
+    }
+    
+    with patch("openmc_fusion_benchmarks.benchmark.validate_benchmark"):
+        with patch.object(Path, "open", mock_open(read_data=yaml.dump(spec))):
+            with patch.object(OpenmcBenchmark, '_build_geometry', return_value=openmc.Geometry()):
+                with patch.object(OpenmcBenchmark, '_build_settings', return_value=openmc.Settings()):
+                    with patch.object(OpenmcBenchmark, '_build_tallies', return_value=openmc.Tallies()):
+                        bench = OpenmcBenchmark("test")
+                        materials = bench._build_materials()
+    
+    assert isinstance(materials, openmc.Materials)
+    assert len(materials) == 1
+    assert materials[0].name == "aluminum"
+
+
+@pytest.mark.skipif(not hasattr(__import__('openmc'), '__version__'), reason="OpenMC not installed")
+def test_openmc_benchmark_build_materials_with_elements():
+    """Test OpenmcBenchmark._build_materials with element composition."""
+    import openmc
+    
+    spec = {
+        "metadata": {"title": "Test"},
+        "materials": [
+            {
+                "id": 2,
+                "name": "steel",
+                "density": {"value": 7.8, "units": "g/cm3"},
+                "composition": {
+                    "composition_type": "element",
+                    "fraction_type": "weight",
+                    "data": {"Fe": 0.98, "C": 0.02}
+                }
+            }
+        ],
+        "geometry": {"cad_file": "test.step", "meshing": {"volumes": [], "global_mesh_size_min": 0.1, "global_mesh_size_max": 10}},
+        "settings": {"run_mode": "fixed_source", "batches": 10, "particles_per_batch": 100, "photon_transport": False},
+        "sources": [],
+        "tallies": []
+    }
+    
+    with patch("openmc_fusion_benchmarks.benchmark.validate_benchmark"):
+        with patch.object(Path, "open", mock_open(read_data=yaml.dump(spec))):
+            with patch.object(OpenmcBenchmark, '_build_geometry', return_value=openmc.Geometry()):
+                with patch.object(OpenmcBenchmark, '_build_settings', return_value=openmc.Settings()):
+                    with patch.object(OpenmcBenchmark, '_build_tallies', return_value=openmc.Tallies()):
+                        bench = OpenmcBenchmark("test")
+                        materials = bench._build_materials()
+    
+    assert len(materials) == 1
+    assert materials[0].name == "steel"
+
+
+@pytest.mark.skipif(not hasattr(__import__('openmc'), '__version__'), reason="OpenMC not installed")
+def test_openmc_benchmark_invalid_fraction_type():
+    """Test that invalid fraction type raises ValueError."""
+    import openmc
+    
+    spec = {
+        "metadata": {"title": "Test"},
+        "materials": [
+            {
+                "id": 1,
+                "name": "bad_material",
+                "density": {"value": 1.0, "units": "g/cm3"},
+                "composition": {
+                    "composition_type": "nuclide",
+                    "fraction_type": "invalid_type",
+                    "data": {"H1": 1.0}
+                }
+            }
+        ],
+        "geometry": {"cad_file": "test.step", "meshing": {"volumes": [], "global_mesh_size_min": 0.1, "global_mesh_size_max": 10}},
+        "settings": {"run_mode": "fixed_source", "batches": 10, "particles_per_batch": 100, "photon_transport": False},
+        "sources": [],
+        "tallies": []
+    }
+    
+    with patch("openmc_fusion_benchmarks.benchmark.validate_benchmark"):
+        with patch.object(Path, "open", mock_open(read_data=yaml.dump(spec))):
+            with patch.object(OpenmcBenchmark, '_build_geometry', return_value=openmc.Geometry()):
+                with patch.object(OpenmcBenchmark, '_build_settings', return_value=openmc.Settings()):
+                    with patch.object(OpenmcBenchmark, '_build_tallies', return_value=openmc.Tallies()):
+                        with pytest.raises(ValueError, match="Invalid fraction type"):
+                            OpenmcBenchmark("test")
+

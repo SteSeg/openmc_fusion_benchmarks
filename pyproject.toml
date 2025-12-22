@@ -24,6 +24,8 @@ dependencies = [
     "numpy",
     "xarray",
     "tables",
+    "netCDF4",
+    "h5py",
     "cad-to-dagmc",
     "pydagmc @ git+https://github.com/svalinn/pydagmc.git",
     "sandy",

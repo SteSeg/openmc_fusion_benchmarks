@@ -1,6 +1,12 @@
 import pytest
 import types
-from openmc_fusion_benchmarks.uq import get_nuclide_zaid, zaid_to_zam, get_nuclide_gnds
+from unittest.mock import patch
+from openmc_fusion_benchmarks.uq import (
+    get_nuclide_zaid, 
+    zaid_to_zam, 
+    get_nuclide_gnds,
+    get_reaction_mt
+)
 
 
 def test_zaid_to_zam_len4():
@@ -97,6 +103,38 @@ def test_int_input_valid():
 def test_int_input_invalid():
     with pytest.raises(ValueError, match="Invalid ZAID"):
         get_nuclide_gnds(999999)
+
+
+def test_get_reaction_mt_with_string():
+    """Test get_reaction_mt with a reaction name string."""
+    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc.data.REACTION_MT', {'(n,2n)': 16, '(n,gamma)': 102}):
+        from openmc_fusion_benchmarks.uq.uq_utils import get_reaction_mt
+        assert get_reaction_mt('(n,2n)') == 16
+        assert get_reaction_mt('(n,gamma)') == 102
+
+
+def test_get_reaction_mt_with_int():
+    """Test get_reaction_mt with an MT number directly."""
+    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc.data.REACTION_MT', {}):
+        from openmc_fusion_benchmarks.uq.uq_utils import get_reaction_mt
+        assert get_reaction_mt(16) == 16
+
+
+def test_get_nuclide_gnds_unsupported_type():
+    """Test get_nuclide_gnds with unsupported type."""
+    with pytest.raises(TypeError, match="Unsupported nuclide type"):
+        get_nuclide_gnds([1, 2, 3])
+    with pytest.raises(TypeError, match="Unsupported nuclide type"):
+        get_nuclide_gnds({'z': 1, 'a': 1})
+        assert get_reaction_mt(102) == 102
+
+
+def test_get_reaction_mt_unknown_reaction():
+    """Test get_reaction_mt with unknown reaction returns input."""
+    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc.data.REACTION_MT', {}):
+        from openmc_fusion_benchmarks.uq.uq_utils import get_reaction_mt
+        # Unknown reaction should return the input
+        assert get_reaction_mt(999) == 999
 
 
 def test_unsupported_type():
