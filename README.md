@@ -16,7 +16,9 @@
 ## Installation
 
 ```bash
-pip install -e .
+git clone --recurse-submodules https://github.com/eepeterson/openmc_fusion_benchmarks.git
+cd openmc_fusion_benchmarks
+pip install .
 ```
 
 Requirements: Python ≥3.7, OpenMC ≥0.14.0
@@ -30,60 +32,6 @@ from openmc_fusion_benchmarks import OpenmcBenchmark
 benchmark = OpenmcBenchmark("oktavian_al")
 benchmark.run()
 ```
-
-**Access results database:**
-```python
-from openmc_fusion_benchmarks import BenchmarkResults
-
-# Load experimental data
-exp = BenchmarkResults.from_database("oktavian_al", "experiment.h5")
-
-# Load your simulation results  
-sim = BenchmarkResults.from_file("benchmark_results.h5")
-
-# Compare
-tally = sim.get_tally("neutron_spectrum")
-```
-
-## How It Works
-
-Each benchmark is defined by a **schema-validated `specifications.yaml`** file:
-- **CAD geometry** automatically converted to DAGMC mesh
-- **Materials, sources, tallies** validated against schema
-- Same specification → reproducible across different codes
-
-**Example structure:**
-```yaml
-metadata:
-  title: OKTAVIAN AL Benchmark
-  category: fusion
-materials:
-  - name: Aluminum
-    composition: {...}
-geometry:
-  cad_file: oktavian_a.step  # CAD-based!
-  meshing: {...}
-sources: [...]
-tallies: [...]
-```
-
-Validate any benchmark:
-```python
-from openmc_fusion_benchmarks import validate_benchmark
-validate_benchmark("oktavian_al")  # Must pass schema validation
-```
-
-## Available Benchmarks
-
-- **OKTAVIAN** - 14 MeV neutron leakage from aluminum sphere
-- **FNG Streaming** - Neutron streaming experiments
-- *More in development*
-
-## Contributing
-
-Add a new benchmark: Create `specifications.yaml` + validate + add experimental data → Pull request
-
-Contribute results: Run benchmark → results auto-saved → Pull request
 
 ## Documentation
 
