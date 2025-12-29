@@ -27,16 +27,16 @@ Requirements: Python ≥3.7, OpenMC ≥0.14.0
 
 **Run a benchmark:**
 ```python
-from openmc_fusion_benchmarks import OpenmcBenchmark
+import openmc_fusion_benchmarks as ofb
 
-benchmark = OpenmcBenchmark("oktavian_al")
+benchmark = ofb.OpenmcBenchmark(name="oktavian_al")
 benchmark.run()
 ```
 
 ## Documentation
 
-[Read the Docs](https://openmc-fusion-benchmarks.readthedocs.io)
+[Read the Docs](https://openmc-fusion-benchmarks.readthedocs.io/en/latest/index.html)
 
-## License & Contact
+## License
 
-MIT License | **Stefano Segantin** (segantin@psfc.mit.edu) | Plasma Science and Fusion Center, MIT
+MIT License
