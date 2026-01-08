@@ -56,94 +56,6 @@ class TMCManager:
         # Postprocess the whole TMC set
         self._process_tmc(filepath=manifest)
 
-    def _process_tmc(self, filepath="tmc_manifest.jsonl"):
-
-        manifest_path = Path(filepath).resolve()
-        tmc_dir = manifest_path.parent
-
-        # tmc_statepoint.<realizations>.h5 
-        tmc_statepoint = tmc_dir / f"tmc_statepoint.{int(self.realizations)}.h5"
-
-        # Read TMC manifest file
-        records = []
-        with manifest_path.open() as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                rec = json.loads(line)
-                records.append(rec)
-
-        # Sort records by perturbation and realization, not really necessary though
-        records.sort(key=lambda r: (r["perturbation"], r["realization"]))
-
-        # Loop over all records and open the statepoints
-        for rec in records:
-            p_idx = rec["perturbation"]
-            r_idx = rec["realization"]
-
-            # statepoint is stored relative to the project cwd when you wrote it
-            sp_path = Path(rec["statepoint"]).resolve()
-
-         
-            # 1: Allocate the TMC array: add a sample axis
-            n_samples = 100
-            pattern = "statepoint_{:04d}.h5"
-            tally_name = "my_tally"
-
-            # --- Reference statepoint to determine shape and metadata ---
-            with openmc.StatePoint(pattern.format(1)) as sp:
-                t = sp.get_tally(name=tally_name)
-                filters = t.filters
-                filter_bins = [f.num_bins for f in filters]
-                n_nuclides = max(len(t.nuclides), 1)
-                n_scores = len(t.scores)
-
-                flat_shape = t.mean.shape
-                nd_shape = tuple(filter_bins) + (n_nuclides, n_scores)
-
-                # Sanity check
-                assert np.prod(filter_bins) == flat_shape[0]
-                assert flat_shape[1] == n_nuclides
-                assert flat_shape[2] == n_scores
-
-            # Allocate big array: (sample, filter1, filter2, ..., nuclide, score)
-            tmc_data = np.empty((n_samples,) + nd_shape, dtype=float)
-
-            # 2: Fill the TMC array
-            for i in range(n_samples):
-                fname = pattern.format(i+1)
-                with openmc.StatePoint(fname) as sp:
-                    t = sp.get_tally(name=tally_name)
-
-                    # Flat (prod(filter_bins), n_nuclides, n_scores)
-                    mean_flat = t.mean
-
-                    # Reshape to N‑D (filter1, filter2, ..., nuclide, score)
-                    mean_nd = mean_flat.reshape(nd_shape)
-
-                    # Store into TMC array
-                    tmc_data[i, ...] = mean_nd
-
-            # 3: Keeping track of what each axis means
-            # The numeric array doesn’t store “cell vs energy vs mesh” labels by itself, so you should retain some metadata:
-            axis_info = {
-            "sample_axis": 0,
-            "filter_axes": [
-                {"name": type(f).__name__, "num_bins": f.num_bins}
-                for f in filters
-            ],
-            "nuclide_axis": len(filter_bins) + 1,
-            "score_axis":   len(filter_bins) + 2,
-            "nuclides":     [str(n) for n in t.nuclides] if t.nuclides else ["total"],
-            "scores":       list(t.scores),
-            }
-            # Optionally, for certain filters you can also store bin edges / mesh indices:
-            for f in filters:
-                if isinstance(f, openmc.EnergyFilter):
-                    axis_info["energy_edges_eV"] = f.bins
-                # similarly for MeshFilter, CellFilter, etc.
-
-
     def _process_tmc(self, manifest_path="tmc_manifest.jsonl"):
         manifest_path = Path(manifest_path).resolve()
         tmc_dir = manifest_path.parent
@@ -175,8 +87,7 @@ class TMCManager:
 
         with openmc.StatePoint(str(first_sp_path)) as sp0:
             for tally in sp0.tallies.values():
-                tid = tally.id  # you can also use tally.name, but id is unambiguous
-
+                tid = tally.id 
                 filters = tally.filters
                 filter_bins = [f.num_bins for f in filters]
                 n_nuclides = max(len(tally.nuclides), 1)
