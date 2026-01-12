@@ -123,9 +123,11 @@ class TMCManager:
 
         # ---- 3. Allocate TMC arrays, one per tally ----
         tmc_data = {}  # key: tally id, value: ndarray (n_samples, ...)
+        tmc_mc_std = {}  # key: tally id, value: MC std_dev per realization
 
         for tid, nd_shape in tally_shapes.items():
             tmc_data[tid] = np.empty((n_realizations,) + nd_shape, dtype=float)
+            tmc_mc_std[tid] = np.empty((n_realizations,) + nd_shape, dtype=float)
 
         # ---- 4. Fill arrays by looping over all statepoints ----
         for i, rec in enumerate(records):
@@ -135,9 +137,12 @@ class TMCManager:
                     # assumes same tally IDs exist in every statepoint
                     tally = sp.tallies[tid]
                     mean_flat = tally.mean
+                    std_flat = tally.std_dev
                     nd_shape = tally_shapes[tid]
                     mean_nd = mean_flat.reshape(nd_shape)
+                    std_nd = std_flat.reshape(nd_shape)
                     arr[i, ...] = mean_nd
+                    tmc_mc_std[tid][i, ...] = std_nd
 
         # ---- 5. Build xarray Dataset and write to disk ----
         ds = xr.Dataset()
@@ -148,13 +153,14 @@ class TMCManager:
             filters = tally_filters[tid]
             
             # Build dimension names following OpenMC conventions
+            # Make nuclide and score dimensions unique per tally to avoid conflicts
             filter_dims = []
             for f in filters:
                 # Use filter type name without "Filter" suffix, lowercase
                 filter_type = type(f).__name__.replace("Filter", "").lower()
                 filter_dims.append(filter_type)
             
-            dims = ("realization",) + tuple(filter_dims) + ("nuclide", "score")
+            dims = ("realization",) + tuple(filter_dims) + (f"nuclide_{tid}", f"score_{tid}")
 
             # Use tally name if available, otherwise fall back to ID
             tally_name = tally_names[tid] or f"tally_{tid}"
@@ -165,10 +171,20 @@ class TMCManager:
                 coords={"realization": sample_coord},
                 name=tally_name,
             )
+            
+            # Create corresponding MC std_dev DataArray
+            da_mc_std = xr.DataArray(
+                tmc_mc_std[tid],
+                dims=dims,
+                coords={"realization": sample_coord},
+                name=f"{tally_name}_mc_std",
+            )
 
             # Attach tally metadata
             da.attrs["tally_id"] = tid
             da.attrs["tally_name"] = tally_names[tid]
+            da_mc_std.attrs["tally_id"] = tid
+            da_mc_std.attrs["tally_name"] = tally_names[tid]
 
             # Attach axis info as attrs; serialize non-scalar things to JSON strings
             axisinfo = tally_axisinfo[tid]
@@ -183,8 +199,20 @@ class TMCManager:
                     else:
                         to_dump = v
                     da.attrs[k] = json.dumps(to_dump)
+            
+            # Copy axis info to MC std DataArray
+            for k, v in axisinfo.items():
+                if isinstance(v, (int, float, bool, str, np.number)):
+                    da_mc_std.attrs[k] = v
+                else:
+                    if isinstance(v, np.ndarray):
+                        to_dump = v.tolist()
+                    else:
+                        to_dump = v
+                    da_mc_std.attrs[k] = json.dumps(to_dump)
 
             ds[da.name] = da
+            ds[da_mc_std.name] = da_mc_std
 
         # If you have netcdf4/h5netcdf installed, you can also specify engine explicitly:
         # ds.to_netcdf(tmc_statepoint, engine="h5netcdf")
@@ -239,13 +267,16 @@ class TMCStatePoint:
         if self._tallies is None:
             self._tallies = {}
             for var_name in self._ds.data_vars:
+                # Skip MC std arrays (they're accessed via the main tally)
+                if var_name.endswith('_mc_std'):
+                    continue
                 da = self._ds[var_name]
                 tally_id = da.attrs.get('tally_id')
                 if tally_id is not None:
-                    self._tallies[tally_id] = TMCTally(da)
+                    self._tallies[tally_id] = TMCTally(da, parent_ds=self._ds)
         return self._tallies
     
-    def get_tally(self, id=None, name=None):
+    def get_tally(self, tally_id=None, name=None):
         """
         Get a tally by ID or name (mimics openmc.StatePoint.get_tally).
         
@@ -261,8 +292,8 @@ class TMCStatePoint:
         TMCTally
             The requested tally
         """
-        if id is not None:
-            return self.tallies[id]
+        if tally_id is not None:
+            return self.tallies[tally_id]
         elif name is not None:
             for tally in self.tallies.values():
                 if tally.name == name:
@@ -295,10 +326,13 @@ class TMCTally:
     ----------
     data_array : xarray.DataArray
         The DataArray containing the TMC tally data
+    parent_ds : xarray.Dataset, optional
+        Parent dataset containing MC uncertainty data
     """
     
-    def __init__(self, data_array):
+    def __init__(self, data_array, parent_ds=None):
         self._da = data_array
+        self._parent_ds = parent_ds
         
     @property
     def id(self):
@@ -312,13 +346,40 @@ class TMCTally:
     
     @property
     def mean(self):
-        """Mean values across all realizations."""
+        """TMC mean: mean value across all realizations."""
         return self._da.mean(dim='realization').values
     
     @property
     def std_dev(self):
-        """Standard deviation across realizations."""
+        """TMC standard deviation: propagated parametric uncertainty across realizations."""
         return self._da.std(dim='realization').values
+    
+    @property
+    def realization_means(self):
+        """Mean value for each individual realization (shape: n_realizations x ...)."""
+        return self._da.values
+    
+    @property
+    def realization_mc_stds(self):
+        """
+        Monte Carlo standard deviation for each individual realization.
+        
+        This is the statistical uncertainty from particle sampling within each
+        individual OpenMC run (shape: n_realizations x ...).
+        """
+        # Get the corresponding MC std DataArray from the parent dataset
+        mc_std_name = f"{self._da.name}_mc_std"
+        if hasattr(self._da, '_parent_ds') and mc_std_name in self._da._parent_ds:
+            return self._da._parent_ds[mc_std_name].values
+        # Fallback: try to find it in the same file
+        try:
+            ds = xr.open_dataset(self._da.encoding.get('source', ''))
+            if mc_std_name in ds:
+                return ds[mc_std_name].values
+        except:
+            pass
+        # If not found, return zeros as fallback
+        return np.zeros_like(self._da.values)
     
     @property
     def data(self):
@@ -340,6 +401,19 @@ class TMCTally:
         if nuclides_json:
             return json.loads(nuclides_json)
         return []
+    
+    @property
+    def filters(self):
+        """List of filter information (type and number of bins)."""
+        filters_json = self._da.attrs.get('filter_axes')
+        if filters_json:
+            return json.loads(filters_json)
+        return []
+    
+    @property
+    def realizations(self):
+        """Number of TMC realizations."""
+        return self._da.sizes.get('realization', 0)
     
     @property
     def shape(self):
