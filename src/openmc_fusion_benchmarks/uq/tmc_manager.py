@@ -360,7 +360,7 @@ class TMCTally:
         return self._da.values
     
     @property
-    def realization_mc_stds(self):
+    def realization_stds(self):
         """
         Monte Carlo standard deviation for each individual realization.
         
