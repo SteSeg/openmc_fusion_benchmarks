@@ -11,15 +11,36 @@ import itertools
 
 class TMCManager:
     def __init__(self, base_model: openmc.Model, perturbations: List[Callable],
-                  realizations:int, rng:np.random._generator.Generator=None):
-        self.base_model = base_model
-        # self.perturbations = perturbations
-        self.realizations = realizations
-        self.rng = rng or np.random.default_rng()
+                realizations:int, seed: int | None = None, 
+                rng: np.random.Generator | None = None):
 
+        if rng is not None and seed is not None:
+            raise ValueError("Pass either seed or rng, not both.")
+
+        if rng is None:
+            if seed is None:
+                seed = 123456  # or from config
+            self.master_rng = np.random.default_rng(seed)
+        else:
+            self.master_rng = rng
+        
+        if rng is not None:
+            self.rng = rng
+        else:
+            self.rng = np.random.default_rng(seed)
+
+        self.base_model = base_model
+        self.realizations = realizations
+        
         # perturbations is a list of factories: factory(rng) -> perturb(model)
         # call each factory once to get a closure perturb(model) -> model
-        self.perturbations = [factory(self.rng) for factory in perturbations]
+        perts = []
+        for factory in perturbations:
+            base_seed = int(self.master_rng.integers(0, 2**31))
+            perturb = factory(base_seed)
+            perts.append(perturb)
+        
+        self.perturbations = perts
 
     def run(self, cwd='.', *args, **kwargs):
 
@@ -45,8 +66,8 @@ class TMCManager:
                 # for perturb, ridx in zip(self.perturbations, idx_tuple):
                 #     perturbed_model = perturb(perturbed_model, ridx, self.rng)
 
-                for perturb in self.perturbations:
-                    perturbed_model = perturb(perturbed_model, self.rng)
+                for pert, ridx in zip(self.perturbations, idx_tuple):
+                    perturbed_model = pert(perturbed_model, ridx)
 
                     # Create run directory
                     s = ".".join(map(str, idx_tuple))
@@ -54,7 +75,12 @@ class TMCManager:
                     run_dir.mkdir(parents=True, exist_ok=True)
 
                     # Run model
-                    sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
+                    # sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
+
+                    print(s)  # delete later
+                    sp_path = run_dir / "model.xml"  # delete later
+                    perturbed_model.export_to_model_xml(str(sp_path))  # delete later
+
                     sp_path = Path(sp_path).resolve()
 
                     # Store statepoint path in manifest
@@ -64,43 +90,6 @@ class TMCManager:
                             "statepoint": str(sp_path.relative_to(cwd)),
                         }
                     f_manifest.write(json.dumps(rec) + "\n")
-
-
-    # def run(self, cwd='.', *args, **kwargs):
-
-    #     cwd = Path(cwd).resolve()
-
-    #     # Prepare TMC manifest file
-    #     manifest = cwd / "tmc_manifest.jsonl"
-    #     manifest.parent.mkdir(parents=True, exist_ok=True)
-
-    #     # Open TMC manifest for folder structure
-    #     with manifest.open("a") as f_manifest:
-    #         # Run TMC engine
-    #         for p_idx, p in enumerate(self.perturbations):
-    #             for r_idx in range(self.realizations):
-
-    #                 # fresh copy so perturbations do not accumulate
-    #                 model_copy = copy.deepcopy(self.base_model)
-    #                 perturbed_model = p(model_copy)
-
-    #                 run_dir = cwd / "tmc" / f"perturbation_{p_idx}" / f"realization_{r_idx}"
-    #                 run_dir.mkdir(parents=True, exist_ok=True)
-
-    #                 sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
-    #                 sp_path = Path(sp_path).resolve()
-
-    #                 # Record in manifest (relative path from cwd)
-    #                 rec = {
-    #                     "perturbation": int(p_idx),
-    #                     "realization": int(r_idx),
-    #                     "statepoint": str(sp_path.relative_to(cwd)),
-    #                     # "params": perturbation_params_if_any,
-    #                 }
-    #                 f_manifest.write(json.dumps(rec) + "\n")
-        
-    #     # Postprocess the whole TMC set
-    #     self._process_tmc(manifest_path=manifest)
 
     def _process_tmc(self, manifest_path="tmc_manifest.jsonl"):
         manifest_path = Path(manifest_path).resolve()
