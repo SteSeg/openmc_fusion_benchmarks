@@ -6,6 +6,7 @@ import json
 import copy
 import xarray as xr
 import inspect
+import itertools
 
 
 class TMCManager:
@@ -20,7 +21,6 @@ class TMCManager:
         # call each factory once to get a closure perturb(model) -> model
         self.perturbations = [factory(self.rng) for factory in perturbations]
 
-
     def run(self, cwd='.', *args, **kwargs):
 
         cwd = Path(cwd).resolve()
@@ -31,31 +31,76 @@ class TMCManager:
 
         # Open TMC manifest for folder structure
         with manifest.open("a") as f_manifest:
-            # Run TMC engine
-            for p_idx, p in enumerate(self.perturbations):
-                for r_idx in range(self.realizations):
 
-                    # fresh copy so perturbations do not accumulate
-                    model_copy = copy.deepcopy(self.base_model)
-                    perturbed_model = p(model_copy)
+            # Run TMC engine in matrix combined perturbations mode
+            for idx_tuple in itertools.product(range(self.realizations), repeat=len(self.perturbations)):
+                # idx_tuple length == p, e.g. (0, 2) for this p=2 example
 
-                    run_dir = cwd / "tmc" / f"perturbation_{p_idx}" / f"realization_{r_idx}"
+                # Copy base model
+                perturbed_model = copy.deepcopy(self.base_model)
+
+                # Apply each perturbation with its corresponding realization index
+
+                # Might need idx as argument for reproducibility, i.e.:
+                # for perturb, ridx in zip(self.perturbations, idx_tuple):
+                #     perturbed_model = perturb(perturbed_model, ridx, self.rng)
+
+                for perturb in self.perturbations:
+                    perturbed_model = perturb(perturbed_model, self.rng)
+
+                    # Create run directory
+                    s = ".".join(map(str, idx_tuple))
+                    run_dir = cwd / "tmc" / f"perturbation_{s}"
                     run_dir.mkdir(parents=True, exist_ok=True)
 
+                    # Run model
                     sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
                     sp_path = Path(sp_path).resolve()
 
-                    # Record in manifest (relative path from cwd)
+                    # Store statepoint path in manifest
                     rec = {
-                        "perturbation": int(p_idx),
-                        "realization": int(r_idx),
-                        "statepoint": str(sp_path.relative_to(cwd)),
-                        # "params": perturbation_params_if_any,
-                    }
+                            "combo_index": s,
+                            "indices": list(idx_tuple),  # [i0, i1, ..., i_{p-1}]
+                            "statepoint": str(sp_path.relative_to(cwd)),
+                        }
                     f_manifest.write(json.dumps(rec) + "\n")
+
+
+    # def run(self, cwd='.', *args, **kwargs):
+
+    #     cwd = Path(cwd).resolve()
+
+    #     # Prepare TMC manifest file
+    #     manifest = cwd / "tmc_manifest.jsonl"
+    #     manifest.parent.mkdir(parents=True, exist_ok=True)
+
+    #     # Open TMC manifest for folder structure
+    #     with manifest.open("a") as f_manifest:
+    #         # Run TMC engine
+    #         for p_idx, p in enumerate(self.perturbations):
+    #             for r_idx in range(self.realizations):
+
+    #                 # fresh copy so perturbations do not accumulate
+    #                 model_copy = copy.deepcopy(self.base_model)
+    #                 perturbed_model = p(model_copy)
+
+    #                 run_dir = cwd / "tmc" / f"perturbation_{p_idx}" / f"realization_{r_idx}"
+    #                 run_dir.mkdir(parents=True, exist_ok=True)
+
+    #                 sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
+    #                 sp_path = Path(sp_path).resolve()
+
+    #                 # Record in manifest (relative path from cwd)
+    #                 rec = {
+    #                     "perturbation": int(p_idx),
+    #                     "realization": int(r_idx),
+    #                     "statepoint": str(sp_path.relative_to(cwd)),
+    #                     # "params": perturbation_params_if_any,
+    #                 }
+    #                 f_manifest.write(json.dumps(rec) + "\n")
         
-        # Postprocess the whole TMC set
-        self._process_tmc(manifest_path=manifest)
+    #     # Postprocess the whole TMC set
+    #     self._process_tmc(manifest_path=manifest)
 
     def _process_tmc(self, manifest_path="tmc_manifest.jsonl"):
         manifest_path = Path(manifest_path).resolve()
