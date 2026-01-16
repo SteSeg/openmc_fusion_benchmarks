@@ -42,8 +42,9 @@ class TMCManager:
         with manifest.open("a") as f_manifest:
 
             # Run TMC engine in matrix combined perturbations mode
-            for idx_tuple in itertools.product(range(self.realizations), repeat=len(self.perturbations)):
-                # idx_tuple length == p, e.g. (0, 2) for this p=2 example
+            for idx_tuple in itertools.product(range(self.realizations),
+                                            repeat=len(self.perturbations)):
+                # idx_tuple length == p, e.g. (0, 2) for p=2
 
                 # Copy base model
                 perturbed_model = copy.deepcopy(self.base_model)
@@ -52,22 +53,25 @@ class TMCManager:
                 for pert, ridx in zip(self.perturbations, idx_tuple):
                     perturbed_model = pert(perturbed_model, ridx)
 
-                    # Create run directory
-                    s = ".".join(map(str, idx_tuple))
-                    run_dir = cwd / "tmc" / f"perturbation_{s}"
-                    run_dir.mkdir(parents=True, exist_ok=True)
+                # NOW run once per idx_tuple, after all perturbations have been applied
+                s = ".".join(map(str, idx_tuple))
+                run_dir = cwd / "tmc" / f"perturbation_{s}"
+                run_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Run model
-                    sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
-                    sp_path = Path(sp_path).resolve()
+                # Run model
+                sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
+                sp_path = Path(sp_path).resolve()
 
-                    # Store statepoint path in manifest
-                    rec = {
-                            "indices": list(idx_tuple),  # [i0, i1, ..., i_{p-1}]
-                            "statepoint": str(sp_path.relative_to(cwd)),
-                        }
-                    f_manifest.write(json.dumps(rec) + "\n")
-                    f_manifest.flush()
+                # Store statepoint path in manifest
+                rec = {
+                    "indices": list(idx_tuple),  # [i0, i1, ..., i_{p-1}]
+                    "statepoint": str(sp_path.relative_to(cwd)),
+                }
+                f_manifest.write(json.dumps(rec) + "\n")
+                f_manifest.flush()
+
+        # Postprocess the whole TMC set
+        self._process_tmc(manifest_path=manifest)
 
     def _build_indexed_perturbations(self, user_factories):
         """
@@ -99,12 +103,28 @@ class TMCManager:
 
     def _process_tmc(self, manifest_path="tmc_manifest.jsonl"):
         manifest_path = Path(manifest_path).resolve()
-        tmc_dir = manifest_path.parent
+        tmc_dir = manifest_path.parent  # directory containing the manifest
 
         # xarray will write NetCDF (HDF5-backed); extension is up to you
         tmc_statepoint = tmc_dir / f"tmc_statepoint.{int(self.realizations)}.h5"
 
-        # ---- 1. Read TMC manifest ----
+        # ---- helper: resolve statepoint path robustly ----
+        def resolve_statepoint_path(sp_str: str) -> Path:
+            sp_path = Path(sp_str)
+            if sp_path.is_absolute():
+                return sp_path
+            # Try relative to manifest dir
+            cand1 = tmc_dir / sp_path
+            if cand1.exists():
+                return cand1
+            # Try relative to parent of manifest dir (project root)
+            cand2 = tmc_dir.parent / sp_path
+            if cand2.exists():
+                return cand2
+            # Fallback: plain resolve (current CWD)
+            return sp_path.resolve()
+
+        # ---- 1. Read manifest ----
         records = []
         with manifest_path.open() as f:
             for line in f:
@@ -114,18 +134,57 @@ class TMCManager:
                 rec = json.loads(line)
                 records.append(rec)
 
-        # Sort for deterministic order
-        records.sort(key=lambda r: (r["perturbation"], r["realization"]))
-        n_realizations = len(records)
-        if n_realizations == 0:
+        if not records:
             raise RuntimeError("TMC manifest is empty; no runs to process")
 
-        # ---- 2. Use first statepoint as reference to determine shape & metadata ----
-        first_sp_path = Path(records[0]["statepoint"]).resolve()
-        tally_names = {}  # key: tally id, value: tally name
-        tally_shapes = {}  # key: tally id, value: nd_shape
-        tally_filters = {}  # key: tally id, value: list of filters
-        tally_axisinfo = {}  # key: tally id, value: axis_info dict
+        # Detect mode: old sequential vs new matrix
+        first_rec = records[0]
+        if "indices" in first_rec:
+            mode = "matrix"
+        elif "perturbation" in first_rec and "realization" in first_rec:
+            mode = "sequential"
+        else:
+            raise RuntimeError("Unrecognized manifest record format")
+
+        # ---- 2. Sort & index logic depending on mode ----
+        if mode == "sequential":
+            # sort by (perturbation, realization)
+            records.sort(key=lambda r: (r["perturbation"], r["realization"]))
+            n_realizations = len(records)
+            extra_shape = (n_realizations,)
+            extra_dims = ("realization",)
+            extra_coords = {"realization": np.arange(n_realizations)}
+
+        else:  # mode == "matrix"
+            # each record: {"indices": [i0, i1, ..., i_{p-1}], "statepoint": ...}
+            # sort lexicographically by indices
+            records.sort(key=lambda r: tuple(r["indices"]))
+
+            # number of perturbations = length of indices
+            p = len(first_rec["indices"])
+
+            # In the matrix TMC driver, you used:
+            #   for idx_tuple in itertools.product(range(self.realizations), repeat=p):
+            # so each perturbation dimension has length self.realizations
+            r = int(self.realizations)
+            extra_shape = tuple(r for _ in range(p))  # (r, r, ..., r)
+            extra_dims = tuple(f"perturbation_{i}" for i in range(p))
+            extra_coords = {dim: np.arange(r) for dim in extra_dims}
+
+            n_combos = len(records)
+            expected_combos = r ** p
+            if n_combos != expected_combos:
+                raise RuntimeError(
+                    f"Matrix TMC manifest has {n_combos} runs, but expected {expected_combos} "
+                    f"for realizations={r}, perturbations={p}."
+                )
+
+        # ---- 3. Use first statepoint as reference for tallies ----
+        first_sp_path = resolve_statepoint_path(first_rec["statepoint"])
+        tally_names = {}    # tid -> name
+        tally_shapes = {}   # tid -> nd_shape (filters..., nuclide, score)
+        tally_filters = {}  # tid -> list of filters
+        tally_axisinfo = {} # tid -> axis_info dict
 
         with openmc.StatePoint(str(first_sp_path)) as sp0:
             for tally in sp0.tallies.values():
@@ -143,122 +202,133 @@ class TMCManager:
                 assert flat_shape[1] == n_nuclides
                 assert flat_shape[2] == n_scores
 
-                tally_names[tid]  = tally.name
-                tally_shapes[tid]  = nd_shape
+                tally_names[tid] = tally.name
+                tally_shapes[tid] = nd_shape
                 tally_filters[tid] = filters
 
                 axis_info = {
-                    "sample_axis": 0,
                     "filter_axes": [
                         {"name": type(f).__name__, "num_bins": f.num_bins}
                         for f in filters
                     ],
-                    "nuclide_axis": len(filter_bins) + 1,
-                    "score_axis":   len(filter_bins) + 2,
-                    "nuclides":     [str(n) for n in tally.nuclides] if tally.nuclides else ["total"],
-                    "scores":       list(tally.scores),
+                    "nuclides": [str(n) for n in tally.nuclides] if tally.nuclides else ["total"],
+                    "scores": list(tally.scores),
                 }
 
                 tally_axisinfo[tid] = axis_info
 
-        # ---- 3. Allocate TMC arrays, one per tally ----
-        tmc_data = {}  # key: tally id, value: ndarray (n_samples, ...)
-        tmc_mc_std = {}  # key: tally id, value: MC std_dev per realization
+        # ---- 4. Allocate arrays: one per tally ----
+        tmc_data = {}    # tid -> ndarray (extra_shape + nd_shape)
+        tmc_mc_std = {}  # tid -> ndarray (extra_shape + nd_shape)
 
         for tid, nd_shape in tally_shapes.items():
-            tmc_data[tid] = np.empty((n_realizations,) + nd_shape, dtype=float)
-            tmc_mc_std[tid] = np.empty((n_realizations,) + nd_shape, dtype=float)
+            full_shape = extra_shape + nd_shape
+            tmc_data[tid] = np.empty(full_shape, dtype=float)
+            tmc_mc_std[tid] = np.empty(full_shape, dtype=float)
 
-        # ---- 4. Fill arrays by looping over all statepoints ----
-        for i, rec in enumerate(records):
-            sp_path = Path(rec["statepoint"]).resolve()
-            with openmc.StatePoint(str(sp_path)) as sp:
-                for tid, arr in tmc_data.items():
-                    # assumes same tally IDs exist in every statepoint
-                    tally = sp.tallies[tid]
-                    mean_flat = tally.mean
-                    std_flat = tally.std_dev
-                    nd_shape = tally_shapes[tid]
-                    mean_nd = mean_flat.reshape(nd_shape)
-                    std_nd = std_flat.reshape(nd_shape)
-                    arr[i, ...] = mean_nd
-                    tmc_mc_std[tid][i, ...] = std_nd
+        # ---- 5. Fill arrays by looping over statepoints ----
+        if mode == "sequential":
+            for i, rec in enumerate(records):
+                sp_path = resolve_statepoint_path(rec["statepoint"])
+                with openmc.StatePoint(str(sp_path)) as sp:
+                    for tid in tmc_data.keys():
+                        tally = sp.tallies[tid]
+                        mean_flat = tally.mean
+                        std_flat = tally.std_dev
+                        nd_shape = tally_shapes[tid]
+                        mean_nd = mean_flat.reshape(nd_shape)
+                        std_nd = std_flat.reshape(nd_shape)
+                        tmc_data[tid][i, ...] = mean_nd
+                        tmc_mc_std[tid][i, ...] = std_nd
 
-        # ---- 5. Build xarray Dataset and write to disk ----
+        else:  # mode == "matrix"
+            # Fill as flat (n_combos, ...) then reshape first axis into extra_shape
+            n_combos = len(records)
+            flat_data = {}
+            flat_mc_std = {}
+            for tid, nd_shape in tally_shapes.items():
+                flat_shape = (n_combos,) + nd_shape
+                flat_data[tid] = np.empty(flat_shape, dtype=float)
+                flat_mc_std[tid] = np.empty(flat_shape, dtype=float)
+
+            for i, rec in enumerate(records):
+                sp_path = resolve_statepoint_path(rec["statepoint"])
+                with openmc.StatePoint(str(sp_path)) as sp:
+                    for tid in flat_data.keys():
+                        tally = sp.tallies[tid]
+                        mean_flat = tally.mean
+                        std_flat = tally.std_dev
+                        nd_shape = tally_shapes[tid]
+                        mean_nd = mean_flat.reshape(nd_shape)
+                        std_nd = std_flat.reshape(nd_shape)
+                        flat_data[tid][i, ...] = mean_nd
+                        flat_mc_std[tid][i, ...] = std_nd
+
+            # reshape into extra_shape + nd_shape
+            for tid, arr in flat_data.items():
+                arr.shape = extra_shape + tally_shapes[tid]
+                tmc_data[tid][...] = arr
+            for tid, arr in flat_mc_std.items():
+                arr.shape = extra_shape + tally_shapes[tid]
+                tmc_mc_std[tid][...] = arr
+
+        # ---- 6. Build xarray Dataset and write ----
         ds = xr.Dataset()
-        sample_coord = np.arange(n_realizations)
 
         for tid, arr in tmc_data.items():
             nd_shape = tally_shapes[tid]
             filters = tally_filters[tid]
-            
-            # Build dimension names following OpenMC conventions
-            # Make nuclide and score dimensions unique per tally to avoid conflicts
+
+            # Filter dims based on filter types
             filter_dims = []
             for f in filters:
-                # Use filter type name without "Filter" suffix, lowercase
                 filter_type = type(f).__name__.replace("Filter", "").lower()
                 filter_dims.append(filter_type)
-            
-            dims = ("realization",) + tuple(filter_dims) + (f"nuclide_{tid}", f"score_{tid}")
 
-            # Use tally name if available, otherwise fall back to ID
+            nuclide_dim = f"nuclide_{tid}"
+            score_dim = f"score_{tid}"
+
+            dims = extra_dims + tuple(filter_dims) + (nuclide_dim, score_dim)
+
+            coords = dict(extra_coords)
+
             tally_name = tally_names[tid] or f"tally_{tid}"
-            
+
             da = xr.DataArray(
                 arr,
                 dims=dims,
-                coords={"realization": sample_coord},
+                coords=coords,
                 name=tally_name,
             )
-            
-            # Create corresponding MC std_dev DataArray
+
             da_mc_std = xr.DataArray(
                 tmc_mc_std[tid],
                 dims=dims,
-                coords={"realization": sample_coord},
+                coords=coords,
                 name=f"{tally_name}_mc_std",
             )
 
-            # Attach tally metadata
             da.attrs["tally_id"] = tid
             da.attrs["tally_name"] = tally_names[tid]
             da_mc_std.attrs["tally_id"] = tid
             da_mc_std.attrs["tally_name"] = tally_names[tid]
 
-            # Attach axis info as attrs; serialize non-scalar things to JSON strings
             axisinfo = tally_axisinfo[tid]
-            for k, v in axisinfo.items():
-                # scalars are fine
-                if isinstance(v, (int, float, bool, str, np.number)):
-                    da.attrs[k] = v
-                else:
-                    # lists, dicts, numpy arrays -> JSON string
-                    if isinstance(v, np.ndarray):
-                        to_dump = v.tolist()
+            for target_da in (da, da_mc_std):
+                for k, v in axisinfo.items():
+                    if isinstance(v, (int, float, bool, str, np.number)):
+                        target_da.attrs[k] = v
                     else:
-                        to_dump = v
-                    da.attrs[k] = json.dumps(to_dump)
-            
-            # Copy axis info to MC std DataArray
-            for k, v in axisinfo.items():
-                if isinstance(v, (int, float, bool, str, np.number)):
-                    da_mc_std.attrs[k] = v
-                else:
-                    if isinstance(v, np.ndarray):
-                        to_dump = v.tolist()
-                    else:
-                        to_dump = v
-                    da_mc_std.attrs[k] = json.dumps(to_dump)
+                        if isinstance(v, np.ndarray):
+                            to_dump = v.tolist()
+                        else:
+                            to_dump = v
+                        target_da.attrs[k] = json.dumps(to_dump)
 
             ds[da.name] = da
             ds[da_mc_std.name] = da_mc_std
 
-        # If you have netcdf4/h5netcdf installed, you can also specify engine explicitly:
-        # ds.to_netcdf(tmc_statepoint, engine="h5netcdf")
         ds.to_netcdf(tmc_statepoint)
-        
-        # Store path for later retrieval
         self.tmc_statepoint_path = tmc_statepoint
 
     def get_tmc_statepoint(self, path=None):
