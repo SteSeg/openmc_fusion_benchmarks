@@ -19,28 +19,16 @@ class TMCManager:
 
         if rng is None:
             if seed is None:
-                seed = 123456  # or from config
+                seed = 123456
             self.master_rng = np.random.default_rng(seed)
         else:
             self.master_rng = rng
-        
-        if rng is not None:
-            self.rng = rng
-        else:
-            self.rng = np.random.default_rng(seed)
 
         self.base_model = base_model
         self.realizations = realizations
-        
-        # perturbations is a list of factories: factory(rng) -> perturb(model)
-        # call each factory once to get a closure perturb(model) -> model
-        perts = []
-        for factory in perturbations:
-            base_seed = int(self.master_rng.integers(0, 2**31))
-            perturb = factory(base_seed)
-            perts.append(perturb)
-        
-        self.perturbations = perts
+
+       # Wrap user perturbations into indexed perturb(model, idx)
+        self.perturbations = self._build_indexed_perturbations(perturbations)
 
     def run(self, cwd='.', *args, **kwargs):
 
@@ -61,11 +49,6 @@ class TMCManager:
                 perturbed_model = copy.deepcopy(self.base_model)
 
                 # Apply each perturbation with its corresponding realization index
-
-                # Might need idx as argument for reproducibility, i.e.:
-                # for perturb, ridx in zip(self.perturbations, idx_tuple):
-                #     perturbed_model = perturb(perturbed_model, ridx, self.rng)
-
                 for pert, ridx in zip(self.perturbations, idx_tuple):
                     perturbed_model = pert(perturbed_model, ridx)
 
@@ -75,21 +58,44 @@ class TMCManager:
                     run_dir.mkdir(parents=True, exist_ok=True)
 
                     # Run model
-                    # sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
-
-                    print(s)  # delete later
-                    sp_path = run_dir / "model.xml"  # delete later
-                    perturbed_model.export_to_model_xml(str(sp_path))  # delete later
-
+                    sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
                     sp_path = Path(sp_path).resolve()
 
                     # Store statepoint path in manifest
                     rec = {
-                            "combo_index": s,
                             "indices": list(idx_tuple),  # [i0, i1, ..., i_{p-1}]
                             "statepoint": str(sp_path.relative_to(cwd)),
                         }
                     f_manifest.write(json.dumps(rec) + "\n")
+                    f_manifest.flush()
+
+    def _build_indexed_perturbations(self, user_factories):
+        """
+        user_factories: list of callables, each like:
+            factory() -> inner(model, rng)
+
+        Returns list of callables:
+            perturb(model, idx) -> model
+        """
+        indexed = []
+        for factory in user_factories:
+            # 1) get user's inner function: (model, rng) -> model
+            inner = factory()
+
+            # 2) draw a unique base_seed for this perturbation
+            base_seed = int(self.master_rng.integers(0, 2**31))
+
+            # 3) wrap inner into perturb(model, idx)
+            def make_wrapper(inner_func, base_seed):
+                def perturb(model, idx):
+                    local_seed = base_seed + idx
+                    local_rng = np.random.default_rng(local_seed)
+                    return inner_func(model, local_rng)
+                return perturb
+
+            indexed.append(make_wrapper(inner, base_seed))
+
+        return indexed
 
     def _process_tmc(self, manifest_path="tmc_manifest.jsonl"):
         manifest_path = Path(manifest_path).resolve()
