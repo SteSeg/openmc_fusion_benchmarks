@@ -519,51 +519,6 @@ class TMCTally:
         """Tally name."""
         return self._da.attrs.get("tally_name")
 
-    # --- TMC statistics ---
-
-    @property
-    def mean(self):
-        """
-        TMC mean across all TMC dimensions (realization / perturbation_*).
-        """
-        if not self._tmc_dims:
-            return self._da.values
-        return self._da.mean(dim=self._tmc_dims).values
-
-    @property
-    def std_dev(self):
-        """
-        TMC standard deviation across all TMC dimensions.
-
-        This is the propagated parametric uncertainty from the ensemble,
-        not the MC sampling error within each run.
-        """
-        if not self._tmc_dims:
-            return np.zeros_like(self._da.values)
-        return self._da.std(dim=self._tmc_dims).values
-
-    @property
-    def realization_means(self):
-        """
-        Raw mean value for each TMC point (all TMC dims retained).
-        Shape: (TMC dims..., filters..., nuclide, score).
-        """
-        return self._da.values
-
-    @property
-    def realization_stds(self):
-        """
-        Monte Carlo standard deviation for each run/combo.
-
-        This is the statistical uncertainty from particle sampling within each
-        individual OpenMC run, shaped like self._da.
-        """
-        if self._da_mc_std is not None:
-            return self._da_mc_std.values
-
-        # Fallback to zeros if not available
-        return np.zeros_like(self._da.values)
-
     # --- Metadata & helpers ---
 
     @property
@@ -630,6 +585,149 @@ class TMCTally:
     def dims(self):
         """Dimension names of the underlying mean data array."""
         return self._da.dims
+    
+        # --- TMC statistics ---
+
+    @property
+    def mean(self):
+        """
+        TMC mean across all TMC dimensions (realization / perturbation_*).
+        """
+        if not self._tmc_dims:
+            return self._da.values
+        return self._da.mean(dim=self._tmc_dims).values
+
+    @property
+    def std_dev(self):
+        """
+        TMC standard deviation across all TMC dimensions.
+
+        This is the propagated parametric uncertainty from the ensemble,
+        not the MC sampling error within each run.
+        """
+        if not self._tmc_dims:
+            return np.zeros_like(self._da.values)
+        return self._da.std(dim=self._tmc_dims).values
+
+    @property
+    def per_realization_mean(self):
+        """
+        Raw mean value for each TMC point (all TMC dims retained).
+        Shape: (TMC dims..., filters..., nuclide, score).
+        """
+        return self._da.values
+
+    @property
+    def per_realization_std_dev(self):
+        """
+        Monte Carlo standard deviation for each run/combo.
+
+        This is the statistical uncertainty from particle sampling within each
+        individual OpenMC run, shaped like self._da.
+        """
+        if self._da_mc_std is not None:
+            return self._da_mc_std.values
+
+        # Fallback to zeros if not available
+        return np.zeros_like(self._da.values)
+    
+    @property
+    def perturbation_dims(self):
+        """Names of perturbation dimensions in matrix mode (e.g. 'perturbation_0', ...)."""
+        return tuple(d for d in self._tmc_dims if d.startswith("perturbation_"))
+    
+    @property
+    def per_perturbation_mean(self, perturbation_dim=None, as_xarray=False):
+        """
+        Mean per perturbation dimension, marginalised over other perturbation dims.
+
+        In matrix mode:
+          - If perturbation_dim is None: returns a dict {dim_name: np.ndarray}
+            where each array has dims (that dim, physical dims...).
+          - If perturbation_dim is given (e.g. 'perturbation_0'):
+            returns just that array.
+
+        In sequential mode (only 'realization' TMC dim):
+          - Equivalent to t.mean (no separate per-perturbation concept).
+
+        Parameters
+        ----------
+        perturbation_dim : str, optional
+            Name of a specific perturbation dimension to extract.
+        as_xarray : bool, optional
+            If True, return xarray.DataArray(s) instead of plain numpy arrays.
+
+        Returns
+        -------
+        dict[str, np.ndarray] or np.ndarray or xarray.DataArray
+        """
+        pert_dims = self.perturbation_dims
+        if not pert_dims:
+            # sequential mode: only 'realization'
+            if perturbation_dim is not None:
+                raise ValueError("No perturbation_* dims in this tally (likely sequential mode).")
+            return self.mean if not as_xarray else self._da.mean(dim=self._tmc_dims)
+
+        # helper: compute for one dim
+        def _one_dim(dim):
+            other_pert_dims = [d for d in pert_dims if d != dim]
+            if other_pert_dims:
+                da_red = self._da.mean(dim=other_pert_dims)
+            else:
+                da_red = self._da
+            return da_red if as_xarray else da_red.values
+
+        if perturbation_dim is not None:
+            if perturbation_dim not in pert_dims:
+                raise ValueError(f"{perturbation_dim!r} is not a perturbation dimension in {pert_dims}")
+            return _one_dim(perturbation_dim)
+
+        # all perturbation dims
+        return {dim: _one_dim(dim) for dim in pert_dims}
+    
+    @property
+    def per_perturbation_std_dev(self, perturbation_dim=None, as_xarray=False):
+        """
+        Std dev per perturbation dimension, marginalised over other perturbation dims.
+
+        In matrix mode:
+          - If perturbation_dim is None: returns a dict {dim_name: np.ndarray}
+          - If perturbation_dim is given: returns just that array.
+
+        In sequential mode:
+          - Equivalent to t.std_dev.
+
+        Parameters
+        ----------
+        perturbation_dim : str, optional
+            Name of a specific perturbation dimension to extract.
+        as_xarray : bool, optional
+            If True, return xarray.DataArray(s) instead of plain numpy arrays.
+
+        Returns
+        -------
+        dict[str, np.ndarray] or np.ndarray or xarray.DataArray
+        """
+        pert_dims = self.perturbation_dims
+        if not pert_dims:
+            if perturbation_dim is not None:
+                raise ValueError("No perturbation_* dims in this tally (likely sequential mode).")
+            return self.std_dev if not as_xarray else self._da.std(dim=self._tmc_dims)
+
+        def _one_dim(dim):
+            other_pert_dims = [d for d in pert_dims if d != dim]
+            if other_pert_dims:
+                da_red = self._da.std(dim=other_pert_dims)
+            else:
+                da_red = self._da * 0.0  # only one TMC point along that dim; std=0
+            return da_red if as_xarray else da_red.values
+
+        if perturbation_dim is not None:
+            if perturbation_dim not in pert_dims:
+                raise ValueError(f"{perturbation_dim!r} is not a perturbation dimension in {pert_dims}")
+            return _one_dim(perturbation_dim)
+
+        return {dim: _one_dim(dim) for dim in pert_dims}
 
     def get_slice(self, scores=None, nuclides=None, **filter_kwargs):
         """
@@ -668,6 +766,7 @@ class TMCTally:
             da = da.isel(nuclide=nuclide_indices)
 
         return da
+
 
     def __repr__(self):
         return f"<TMCTally {self.id}: '{self.name}', shape={self.shape}>"
