@@ -31,7 +31,7 @@ class TMCManager:
        # Wrap user perturbations into indexed perturb(model, idx)
         self.perturbations = self._build_indexed_perturbations(perturbations)
 
-    def run(self, cwd='.', *args, **kwargs):
+    def run(self, mode="matrix", cwd='.', *args, **kwargs):
 
         cwd = Path(cwd).resolve()
 
@@ -39,22 +39,38 @@ class TMCManager:
         manifest = cwd / "tmc_manifest.jsonl"
         manifest.parent.mkdir(parents=True, exist_ok=True)
 
+        # If file exists from a previous run, remove it so we can append groups cleanly
+        if manifest.exists():
+            manifest.unlink()
+
+        # Number of perturbations and realizations
+        p = len(self.perturbations)
+        r = int(self.realizations)
+
+        # Choose index iterator depending on mode
+        if mode == "matrix":
+            # Full r^p Cartesian product
+            index_iter = itertools.product(range(r), repeat=p)
+        elif mode == "diagonal":
+            # Main diagonal: (0,0,...,0), (1,1,...,1), ..., (r-1,...,r-1)
+            index_iter = (tuple([k] * p) for k in range(r))
+        elif mode == "sequential":
+            raise NotImplementedError("sequential mode not implemented in this version")
+        else:
+            raise ValueError(f"Unknown TMC mode {mode!r}")
+
         # Open TMC manifest for folder structure
         with manifest.open("a") as f_manifest:
-
-            # Run TMC engine in matrix combined perturbations mode
-            for idx_tuple in itertools.product(range(self.realizations),
-                                            repeat=len(self.perturbations)):
-                # idx_tuple length == p, e.g. (0, 2) for p=2
-
+            # Run TMC engine
+            for idx_tuple in index_iter:
                 # Copy base model
                 perturbed_model = copy.deepcopy(self.base_model)
 
                 # Apply each perturbation with its corresponding realization index
-                for pert, ridx in zip(self.perturbations, idx_tuple):
-                    perturbed_model = pert(perturbed_model, ridx)
+                for perturb, ridx in zip(self.perturbations, idx_tuple):
+                    perturbed_model = perturb(perturbed_model, ridx)
 
-                # NOW run once per idx_tuple, after all perturbations have been applied
+                # Directory name encoding the index tuple
                 s = ".".join(map(str, idx_tuple))
                 run_dir = cwd / "tmc" / f"perturbation_{s}"
                 run_dir.mkdir(parents=True, exist_ok=True)
@@ -65,7 +81,8 @@ class TMCManager:
 
                 # Store statepoint path in manifest
                 rec = {
-                    "indices": list(idx_tuple),  # [i0, i1, ..., i_{p-1}]
+                    "mode": mode,                  # <-- so _process_tmc can see matrix vs diagonal
+                    "indices": list(idx_tuple),    # [i0, i1, ..., i_{p-1}]
                     "statepoint": str(sp_path.relative_to(cwd)),
                 }
                 f_manifest.write(json.dumps(rec) + "\n")
@@ -142,10 +159,11 @@ class TMCManager:
         if not records:
             raise RuntimeError("TMC manifest is empty; no runs to process")
 
-        # Detect mode: old sequential vs new matrix
+        # Detect mode: sequential vs diagonal vs matrix
         first_rec = records[0]
         if "indices" in first_rec:
-            mode = "matrix"
+            # new: allow explicit "mode" in manifest for diagonal vs full matrix
+            mode = first_rec.get("mode", "matrix")  # default to matrix if not specified
         elif "perturbation" in first_rec and "realization" in first_rec:
             mode = "sequential"
         else:
@@ -159,6 +177,15 @@ class TMCManager:
             extra_shape = (n_realizations,)
             extra_dims = ("realization",)
             extra_coords = {"realization": np.arange(n_realizations)}
+
+        elif mode == "diagonal":
+            # Diagonal matrix mode: indices are present but we treat them as a 1D TMC dim
+            # e.g. idx_tuple = (k, k, ..., k) for k in range(realizations)
+            records.sort(key=lambda r: tuple(r["indices"]))
+            n_points = len(records)
+            extra_shape = (n_points,)
+            extra_dims = ("realization",)
+            extra_coords = {"realization": np.arange(n_points)}
 
         else:  # mode == "matrix"
             # each record: {"indices": [i0, i1, ..., i_{p-1}], "statepoint": ...}
@@ -233,7 +260,8 @@ class TMCManager:
             tmc_mc_std[tid] = np.empty(full_shape, dtype=float)
 
         # ---- 5. Fill arrays by looping over statepoints ----
-        if mode == "sequential":
+        if mode in ("sequential", "diagonal"):
+            # same shape logic: one 1D TMC dim called "realization"
             for i, rec in enumerate(records):
                 sp_path = resolve_statepoint_path(rec["statepoint"])
                 with openmc.StatePoint(str(sp_path)) as sp:
@@ -279,9 +307,6 @@ class TMCManager:
                 tmc_mc_std[tid][...] = arr
 
         # ---- 6. Build per-tally Datasets and write each into its own group ----
-
-        # We'll use h5netcdf or netcdf4 so that group=... works.
-        # Each tally_id gets a group: /tally_<tid>/ with variables: mean, mc_std.
 
         for tid, arr in tmc_data.items():
             nd_shape = tally_shapes[tid]
