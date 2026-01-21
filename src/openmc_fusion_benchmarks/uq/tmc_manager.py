@@ -39,34 +39,60 @@ class TMCManager:
         manifest = cwd / "tmc_manifest.jsonl"
         manifest.parent.mkdir(parents=True, exist_ok=True)
 
-        # If file exists from a previous run, remove it so we can append groups cleanly
+        # If file exists from a previous run, remove it
         if manifest.exists():
             manifest.unlink()
 
-        # Number of perturbations and realizations
         p = len(self.perturbations)
         r = int(self.realizations)
 
-        # Choose index iterator depending on mode
+        # --- Sequential mode: one perturbation active at a time, old behaviour ---
+        if mode == "sequential":
+            with manifest.open("a") as f_manifest:
+                for p_idx, perturb in enumerate(self.perturbations):
+                    for r_idx in range(r):
+                        # fresh copy so perturbations do not accumulate
+                        model_copy = copy.deepcopy(self.base_model)
+
+                        # our current perturbations take (model, idx)
+                        perturbed_model = perturb(model_copy, r_idx)
+
+                        run_dir = cwd / "tmc" / f"perturbation_{p_idx}" / f"realization_{r_idx}"
+                        run_dir.mkdir(parents=True, exist_ok=True)
+
+                        sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
+                        sp_path = Path(sp_path).resolve()
+
+                        rec = {
+                            "perturbation": int(p_idx),
+                            "realization": int(r_idx),
+                            "statepoint": str(sp_path.relative_to(cwd)),
+                            # you can optionally add "mode": "sequential" if you like,
+                            # but _process_tmc already detects this format
+                        }
+                        f_manifest.write(json.dumps(rec) + "\n")
+                        f_manifest.flush()
+
+            self._process_tmc(manifest_path=manifest)
+            return
+
+        # --- Matrix / diagonal modes share the same structure and manifest keys ---
+        # Choose index iterator
         if mode == "matrix":
             # Full r^p Cartesian product
             index_iter = itertools.product(range(r), repeat=p)
         elif mode == "diagonal":
-            # Main diagonal: (0,0,...,0), (1,1,...,1), ..., (r-1,...,r-1)
+            # Main diagonal: (0,0,...,0), (1,1,...,1), ...
             index_iter = (tuple([k] * p) for k in range(r))
-        elif mode == "sequential":
-            raise NotImplementedError("sequential mode not implemented in this version")
         else:
             raise ValueError(f"Unknown TMC mode {mode!r}")
 
-        # Open TMC manifest for folder structure
         with manifest.open("a") as f_manifest:
-            # Run TMC engine
             for idx_tuple in index_iter:
                 # Copy base model
                 perturbed_model = copy.deepcopy(self.base_model)
 
-                # Apply each perturbation with its corresponding realization index
+                # Apply all perturbations to the same model with their indices
                 for perturb, ridx in zip(self.perturbations, idx_tuple):
                     perturbed_model = perturb(perturbed_model, ridx)
 
@@ -81,7 +107,7 @@ class TMCManager:
 
                 # Store statepoint path in manifest
                 rec = {
-                    "mode": mode,                  # <-- so _process_tmc can see matrix vs diagonal
+                    "mode": mode,                  # "matrix" or "diagonal"
                     "indices": list(idx_tuple),    # [i0, i1, ..., i_{p-1}]
                     "statepoint": str(sp_path.relative_to(cwd)),
                 }
