@@ -199,10 +199,25 @@ class TMCManager:
         if mode == "sequential":
             # sort by (perturbation, realization)
             records.sort(key=lambda r: (r["perturbation"], r["realization"]))
-            n_realizations = len(records)
-            extra_shape = (n_realizations,)
-            extra_dims = ("realization",)
-            extra_coords = {"realization": np.arange(n_realizations)}
+            
+            # Infer number of perturbations and realizations
+            n_perturbations = max(r["perturbation"] for r in records) + 1
+            n_realizations = max(r["realization"] for r in records) + 1
+            
+            # Verify we have complete data
+            expected_total = n_perturbations * n_realizations
+            if len(records) != expected_total:
+                raise RuntimeError(
+                    f"Sequential TMC manifest has {len(records)} runs, but inferred "
+                    f"{n_perturbations} perturbations × {n_realizations} realizations = {expected_total}"
+                )
+            
+            extra_shape = (n_perturbations, n_realizations)
+            extra_dims = ("perturbation", "realization")
+            extra_coords = {
+                "perturbation": np.arange(n_perturbations),
+                "realization": np.arange(n_realizations)
+            }
 
         elif mode == "diagonal":
             # Diagonal matrix mode: indices are present but we treat them as a 1D TMC dim
@@ -286,8 +301,25 @@ class TMCManager:
             tmc_mc_std[tid] = np.empty(full_shape, dtype=float)
 
         # ---- 5. Fill arrays by looping over statepoints ----
-        if mode in ("sequential", "diagonal"):
-            # same shape logic: one 1D TMC dim called "realization"
+        if mode == "sequential":
+            # 2D structure: (perturbation, realization)
+            for rec in records:
+                sp_path = resolve_statepoint_path(rec["statepoint"])
+                with openmc.StatePoint(str(sp_path)) as sp:
+                    for tid in tmc_data.keys():
+                        tally = sp.tallies[tid]
+                        mean_flat = tally.mean
+                        std_flat = tally.std_dev
+                        nd_shape = tally_shapes[tid]
+                        mean_nd = mean_flat.reshape(nd_shape)
+                        std_nd = std_flat.reshape(nd_shape)
+                        p_idx = rec["perturbation"]
+                        r_idx = rec["realization"]
+                        tmc_data[tid][p_idx, r_idx, ...] = mean_nd
+                        tmc_mc_std[tid][p_idx, r_idx, ...] = std_nd
+
+        elif mode == "diagonal":
+            # 1D structure: one "realization" dim
             for i, rec in enumerate(records):
                 sp_path = resolve_statepoint_path(rec["statepoint"])
                 with openmc.StatePoint(str(sp_path)) as sp:
@@ -350,6 +382,10 @@ class TMCManager:
 
             # coords: TMC dims
             coords = dict(extra_coords)
+
+            # coords: filter dimensions (add integer indices for each filter)
+            for i, (f, fdim) in enumerate(zip(filters, filter_dims)):
+                coords[fdim] = (fdim, np.arange(f.num_bins))
 
             # coords: nuclide / score for this tally
             nuclides = axisinfo["nuclides"]
@@ -554,10 +590,10 @@ class TMCTally:
         self._da_mc_std = mc_std_da
         self._parent_ds = parent_ds
 
-        # Identify TMC dimensions: "realization" for sequential, "perturbation_*" for matrix
+        # Identify TMC dimensions: "perturbation" and "realization" for sequential, "perturbation_*" for matrix
         self._tmc_dims = [
             d for d in self._da.dims
-            if d == "realization" or d.startswith("perturbation_")
+            if d in ("perturbation", "realization") or d.startswith("perturbation_")
         ]
 
     @property
@@ -678,108 +714,95 @@ class TMCTally:
         """
         if self._da_mc_std is not None:
             return self._da_mc_std.values
-
-        # Fallback to zeros if not available
         return np.zeros_like(self._da.values)
+
+    @property
+    def per_perturbation_mean(self):
+        """
+        Mean value for each perturbation type (averaging over all realizations).
+        
+        For sequential mode: shape (n_perturbations, filters..., nuclide, score)
+          - Averages over realizations, keeping separate perturbation results
+        
+        For matrix mode: shape (n_perturbations, filters..., nuclide, score)
+          - Averages over all perturbation_i dimensions (all realization grids)
+          - Returns one value per perturbation type
+        
+        For diagonal mode: returns overall mean (single realization dimension)
+        """
+        dims = tuple(self._da.dims)
+        has_pert = "perturbation" in dims
+        has_real = "realization" in dims
+        
+        if has_pert and has_real:
+            # Sequential mode: average over realizations only
+            result = self._da.mean(dim="realization")
+            return result.values
+        elif has_pert:
+            # Edge case: perturbation dim exists but no realization dim
+            return self._da.values
+        else:
+            # Matrix mode: average over all perturbation_i dimensions
+            pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+            if pert_dims:
+                # Average over all perturbation dimensions (all realization grids)
+                result = self._da.mean(dim=pert_dims)
+                # Result shape: (filters..., nuclide, score)
+                # Expand to add perturbation axis: (n_perturbations, filters..., nuclide, score)
+                n_perturbations = len(pert_dims)
+                # Repeat the result for each perturbation
+                result_expanded = np.tile(result.values, (n_perturbations,) + (1,) * (result.ndim))
+                return result_expanded
+            else:
+                # Diagonal or other: collapse all TMC dims
+                return self.mean
+    @property
+    def per_perturbation_std_dev(self):
+        """
+        Standard deviation for each perturbation type (across all realizations).
+        
+        For sequential mode: shape (n_perturbations, filters..., nuclide, score)
+          - Std deviation across realizations, keeping separate perturbation results
+        
+        For matrix mode: shape (n_perturbations, filters..., nuclide, score)
+          - Std deviation over all perturbation_i dimensions (all realization grids)
+          - Returns one value per perturbation type
+        
+        For diagonal mode: returns overall std_dev (single realization dimension)
+        """
+        dims = tuple(self._da.dims)
+        has_pert = "perturbation" in dims
+        has_real = "realization" in dims
+        
+        if has_pert and has_real:
+            # Sequential mode: std over realizations only
+            result = self._da.std(dim="realization")
+            return result.values
+        elif has_pert:
+            # Edge case: perturbation dim exists but no realization dim
+            return np.zeros_like(self._da.values)
+        else:
+            # Matrix mode: std over all perturbation_i dimensions
+            pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+            if pert_dims:
+                # Std over all perturbation dimensions (all realization grids)
+                result = self._da.std(dim=pert_dims)
+                # Result shape: (filters..., nuclide, score)
+                # Expand to add perturbation axis: (n_perturbations, filters..., nuclide, score)
+                n_perturbations = len(pert_dims)
+                # Repeat the result for each perturbation
+                result_expanded = np.tile(result.values, (n_perturbations,) + (1,) * (result.ndim))
+                return result_expanded
+            else:
+                # Diagonal or other: collapse all TMC dims
+                return self.std_dev
+
     
     @property
     def perturbation_dims(self):
         """Names of perturbation dimensions in matrix mode (e.g. 'perturbation_0', ...)."""
         return tuple(d for d in self._tmc_dims if d.startswith("perturbation_"))
     
-    @property
-    def per_perturbation_mean(self, perturbation_dim=None, as_xarray=False):
-        """
-        Mean per perturbation dimension, marginalised over other perturbation dims.
-
-        In matrix mode:
-          - If perturbation_dim is None: returns a dict {dim_name: np.ndarray}
-            where each array has dims (that dim, physical dims...).
-          - If perturbation_dim is given (e.g. 'perturbation_0'):
-            returns just that array.
-
-        In sequential mode (only 'realization' TMC dim):
-          - Equivalent to t.mean (no separate per-perturbation concept).
-
-        Parameters
-        ----------
-        perturbation_dim : str, optional
-            Name of a specific perturbation dimension to extract.
-        as_xarray : bool, optional
-            If True, return xarray.DataArray(s) instead of plain numpy arrays.
-
-        Returns
-        -------
-        dict[str, np.ndarray] or np.ndarray or xarray.DataArray
-        """
-        pert_dims = self.perturbation_dims
-        if not pert_dims:
-            # sequential mode: only 'realization'
-            if perturbation_dim is not None:
-                raise ValueError("No perturbation_* dims in this tally (likely sequential mode).")
-            return self.mean if not as_xarray else self._da.mean(dim=self._tmc_dims)
-
-        # helper: compute for one dim
-        def _one_dim(dim):
-            other_pert_dims = [d for d in pert_dims if d != dim]
-            if other_pert_dims:
-                da_red = self._da.mean(dim=other_pert_dims)
-            else:
-                da_red = self._da
-            return da_red if as_xarray else da_red.values
-
-        if perturbation_dim is not None:
-            if perturbation_dim not in pert_dims:
-                raise ValueError(f"{perturbation_dim!r} is not a perturbation dimension in {pert_dims}")
-            return _one_dim(perturbation_dim)
-
-        # all perturbation dims
-        return {dim: _one_dim(dim) for dim in pert_dims}
-    
-    @property
-    def per_perturbation_std_dev(self, perturbation_dim=None, as_xarray=False):
-        """
-        Std dev per perturbation dimension, marginalised over other perturbation dims.
-
-        In matrix mode:
-          - If perturbation_dim is None: returns a dict {dim_name: np.ndarray}
-          - If perturbation_dim is given: returns just that array.
-
-        In sequential mode:
-          - Equivalent to t.std_dev.
-
-        Parameters
-        ----------
-        perturbation_dim : str, optional
-            Name of a specific perturbation dimension to extract.
-        as_xarray : bool, optional
-            If True, return xarray.DataArray(s) instead of plain numpy arrays.
-
-        Returns
-        -------
-        dict[str, np.ndarray] or np.ndarray or xarray.DataArray
-        """
-        pert_dims = self.perturbation_dims
-        if not pert_dims:
-            if perturbation_dim is not None:
-                raise ValueError("No perturbation_* dims in this tally (likely sequential mode).")
-            return self.std_dev if not as_xarray else self._da.std(dim=self._tmc_dims)
-
-        def _one_dim(dim):
-            other_pert_dims = [d for d in pert_dims if d != dim]
-            if other_pert_dims:
-                da_red = self._da.std(dim=other_pert_dims)
-            else:
-                da_red = self._da * 0.0  # only one TMC point along that dim; std=0
-            return da_red if as_xarray else da_red.values
-
-        if perturbation_dim is not None:
-            if perturbation_dim not in pert_dims:
-                raise ValueError(f"{perturbation_dim!r} is not a perturbation dimension in {pert_dims}")
-            return _one_dim(perturbation_dim)
-
-        return {dim: _one_dim(dim) for dim in pert_dims}
-
     def get_slice(self, scores=None, nuclides=None, **filter_kwargs):
         """
         Get a slice of the TMC data with optional filtering.
