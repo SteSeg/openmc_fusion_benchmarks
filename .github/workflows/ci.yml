@@ -33,6 +33,14 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge openmc>=0.14.0 moab
+
+      - name: Create Conda environment
+        shell: bash -l {0}
+        run: |
+          mamba install -c conda-forge openmc>=0.14.0 moab
+          echo "Installation complete. Installed packages:"
+          mamba list | grep -E "moab|pymoab|openmc"
+          python -c "import pymoab; print('✓ pymoab imported successfully')" || echo "✗ pymoab import failed"
   
       - name: Install dependencies
         shell: bash -l {0}
