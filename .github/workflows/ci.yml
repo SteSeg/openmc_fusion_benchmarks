@@ -54,4 +54,4 @@ jobs:
         shell: bash -l {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: coveralls
+        run: coveralls || true
