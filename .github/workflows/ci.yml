@@ -32,9 +32,16 @@ jobs:
       - name: Create Conda environment
         shell: bash -l {0}
         run: |
-          mamba install -c conda-forge openmc>=0.14.0 moab
+          mamba install -c conda-forge openmc>=0.14.0
 
-      - name: Create Conda environment
+      - name: Install pymoab
+        shell: bash
+        run: |
+          python -m pip install --extra-index-url https://shimwell.github.io/wheels moab
+          python -c "import pymoab"
+          python -m pip install git+https://github.com/svalinn/pydagmc
+
+      - name: Verify MOAB installation
         shell: bash -l {0}
         run: |
           mamba install -c conda-forge openmc>=0.14.0 moab
