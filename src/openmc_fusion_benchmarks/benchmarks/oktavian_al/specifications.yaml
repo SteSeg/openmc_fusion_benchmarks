@@ -138,7 +138,7 @@ sources:
 settings:
   run_mode: fixed_source
   batches: 100
-  particles_per_batch: 10000
+  particles_per_batch: 100000
   photon_transport: true
 
 tallies:
