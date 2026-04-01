@@ -10,6 +10,60 @@ import openmc
 import xarray as xr
 
 
+def make_default_openmc_normalizer(mesh: str | Path | object):
+    """
+    Build a standard OpenMC tally normalizer based on geometry measures.
+
+    The returned callback normalizes each tally over its filter axes using:
+    - cell filter bins -> cell volumes from a DAGMC mesh model
+    - surface filter bins -> surface areas from a DAGMC mesh model
+
+    Parameters
+    ----------
+    mesh:
+        Either a mesh path accepted by ``pydagmc.Model`` or an existing
+        object exposing ``volumes_by_id`` and ``surfaces_by_id`` mappings.
+    """
+    if hasattr(mesh, "volumes_by_id") and hasattr(mesh, "surfaces_by_id"):
+        msh = mesh
+    else:
+        # Local import keeps this backend module importable even if pydagmc
+        # is not installed in non-OpenMC environments.
+        import pydagmc
+
+        msh = pydagmc.Model(str(mesh))
+
+    def normalizer(tally: openmc.Tally, mean_nd: np.ndarray, std_nd: np.ndarray):
+        filters = list(tally.filters)
+
+        # Filter dimensions are the leading axes in mean_nd/std_nd.
+        for axis, flt in enumerate(filters):
+            if isinstance(flt, openmc.CellFilter):
+                ids = np.asarray(flt.bins, dtype=int).reshape(-1)
+                factors = np.asarray([msh.volumes_by_id[i].volume for i in ids], dtype=float)
+            elif isinstance(flt, openmc.SurfaceFilter):
+                ids = np.asarray(flt.bins, dtype=int).reshape(-1)
+                factors = np.asarray([msh.surfaces_by_id[i].area for i in ids], dtype=float)
+            elif isinstance(flt, openmc.MaterialFilter):
+                raise NotImplementedError(
+                    "Material filter normalization is not implemented yet."
+                )
+            else:
+                continue
+
+            if np.any(factors == 0.0):
+                raise ValueError("Normalization factor contains zero values.")
+
+            reshape = (1,) * axis + (factors.shape[0],) + (1,) * (mean_nd.ndim - axis - 1)
+            norm = factors.reshape(reshape)
+            mean_nd = mean_nd / norm
+            std_nd = std_nd / norm
+
+        return mean_nd, std_nd
+
+    return normalizer
+
+
 def _unique_filter_dims(filters: list[openmc.Filter]) -> list[str]:
     """Build stable, unique filter dimension names."""
     counts: dict[str, int] = {}
@@ -111,11 +165,22 @@ def save_openmc_statepoint_tallies(
     tmc_coords: dict[str, Iterable] | None = None,
     append_dim: str | None = None,
     normalizer: Callable[[openmc.Tally, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]] | None = None,
+    group_by: str = "name",
     engine: str = "h5netcdf",
 ) -> Path:
     """
     Write OpenMC statepoint tallies to grouped HDF5/NetCDF datasets.
+
+    Parameters
+    ----------
+    group_by:
+        Group naming strategy, either:
+        - ``"name"``: use tally names (recommended for benchmark workflows)
+        - ``"id"``: use ``tally_<id>`` groups
     """
+    if group_by not in {"name", "id"}:
+        raise ValueError("group_by must be either 'name' or 'id'")
+
     filename = Path(filename)
     if tally_names is None:
         selected = list(statepoint.tallies.values())
@@ -128,7 +193,15 @@ def save_openmc_statepoint_tallies(
             tmc_coords=tmc_coords,
             normalizer=normalizer,
         )
-        group = f"tally_{int(tally.id)}"
+        if group_by == "name" and tally.name:
+            group = str(tally.name)
+        else:
+            group = f"tally_{int(tally.id)}"
+
+        # Keep explicit group metadata alongside tally_id / tally_name metadata.
+        ds_new.attrs["group"] = group
+        ds_new["mean"].attrs["tally_group"] = group
+        ds_new["mc_std"].attrs["tally_group"] = group
 
         if not filename.exists():
             ds_new.to_netcdf(filename, mode="w", group=group, engine=engine)

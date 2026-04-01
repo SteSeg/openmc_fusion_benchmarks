@@ -116,12 +116,11 @@ class BaseTally:
 		return da
 
 
-class BenchmarkTally(BaseTally):
-	"""Wrapper for benchmark/non-TMC tally groups."""
+class Tally(BaseTally):
+	"""Generic OFB tally wrapper for non-TMC result groups."""
 
 	def __repr__(self):
-		return f"<BenchmarkTally {self.id}: '{self.name}', shape={self.shape}>"
-
+		return f"<Tally {self.id}: '{self.name}', shape={self.shape}>"
 
 def tally_to_dataset(*args, **kwargs):
 	"""Backward-compatible alias to the OpenMC backend serializer."""

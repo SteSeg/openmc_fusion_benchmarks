@@ -3,10 +3,11 @@ from pathlib import Path
 import warnings
 from abc import ABC, abstractmethod
 import numpy as np
-import xarray as xr
-import h5py
 from .validate import validate_benchmark
-from .utils import _openmc_to_ofb, _save_result
+from .backends.openmc.tallies import (
+    make_default_openmc_normalizer,
+    save_openmc_statepoint_tallies,
+)
 from .uq.tmc_engine import tmc_engine
 
 import openmc
@@ -401,16 +402,35 @@ class OpenmcBenchmark(Benchmark):
         )
         return model
 
-    def _postprocess(self, statepoint: openmc.StatePoint, mesh: str = 'mesh.h5m'):
+    def _postprocess(self, statepoint: openmc.StatePoint | str | Path, mesh: str = 'mesh.h5m'):
         """Post-process the model after running."""
         # Retrieve tallies data from specifications
         tallies_data = self._benchmark_spec['tallies']
 
-        _openmc_to_ofb(
-            spec_tallies=tallies_data,
-            statepoint=statepoint,
-            mesh=mesh
-        )
+        tally_names = [t["name"] for t in tallies_data]
+        normalizer = make_default_openmc_normalizer(mesh)
+
+        # Accept both already-open StatePoint objects and statepoint file paths.
+        if isinstance(statepoint, openmc.StatePoint):
+            sp = statepoint
+            save_openmc_statepoint_tallies(
+                statepoint=sp,
+                filename="benchmark_results.h5",
+                tally_names=tally_names,
+                tmc_coords={"realization": ["baseline"]},
+                append_dim="realization",
+                normalizer=normalizer,
+            )
+        else:
+            with openmc.StatePoint(str(statepoint)) as sp:
+                save_openmc_statepoint_tallies(
+                    statepoint=sp,
+                    filename="benchmark_results.h5",
+                    tally_names=tally_names,
+                    tmc_coords={"realization": ["baseline"]},
+                    append_dim="realization",
+                    normalizer=normalizer,
+                )
 
         return
 
