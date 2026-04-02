@@ -73,8 +73,10 @@ geometry:
     volumes:
       - id: 1
         material: void
+        mesh_size: 5
       - id: 2
         material: void
+        mesh_size: 5
       - id: 3
         material: SS-304
         mesh_size: 0.5
@@ -110,7 +112,7 @@ sources:
                 8233000., 9098900., 10056000., 11113000., 12282000., 13574000.,
                 15002000., 16579000., 18323000., 20250000.]
         units: eV
-        interpolation : linear-linear
+        interpolation : histogram
       weights:
         - [3.00903e-05, 9.65131e-05, 2.80822e-05, 0.000306354, 0.000210096, 
           0.000205622, 0.000381712, 0.000300617, 0.000375540, 0.000512358, 
@@ -136,7 +138,7 @@ sources:
 settings:
   run_mode: fixed_source
   batches: 100
-  particles_per_batch: 10000000
+  particles_per_batch: 100000
   photon_transport: true
 
 tallies:
