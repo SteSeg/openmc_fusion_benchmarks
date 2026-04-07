@@ -3,7 +3,7 @@ from pathlib import Path
 import warnings
 from abc import ABC, abstractmethod
 import numpy as np
-from .validate import validate_benchmark
+from .validate_spec import validate_benchmark
 from .backends.openmc.tallies import (
     make_default_openmc_normalizer,
     save_openmc_statepoint_tallies,
