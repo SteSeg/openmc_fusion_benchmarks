@@ -9,6 +9,8 @@ import numpy as np
 import openmc
 import xarray as xr
 
+from ...validate_results import normalize_filter_type, validate_tally_consistency
+
 
 def make_default_openmc_normalizer(mesh: str | Path | object):
     """
@@ -76,14 +78,6 @@ def _unique_filter_dims(filters: list[openmc.Filter]) -> list[str]:
     return dims
 
 
-def _normalize_filter_type(type_name: str) -> str:
-    """Normalize filter type naming across spec and backend representations."""
-    name = str(type_name).strip().lower()
-    if name.endswith("filter"):
-        name = name[:-6]
-    return name
-
-
 def _serialize_filter_bins(flt: openmc.Filter):
     """Serialize OpenMC filter bins into JSON-compatible Python objects."""
     bins = flt.bins
@@ -109,18 +103,50 @@ def _serialize_filter_bins(flt: openmc.Filter):
     return [list(np.asarray(b).tolist()) for b in bins]
 
 
-def _build_filter_axis_metadata(filters: list[openmc.Filter], filter_dims: list[str]):
+def _build_filter_axis_metadata(
+    filters: list[openmc.Filter],
+    filter_dims: list[str],
+    spec_tally: dict | None = None,
+):
     """Create rich per-filter metadata with axis names and bin definitions."""
+    spec_filters = []
+    if isinstance(spec_tally, dict):
+        spec_filters = list(spec_tally.get("filters", []))
+
+    spec_idx = 0
     axes = []
     for flt, dim in zip(filters, filter_dims):
-        axes.append(
-            {
-                "name": type(flt).__name__,
-                "axis": dim,
-                "num_bins": int(flt.num_bins),
-                "bins": _serialize_filter_bins(flt),
-            }
-        )
+        ftype = normalize_filter_type(type(flt).__name__)
+        spec_filter = None
+        if ftype != "particle" and spec_idx < len(spec_filters):
+            spec_filter = spec_filters[spec_idx]
+            spec_idx += 1
+
+        axis_meta = {
+            "name": type(flt).__name__,
+            "axis": dim,
+            "num_bins": int(flt.num_bins),
+            "bins": _serialize_filter_bins(flt),
+        }
+
+        if isinstance(spec_filter, dict) and "units" in spec_filter:
+            axis_meta["units"] = spec_filter.get("units")
+
+        if ftype == "energy":
+            # Energy filters are represented as edge lists in OFB results.
+            axis_meta["kind"] = "edges"
+            axis_meta["units"] = (
+                spec_filter.get("units", "eV")
+                if isinstance(spec_filter, dict)
+                else "eV"
+            )
+            axis_meta["closure"] = (
+                spec_filter.get("closure", "[low, high)")
+                if isinstance(spec_filter, dict)
+                else "[low, high)"
+            )
+
+        axes.append(axis_meta)
     return axes
 
 
@@ -139,78 +165,6 @@ def _build_spec_lookup(spec_tallies) -> dict[str, dict]:
         if name:
             lookup[str(name)] = entry
     return lookup
-
-
-def _filter_bins_match(spec_filter: dict, observed_axis: dict) -> bool:
-    """Compare filter bin definitions from spec and observed metadata."""
-    expected = spec_filter.get("values")
-    observed = observed_axis.get("bins")
-
-    if expected is None or observed is None:
-        return True
-
-    ftype = _normalize_filter_type(spec_filter.get("type", ""))
-    if ftype == "energy":
-        try:
-            return np.allclose(np.asarray(expected, dtype=float), np.asarray(observed, dtype=float))
-        except Exception:
-            return False
-
-    try:
-        return list(expected) == list(observed)
-    except Exception:
-        return False
-
-
-def _validate_spec_consistency(
-    spec_tally: dict,
-    filters: list[openmc.Filter],
-    filter_axes: list[dict],
-    scores: list[str],
-    nuclides: list[str],
-) -> tuple[bool, list[str]]:
-    """Validate observed tally metadata against repository specification."""
-    issues: list[str] = []
-
-    spec_scores = [str(s) for s in spec_tally.get("scores", [])]
-    if spec_scores and spec_scores != scores:
-        issues.append(f"scores mismatch: expected {spec_scores}, observed {scores}")
-
-    spec_nuclides = [str(n) for n in spec_tally.get("nuclides", [])]
-    if spec_nuclides and spec_nuclides != nuclides:
-        issues.append(f"nuclides mismatch: expected {spec_nuclides}, observed {nuclides}")
-
-    expected_particle = spec_tally.get("particle")
-    if expected_particle is not None:
-        particle_filters = [f for f in filters if isinstance(f, openmc.ParticleFilter)]
-        if not particle_filters:
-            issues.append("missing ParticleFilter in observed tally")
-        else:
-            observed_particle = str(np.asarray(particle_filters[0].bins).reshape(-1)[0])
-            if str(expected_particle) != observed_particle:
-                issues.append(
-                    f"particle mismatch: expected {expected_particle}, observed {observed_particle}"
-                )
-
-    spec_filters = spec_tally.get("filters", [])
-    observed_non_particle = [
-        a for a in filter_axes if _normalize_filter_type(a.get("name", "")) != "particle"
-    ]
-
-    expected_types = [_normalize_filter_type(f.get("type", "")) for f in spec_filters]
-    observed_types = [_normalize_filter_type(a.get("name", "")) for a in observed_non_particle]
-    if expected_types != observed_types:
-        issues.append(f"filter type/order mismatch: expected {expected_types}, observed {observed_types}")
-
-    if len(spec_filters) == len(observed_non_particle):
-        for i, (spec_filter, observed_axis) in enumerate(zip(spec_filters, observed_non_particle)):
-            if not _filter_bins_match(spec_filter, observed_axis):
-                issues.append(
-                    f"filter bins mismatch at index {i} ({spec_filter.get('type')}): "
-                    f"expected {spec_filter.get('values')}, observed {observed_axis.get('bins')}"
-                )
-
-    return len(issues) == 0, issues
 
 
 def _to_1d_coord(values) -> np.ndarray:
@@ -287,7 +241,7 @@ def openmc_tally_to_dataset(
     ds["mc_std"].attrs["tally_id"] = int(tally.id)
     ds["mc_std"].attrs["tally_name"] = tally_name
 
-    filter_axes = _build_filter_axis_metadata(filters, filter_dims)
+    filter_axes = _build_filter_axis_metadata(filters, filter_dims, spec_tally=spec_tally)
 
     ds.attrs["filter_axes"] = json.dumps(filter_axes)
     ds.attrs["nuclides"] = json.dumps(nuclides)
@@ -304,13 +258,7 @@ def openmc_tally_to_dataset(
 
     if spec_tally is not None:
         ds.attrs["spec_tally"] = json.dumps(spec_tally)
-        consistent, issues = _validate_spec_consistency(
-            spec_tally=spec_tally,
-            filters=filters,
-            filter_axes=filter_axes,
-            scores=scores,
-            nuclides=nuclides,
-        )
+        consistent, issues = validate_tally_consistency(spec_tally, observed_tally)
         # h5netcdf/netCDF attrs do not support boolean dtype reliably.
         ds.attrs["spec_consistent"] = int(bool(consistent))
         ds.attrs["spec_consistency_issues"] = json.dumps(issues)
