@@ -89,6 +89,18 @@ def _serialize_filter_bins(flt: openmc.Filter):
     bins = flt.bins
     arr = np.asarray(bins)
 
+    # Store energy filters as edge lists (E0..En), consistent with specifications.yaml.
+    if isinstance(flt, openmc.EnergyFilter):
+        if arr.ndim == 1:
+            return arr.tolist()
+        if arr.ndim == 2 and arr.shape[1] == 2:
+            low = arr[:, 0]
+            high = arr[:, 1]
+            if low.size == 0:
+                return []
+            return np.concatenate([low[:1], high]).tolist()
+        return arr.reshape(-1).tolist()
+
     # Scalar bins -> simple list of values.
     if arr.ndim <= 1:
         return arr.tolist()
