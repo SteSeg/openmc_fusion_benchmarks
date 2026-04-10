@@ -21,16 +21,20 @@ class TMCStatePoint:
         self.path = Path(path).resolve()
         # We won't keep one global ds; we'll open per-tally groups as needed.
         self._tallies = None
+        self._tally_groups = None
+        self._tallies_by_name = None
 
     @property
-    def tallies(self):
-        """Dictionary of tallies, indexed by tally ID (mimics openmc.StatePoint.tallies)."""
+    def tallies_by_id(self):
+        """Dictionary of tallies indexed by tally ID (OpenMC-like access)."""
         if self._tallies is None:
             self._tallies = {}
+            self._tally_groups = []
+            self._tallies_by_name = {}
             # Discover tally groups via h5py
             with h5py.File(self.path, "r") as f:
                 for group_name in f.keys():
-                    if not group_name.startswith("tally_"):
+                    if not isinstance(f[group_name], h5py.Group):
                         continue
                     # Open this group as an xarray Dataset
                     ds = xr.open_dataset(
@@ -39,6 +43,7 @@ class TMCStatePoint:
                         engine="h5netcdf",
                     )
                     if "mean" not in ds:
+                        ds.close()
                         continue
                     da_mean = ds["mean"]
                     da_mc_std = ds["mc_std"] if "mc_std" in ds else None
@@ -49,10 +54,30 @@ class TMCStatePoint:
                         try:
                             tally_id = int(group_name.split("_", 1)[1])
                         except Exception:
+                            ds.close()
                             continue
 
-                    self._tallies[tally_id] = TMCTally(da_mean, da_mc_std, parent_ds=ds)
+                    try:
+                        tally_id = int(tally_id)
+                    except Exception:
+                        ds.close()
+                        continue
+
+                    self._tally_groups.append(group_name)
+
+                    tally_obj = TMCTally(da_mean, da_mc_std, parent_ds=ds)
+                    self._tallies[tally_id] = tally_obj
+
+                    tname = tally_obj.name
+                    if tname:
+                        self._tallies_by_name[str(tname)] = tally_obj
         return self._tallies
+
+    @property
+    def tallies(self):
+        """List available tally group names (same style as Results.tallies)."""
+        _ = self.tallies_by_id
+        return list(self._tally_groups)
 
     def get_tally(self, tally_id=None, name=None):
         """
@@ -70,18 +95,28 @@ class TMCStatePoint:
         TMCTally
             The requested tally
         """
+        # Convenience: allow get_tally("name") while preserving
+        # existing get_tally(<int id>) behavior.
+        if name is None and isinstance(tally_id, str):
+            name = tally_id
+            tally_id = None
+
+        # Ensure tallies are loaded (and name index is built).
+        _ = self.tallies_by_id
+
+        if name is not None:
+            tally = self._tallies_by_name.get(str(name))
+            if tally is not None:
+                return tally
+            raise ValueError(f"No tally with name '{name}' found")
+
         if tally_id is not None:
             try:
-                return self.tallies[tally_id]
+                return self.tallies_by_id[tally_id]
             except KeyError:
                 raise ValueError(f"No tally with id '{tally_id}' found")
-        elif name is not None:
-            for tally in self.tallies.values():
-                if tally.name == name:
-                    return tally
-            raise ValueError(f"No tally with name '{name}' found")
-        else:
-            raise ValueError("Must specify either 'tally_id' or 'name'")
+
+        raise ValueError("Must specify either 'name' or 'tally_id'")
 
     def close(self):
         """No persistent open Dataset to close, but keep for API symmetry."""
@@ -95,11 +130,11 @@ class TMCStatePoint:
         self.close()
 
     def __repr__(self):
-        n_tallies = len(self.tallies)
+        n_tallies = len(self.tallies_by_id)
         # Try to infer "realizations" (or more generally TMC size along first dim)
         n_realizations = 0
-        if self.tallies:
-            any_tally = next(iter(self.tallies.values()))
+        if self.tallies_by_id:
+            any_tally = next(iter(self.tallies_by_id.values()))
             tmc_dims = any_tally._tmc_dims
             if tmc_dims:
                 # product of TMC dims sizes

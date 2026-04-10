@@ -7,6 +7,7 @@ import copy
 import xarray as xr
 import itertools
 from .tmc_statepoint import TMCStatePoint
+from ..validate_results import validate_tally_consistency
 
 
 class TMCManager:
@@ -30,7 +31,7 @@ class TMCManager:
        # Wrap user perturbations into indexed perturb(model, idx)
         self.perturbations = self._build_indexed_perturbations(perturbations)
 
-    def run(self, mode="matrix", cwd='.', *args, **kwargs):
+    def run(self, mode="matrix", cwd='.', benchmark_export=None, *args, **kwargs):
 
         cwd = Path(cwd).resolve()
 
@@ -72,7 +73,7 @@ class TMCManager:
                         f_manifest.write(json.dumps(rec) + "\n")
                         f_manifest.flush()
 
-            self._process_tmc(manifest_path=manifest)
+            self._process_tmc(manifest_path=manifest, benchmark_export=benchmark_export)
             return
 
         # --- Matrix / diagonal modes share the same structure and manifest keys ---
@@ -114,7 +115,7 @@ class TMCManager:
                 f_manifest.flush()
 
         # Postprocess the whole TMC set
-        self._process_tmc(manifest_path=manifest)
+        self._process_tmc(manifest_path=manifest, benchmark_export=benchmark_export)
 
     def _build_indexed_perturbations(self, user_factories):
         """
@@ -144,7 +145,7 @@ class TMCManager:
 
         return indexed
 
-    def _process_tmc(self, manifest_path="tmc_manifest.jsonl"):
+    def _process_tmc(self, manifest_path="tmc_manifest.jsonl", benchmark_export=None):
         manifest_path = Path(manifest_path).resolve()
         tmc_dir = manifest_path.parent  # directory containing the manifest
 
@@ -155,7 +156,105 @@ class TMCManager:
         if tmc_statepoint.exists():
             tmc_statepoint.unlink()
 
+        benchmark_file = None
+        benchmark_normalizer = None
+        spec_lookup = {}
+        if benchmark_export:
+            benchmark_file = Path(benchmark_export.get("filename", "benchmark_results.h5"))
+            if not benchmark_file.is_absolute():
+                benchmark_file = (tmc_dir / benchmark_file).resolve()
+            if benchmark_file.exists():
+                benchmark_file.unlink()
+
+            benchmark_normalizer = benchmark_export.get("normalizer")
+
+            spec_tallies = benchmark_export.get("spec_tallies")
+            if isinstance(spec_tallies, dict):
+                spec_lookup = spec_tallies
+            elif spec_tallies is not None:
+                for entry in spec_tallies:
+                    if isinstance(entry, dict) and entry.get("name"):
+                        spec_lookup[str(entry["name"])] = entry
+
         # ---- helper: resolve statepoint path robustly ----
+        def _normalize_filter_type(type_name: str) -> str:
+            name = str(type_name).strip().lower()
+            if name.endswith("filter"):
+                name = name[:-6]
+            return name
+
+        def _unique_filter_dims(filters):
+            counts = {}
+            dims = []
+            for flt in filters:
+                base = type(flt).__name__.replace("Filter", "").lower() or "filter"
+                idx = counts.get(base, 0)
+                counts[base] = idx + 1
+                dims.append(base if idx == 0 else f"{base}_{idx}")
+            return dims
+
+        def _serialize_filter_bins(flt):
+            bins = flt.bins
+            arr = np.asarray(bins)
+
+            if isinstance(flt, openmc.EnergyFilter):
+                if arr.ndim == 1:
+                    return arr.tolist()
+                if arr.ndim == 2 and arr.shape[1] == 2:
+                    low = arr[:, 0]
+                    high = arr[:, 1]
+                    if low.size == 0:
+                        return []
+                    return np.concatenate([low[:1], high]).tolist()
+                return arr.reshape(-1).tolist()
+
+            if arr.ndim <= 1:
+                return arr.tolist()
+
+            return [list(np.asarray(b).tolist()) for b in bins]
+
+        def _build_filter_axis_metadata(filters, filter_dims):
+            axes = []
+            for flt, dim in zip(filters, filter_dims):
+                ftype = _normalize_filter_type(type(flt).__name__)
+                axis_meta = {
+                    "name": type(flt).__name__,
+                    "axis": dim,
+                    "num_bins": int(flt.num_bins),
+                    "bins": _serialize_filter_bins(flt),
+                }
+                if ftype == "energy":
+                    axis_meta["kind"] = "edges"
+                    axis_meta["units"] = "eV"
+                    axis_meta["closure"] = "[low, high)"
+                axes.append(axis_meta)
+            return axes
+
+        def _safe_group_name(name: str, tid: int, used: set[str]) -> str:
+            base = (name or "").strip()
+            if not base:
+                candidate = f"tally_{int(tid)}"
+            else:
+                # Avoid creating nested paths in HDF groups.
+                candidate = base.replace("/", "_")
+
+            if candidate not in used:
+                used.add(candidate)
+                return candidate
+
+            with_id = f"{candidate}__{int(tid)}"
+            if with_id not in used:
+                used.add(with_id)
+                return with_id
+
+            i = 1
+            while True:
+                alt = f"{with_id}_{i}"
+                if alt not in used:
+                    used.add(alt)
+                    return alt
+                i += 1
+
         def resolve_statepoint_path(sp_str: str) -> Path:
             sp_path = Path(sp_str)
             if sp_path.is_absolute():
@@ -279,13 +378,16 @@ class TMCManager:
                 tally_shapes[tid] = nd_shape
                 tally_filters[tid] = filters
 
+                filter_dims = _unique_filter_dims(filters)
+                filter_axes = _build_filter_axis_metadata(filters, filter_dims)
+                scores = [str(s) for s in tally.scores]
+                nuclides = [str(n) for n in tally.nuclides] if tally.nuclides else ["total"]
+
                 axis_info = {
-                    "filter_axes": [
-                        {"name": type(f).__name__, "num_bins": f.num_bins}
-                        for f in filters
-                    ],
-                    "nuclides": [str(n) for n in tally.nuclides] if tally.nuclides else ["total"],
-                    "scores": list(tally.scores),
+                    "filter_dims": filter_dims,
+                    "filter_axes": filter_axes,
+                    "nuclides": nuclides,
+                    "scores": scores,
                 }
 
                 tally_axisinfo[tid] = axis_info
@@ -293,11 +395,16 @@ class TMCManager:
         # ---- 4. Allocate arrays: one per tally ----
         tmc_data = {}    # tid -> ndarray (extra_shape + nd_shape)
         tmc_mc_std = {}  # tid -> ndarray (extra_shape + nd_shape)
+        benchmark_data = {}
+        benchmark_mc_std = {}
 
         for tid, nd_shape in tally_shapes.items():
             full_shape = extra_shape + nd_shape
             tmc_data[tid] = np.empty(full_shape, dtype=float)
             tmc_mc_std[tid] = np.empty(full_shape, dtype=float)
+            if benchmark_file is not None:
+                benchmark_data[tid] = np.empty(full_shape, dtype=float)
+                benchmark_mc_std[tid] = np.empty(full_shape, dtype=float)
 
         # ---- 5. Fill arrays by looping over statepoints ----
         if mode == "sequential":
@@ -316,6 +423,13 @@ class TMCManager:
                         r_idx = rec["realization"]
                         tmc_data[tid][p_idx, r_idx, ...] = mean_nd
                         tmc_mc_std[tid][p_idx, r_idx, ...] = std_nd
+                        if benchmark_file is not None:
+                            if benchmark_normalizer is not None:
+                                b_mean, b_std = benchmark_normalizer(tally, mean_nd.copy(), std_nd.copy())
+                            else:
+                                b_mean, b_std = mean_nd, std_nd
+                            benchmark_data[tid][p_idx, r_idx, ...] = b_mean
+                            benchmark_mc_std[tid][p_idx, r_idx, ...] = b_std
 
         elif mode == "diagonal":
             # 1D structure: one "realization" dim
@@ -331,16 +445,28 @@ class TMCManager:
                         std_nd = std_flat.reshape(nd_shape)
                         tmc_data[tid][i, ...] = mean_nd
                         tmc_mc_std[tid][i, ...] = std_nd
+                        if benchmark_file is not None:
+                            if benchmark_normalizer is not None:
+                                b_mean, b_std = benchmark_normalizer(tally, mean_nd.copy(), std_nd.copy())
+                            else:
+                                b_mean, b_std = mean_nd, std_nd
+                            benchmark_data[tid][i, ...] = b_mean
+                            benchmark_mc_std[tid][i, ...] = b_std
 
         else:  # mode == "matrix"
             # Fill as flat (n_combos, ...) then reshape first axis into extra_shape
             n_combos = len(records)
             flat_data = {}
             flat_mc_std = {}
+            flat_benchmark_data = {}
+            flat_benchmark_mc_std = {}
             for tid, nd_shape in tally_shapes.items():
                 flat_shape = (n_combos,) + nd_shape
                 flat_data[tid] = np.empty(flat_shape, dtype=float)
                 flat_mc_std[tid] = np.empty(flat_shape, dtype=float)
+                if benchmark_file is not None:
+                    flat_benchmark_data[tid] = np.empty(flat_shape, dtype=float)
+                    flat_benchmark_mc_std[tid] = np.empty(flat_shape, dtype=float)
 
             for i, rec in enumerate(records):
                 sp_path = resolve_statepoint_path(rec["statepoint"])
@@ -354,6 +480,13 @@ class TMCManager:
                         std_nd = std_flat.reshape(nd_shape)
                         flat_data[tid][i, ...] = mean_nd
                         flat_mc_std[tid][i, ...] = std_nd
+                        if benchmark_file is not None:
+                            if benchmark_normalizer is not None:
+                                b_mean, b_std = benchmark_normalizer(tally, mean_nd.copy(), std_nd.copy())
+                            else:
+                                b_mean, b_std = mean_nd, std_nd
+                            flat_benchmark_data[tid][i, ...] = b_mean
+                            flat_benchmark_mc_std[tid][i, ...] = b_std
 
             # reshape into extra_shape + nd_shape
             for tid, arr in flat_data.items():
@@ -362,19 +495,25 @@ class TMCManager:
             for tid, arr in flat_mc_std.items():
                 arr.shape = extra_shape + tally_shapes[tid]
                 tmc_mc_std[tid][...] = arr
+            if benchmark_file is not None:
+                for tid, arr in flat_benchmark_data.items():
+                    arr.shape = extra_shape + tally_shapes[tid]
+                    benchmark_data[tid][...] = arr
+                for tid, arr in flat_benchmark_mc_std.items():
+                    arr.shape = extra_shape + tally_shapes[tid]
+                    benchmark_mc_std[tid][...] = arr
 
         # ---- 6. Build per-tally Datasets and write each into its own group ----
+
+        used_group_names = set()
 
         for tid, arr in tmc_data.items():
             nd_shape = tally_shapes[tid]
             filters = tally_filters[tid]
             axisinfo = tally_axisinfo[tid]
 
-            # filter dims based on filter types
-            filter_dims = []
-            for f in filters:
-                filter_type = type(f).__name__.replace("Filter", "").lower()
-                filter_dims.append(filter_type)
+            # filter dims based on filter types (stable + unique)
+            filter_dims = list(axisinfo["filter_dims"])
 
             # within each tally group, we can use generic "nuclide" and "score"
             dims = extra_dims + tuple(filter_dims) + ("nuclide", "score")
@@ -388,7 +527,7 @@ class TMCManager:
 
             # coords: nuclide / score for this tally
             nuclides = axisinfo["nuclides"]
-            scores   = axisinfo["scores"]
+            scores = axisinfo["scores"]
 
             coords["nuclide"] = ("nuclide", np.array(nuclides, dtype="U"))
             coords["score"]   = ("score",   np.array(scores,   dtype="U"))
@@ -416,8 +555,24 @@ class TMCManager:
                 target_da.attrs["tally_id"] = tid
                 target_da.attrs["tally_name"] = tally_name
 
+            observed_tally = {
+                "name": tally_name,
+                "id": int(tid),
+                "filters": axisinfo["filter_axes"],
+                "scores": scores,
+                "nuclides": nuclides,
+            }
+
+            ds_tid.attrs["filter_axes"] = json.dumps(axisinfo["filter_axes"])
+            ds_tid.attrs["nuclides"] = json.dumps(nuclides)
+            ds_tid.attrs["scores"] = json.dumps(scores)
+            ds_tid.attrs["observed_tally"] = json.dumps(observed_tally)
+
             # serialize complex axisinfo at dataset level
             for k, v in axisinfo.items():
+                if k in {"filter_axes", "nuclides", "scores"}:
+                    # Canonical copies already written above.
+                    continue
                 if isinstance(v, (int, float, bool, str, np.number)):
                     ds_tid.attrs[k] = v
                 else:
@@ -430,7 +585,10 @@ class TMCManager:
             ds_tid["mean"] = da_mean
             ds_tid["mc_std"] = da_mc_std
 
-            group_name = f"tally_{tid}"
+            group_name = _safe_group_name(tally_name, tid, used_group_names)
+            ds_tid.attrs["group"] = group_name
+            ds_tid["mean"].attrs["tally_group"] = group_name
+            ds_tid["mc_std"].attrs["tally_group"] = group_name
 
             # append this tally-dataset as a group in the same file
             ds_tid.to_netcdf(
@@ -439,6 +597,52 @@ class TMCManager:
                 group=group_name,
                 engine="h5netcdf",  # or "netcdf4"
             )
+
+            if benchmark_file is not None:
+                da_mean_b = xr.DataArray(
+                    benchmark_data[tid],
+                    dims=dims,
+                    coords=coords,
+                    name="mean",
+                )
+                da_mc_std_b = xr.DataArray(
+                    benchmark_mc_std[tid],
+                    dims=dims,
+                    coords=coords,
+                    name="mc_std",
+                )
+
+                for target_da in (da_mean_b, da_mc_std_b):
+                    target_da.attrs["tally_id"] = tid
+                    target_da.attrs["tally_name"] = tally_name
+                    target_da.attrs["tally_group"] = group_name
+
+                ds_b = xr.Dataset(
+                    {
+                        "mean": da_mean_b,
+                        "mc_std": da_mc_std_b,
+                    }
+                )
+                ds_b.attrs["filter_axes"] = json.dumps(axisinfo["filter_axes"])
+                ds_b.attrs["nuclides"] = json.dumps(nuclides)
+                ds_b.attrs["scores"] = json.dumps(scores)
+                ds_b.attrs["observed_tally"] = json.dumps(observed_tally)
+                ds_b.attrs["group"] = group_name
+
+                spec_tally = spec_lookup.get(str(tally_name))
+                if spec_tally is not None:
+                    ds_b.attrs["spec_tally"] = json.dumps(spec_tally)
+                    consistent, issues = validate_tally_consistency(spec_tally, observed_tally)
+                    ds_b.attrs["spec_consistent"] = int(bool(consistent))
+                    ds_b.attrs["spec_consistency_issues"] = json.dumps(issues)
+
+                mode_write = "a" if benchmark_file.exists() else "w"
+                ds_b.to_netcdf(
+                    benchmark_file,
+                    mode=mode_write,
+                    group=group_name,
+                    engine="h5netcdf",
+                )
 
         self.tmc_statepoint_path = tmc_statepoint
 

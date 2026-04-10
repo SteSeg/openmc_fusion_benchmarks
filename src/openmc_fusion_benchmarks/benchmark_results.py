@@ -131,7 +131,10 @@ class Results:
                 attrs = f[group].attrs
                 spec_consistent = attrs.get("spec_consistent")
                 if spec_consistent is not None:
-                    spec_consistent = int(spec_consistent)
+                    if hasattr(spec_consistent, "shape"):
+                        spec_consistent = int(spec_consistent[0])
+                    else:
+                        spec_consistent = int(spec_consistent)
 
                 entry = {
                     "group": group,
@@ -152,6 +155,44 @@ class Results:
                 report.append(entry)
 
         return report
+
+    def format_spec_consistency_report(self, only_mismatches: bool = False) -> str:
+        """Return a human-readable spec consistency report string."""
+        report = self.get_spec_consistency_report(only_mismatches=only_mismatches)
+
+        if not report:
+            if only_mismatches:
+                return "Spec Consistency Report\nNo mismatches found."
+            return "Spec Consistency Report\nNo tallies found."
+
+        label_w = 18
+        lines: list[str] = ["Spec Consistency Report"]
+
+        for entry in report:
+            status = entry.get("spec_consistent")
+            if status == 1:
+                status_text = "OK"
+            elif status == 0:
+                status_text = "MISMATCH"
+            else:
+                status_text = "N/A"
+
+            group = entry.get("group")
+            tally_name = entry.get("tally_name")
+            issues = entry.get("issues") or []
+
+            lines.append("")
+            lines.append(f"Tally {tally_name} (group={group})")
+            lines.append(f"{'Status':<{label_w}}: {status_text}")
+
+            if issues:
+                lines.append(f"{'Issues':<{label_w}}: {len(issues)}")
+                for issue in issues:
+                    lines.append(f"  - {issue}")
+            else:
+                lines.append(f"{'Issues':<{label_w}}: none")
+
+        return "\n".join(lines)
 
 
 class BenchmarkResults(Results):

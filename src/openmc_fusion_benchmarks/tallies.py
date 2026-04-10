@@ -135,6 +135,10 @@ class BaseTally:
 			"openmc_equivalent_raw_shape": (flat_filter_bins, nuclide_size, score_size),
 		}
 
+	def get_dimension_report(self):
+		"""Backward/UX alias to ``dimension_report``."""
+		return self.dimension_report()
+
 	def format_dimension_report(self):
 		"""Return a readable text report from ``dimension_report``."""
 		report = self.dimension_report()
