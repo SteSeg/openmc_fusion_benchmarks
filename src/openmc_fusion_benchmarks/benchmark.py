@@ -19,6 +19,31 @@ BENCHMARK_DIR = Path(__file__).parent / "benchmarks"
 LFS_DIR = Path(__file__).parents[2] / "lfs"
 
 
+def _openmc_to_ofb(
+    spec_tallies,
+    statepoint: openmc.StatePoint,
+    mesh: str = "mesh.h5m",
+    realization_label: str = "baseline",
+):
+    """Backward-compatible postprocess entry point.
+
+    Historically this symbol was patched in tests and used as the benchmark
+    postprocessing hook. Keep it as a thin adapter over the new backend-aware
+    tally serialization path.
+    """
+    tally_names = [t["name"] for t in spec_tallies]
+    normalizer = make_default_openmc_normalizer(mesh)
+    save_openmc_statepoint_tallies(
+        statepoint=statepoint,
+        filename="benchmark_results.h5",
+        tally_names=tally_names,
+        spec_tallies=spec_tallies,
+        tmc_coords={"realization": [realization_label]},
+        append_dim="realization",
+        normalizer=normalizer,
+    )
+
+
 class Benchmark(ABC):
     def __init__(self, name: str):
         self.name = name
@@ -407,31 +432,21 @@ class OpenmcBenchmark(Benchmark):
         # Retrieve tallies data from specifications
         tallies_data = self._benchmark_spec['tallies']
 
-        tally_names = [t["name"] for t in tallies_data]
-        normalizer = make_default_openmc_normalizer(mesh)
-
-        # Accept both already-open StatePoint objects and statepoint file paths.
-        if isinstance(statepoint, openmc.StatePoint):
-            sp = statepoint
-            save_openmc_statepoint_tallies(
-                statepoint=sp,
-                filename="benchmark_results.h5",
-                tally_names=tally_names,
+        # Accept both already-open/duck-typed StatePoint objects and file paths.
+        if isinstance(statepoint, openmc.StatePoint) or hasattr(statepoint, "get_tally"):
+            _openmc_to_ofb(
+                statepoint=statepoint,
                 spec_tallies=tallies_data,
-                tmc_coords={"realization": ["baseline"]},
-                append_dim="realization",
-                normalizer=normalizer,
+                mesh=mesh,
+                realization_label="baseline",
             )
         else:
             with openmc.StatePoint(str(statepoint)) as sp:
-                save_openmc_statepoint_tallies(
+                _openmc_to_ofb(
                     statepoint=sp,
-                    filename="benchmark_results.h5",
-                    tally_names=tally_names,
                     spec_tallies=tallies_data,
-                    tmc_coords={"realization": ["baseline"]},
-                    append_dim="realization",
-                    normalizer=normalizer,
+                    mesh=mesh,
+                    realization_label="baseline",
                 )
 
         return

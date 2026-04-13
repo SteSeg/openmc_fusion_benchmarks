@@ -11,6 +11,26 @@ from .database import _resolve_database_path
 from .tallies import Tally
 
 
+def _open_dataset_with_fallback(filepath: Path, group: str) -> xr.Dataset:
+    """Open a group using available xarray backends.
+
+    Prefer h5netcdf but gracefully fall back when optional dependencies are
+    not installed in the execution environment.
+    """
+    last_exc = None
+    for engine in ("h5netcdf", "netcdf4", None):
+        try:
+            if engine is None:
+                return xr.open_dataset(filepath, group=group)
+            return xr.open_dataset(filepath, group=group, engine=engine)
+        except (ModuleNotFoundError, ImportError, OSError, ValueError) as exc:
+            last_exc = exc
+            continue
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"Could not open dataset group '{group}' from {filepath}")
+
+
 class Results:
     """Class to handle OFB results stored in HDF5 files.
 
@@ -72,10 +92,13 @@ class Results:
                 # Fallback lookup by tally_name attribute.
                 for candidate in f.keys():
                     try:
-                        with xr.open_dataset(self.filepath, group=candidate, engine="h5netcdf") as ds:
+                        with _open_dataset_with_fallback(self.filepath, candidate) as ds:
+                            target_var = "mean"
                             if "mean" not in ds:
-                                continue
-                            if ds["mean"].attrs.get("tally_name") == name:
+                                if len(ds.data_vars) != 1:
+                                    continue
+                                target_var = next(iter(ds.data_vars))
+                            if ds[target_var].attrs.get("tally_name") == name:
                                 group = candidate
                                 break
                     except (OSError, ValueError, KeyError):
@@ -84,8 +107,14 @@ class Results:
         if group is None:
             raise ValueError(f"No tally with name or group '{name}' found")
 
-        ds = xr.open_dataset(self.filepath, group=group, engine="h5netcdf")
+        ds = _open_dataset_with_fallback(self.filepath, group)
         if "mean" not in ds:
+            # Legacy layout support: return the only data variable as DataArray.
+            if len(ds.data_vars) == 1:
+                var_name = next(iter(ds.data_vars))
+                da = ds[var_name].load()
+                ds.close()
+                return da
             ds.close()
             raise ValueError(f"Group '{group}' does not contain a 'mean' dataset")
 

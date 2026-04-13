@@ -7,6 +7,22 @@ import xarray as xr
 from ..tallies import BaseTally
 
 
+def _open_dataset_with_fallback(path: Path, group_name: str) -> xr.Dataset:
+    """Open an HDF5/NetCDF group using whichever backend is available."""
+    last_exc = None
+    for engine in ("h5netcdf", "netcdf4", None):
+        try:
+            if engine is None:
+                return xr.open_dataset(path, group=group_name)
+            return xr.open_dataset(path, group=group_name, engine=engine)
+        except (ModuleNotFoundError, ImportError, OSError, ValueError) as exc:
+            last_exc = exc
+            continue
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"Could not open dataset group '{group_name}' from {path}")
+
+
 class TMCStatePoint:
     """
     Wrapper for TMC statepoint providing an OpenMC StatePoint-like interface.
@@ -37,15 +53,16 @@ class TMCStatePoint:
                     if not isinstance(f[group_name], h5py.Group):
                         continue
                     # Open this group as an xarray Dataset
-                    ds = xr.open_dataset(
-                        self.path,
-                        group=group_name,
-                        engine="h5netcdf",
-                    )
-                    if "mean" not in ds:
+                    ds = _open_dataset_with_fallback(self.path, group_name)
+                    if "mean" in ds:
+                        mean_var_name = "mean"
+                    elif len(ds.data_vars) == 1:
+                        # Backward-compatibility for legacy single-var groups.
+                        mean_var_name = next(iter(ds.data_vars))
+                    else:
                         ds.close()
                         continue
-                    da_mean = ds["mean"]
+                    da_mean = ds[mean_var_name]
                     da_mc_std = ds["mc_std"] if "mc_std" in ds else None
 
                     tally_id = da_mean.attrs.get("tally_id")
