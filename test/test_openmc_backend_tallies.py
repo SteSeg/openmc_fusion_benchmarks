@@ -14,15 +14,13 @@ def _make_filter(filter_cls, bins, num_bins=None):
     """Create filter objects for both real OpenMC and lightweight stubs."""
     try:
         flt = filter_cls(bins)
+        # Real OpenMC objects expose read-only num_bins; do not overwrite.
+        return flt
     except TypeError:
         flt = filter_cls()
         flt.bins = bins
         flt.num_bins = int(num_bins if num_bins is not None else len(np.asarray(bins).reshape(-1)))
         return flt
-
-    if num_bins is not None:
-        flt.num_bins = int(num_bins)
-    return flt
 
 
 class DummyStatePoint:
