@@ -167,3 +167,51 @@ def test_get_tally_unknown_name_raises(temp_results_file):
     results = BenchmarkResults.from_file(temp_results_file)
     with pytest.raises(ValueError, match="No tally with name or group"):
         results.get_tally("missing")
+
+
+def test_get_spec_consistency_report_and_only_mismatches(tmp_path):
+    filepath = tmp_path / "consistency_results.h5"
+
+    ds_ok = xr.Dataset(
+        {
+            "mean": xr.DataArray(
+                np.ones((1, 1), dtype=float),
+                dims=("nuclide", "score"),
+                coords={
+                    "nuclide": np.array(["total"], dtype="U"),
+                    "score": np.array(["flux"], dtype="U"),
+                },
+            )
+        }
+    )
+    ds_ok.attrs["spec_consistent"] = 1
+    ds_ok.attrs["spec_consistency_issues"] = json.dumps([])
+    ds_ok.attrs["observed_tally"] = json.dumps({"name": "ok_name"})
+    ds_ok.to_netcdf(filepath, mode="w", engine="h5netcdf", group="ok")
+
+    ds_bad = xr.Dataset(
+        {
+            "mean": xr.DataArray(
+                np.ones((1, 1), dtype=float),
+                dims=("nuclide", "score"),
+                coords={
+                    "nuclide": np.array(["total"], dtype="U"),
+                    "score": np.array(["flux"], dtype="U"),
+                },
+            )
+        }
+    )
+    ds_bad.attrs["spec_consistent"] = 0
+    ds_bad.attrs["spec_consistency_issues"] = json.dumps(["scores mismatch"])
+    ds_bad.attrs["observed_tally"] = json.dumps({"name": "fallback_name"})
+    ds_bad.to_netcdf(filepath, mode="a", engine="h5netcdf", group="bad")
+
+    results = BenchmarkResults.from_file(filepath)
+    report = results.get_spec_consistency_report()
+    mismatches = results.get_spec_consistency_report(only_mismatches=True)
+
+    assert len(report) == 2
+    assert len(mismatches) == 1
+    assert mismatches[0]["group"] == "bad"
+    assert mismatches[0]["tally_name"] == "fallback_name"
+    assert mismatches[0]["issues"] == ["scores mismatch"]

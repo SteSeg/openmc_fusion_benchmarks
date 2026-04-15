@@ -190,3 +190,82 @@ def test_save_openmc_statepoint_tallies_group_by_id_and_validation(tmp_path):
 
     with pytest.raises(ValueError, match="group_by"):
         backend.save_openmc_statepoint_tallies(statepoint=sp, filename=fpath, group_by="bad")
+
+
+def test_build_spec_lookup_variants():
+    assert backend._build_spec_lookup(None) == {}
+    assert backend._build_spec_lookup({"a": {"name": "a"}}) == {"a": {"name": "a"}}
+
+    lookup = backend._build_spec_lookup([
+        {"name": "first", "scores": ["flux"]},
+        "ignored",
+        {"name": "second", "scores": ["heating"]},
+    ])
+    assert set(lookup.keys()) == {"first", "second"}
+
+
+def test_openmc_tally_to_dataset_with_spec_consistency_attrs():
+    filters = [
+        _make_filter(openmc.ParticleFilter, ["neutron"], num_bins=1),
+        _make_filter(openmc.EnergyFilter, [0.0, 1.0e6, 14.0e6], num_bins=2),
+    ]
+    tally = DummyTally(
+        tally_id=9,
+        name="energy_flux",
+        filters=filters,
+        nuclides=["total"],
+        scores=["flux"],
+        mean_nd=np.ones((1, 2, 1, 1)),
+        std_nd=np.full((1, 2, 1, 1), 0.1),
+    )
+
+    spec_tally = {
+        "name": "energy_flux",
+        "particle": "neutron",
+        "filters": [{"type": "energy", "values": [0.0, 1.0e6, 14.0e6], "units": "eV"}],
+        "scores": ["flux"],
+        "nuclides": ["total"],
+    }
+
+    ds = backend.openmc_tally_to_dataset(tally=tally, spec_tally=spec_tally)
+
+    assert ds.attrs["spec_consistent"] == 1
+    assert "spec_tally" in ds.attrs
+    assert "spec_consistency_issues" in ds.attrs
+
+    filter_axes = __import__("json").loads(ds.attrs["filter_axes"])
+    energy_axes = [a for a in filter_axes if a["name"] == "EnergyFilter"]
+    assert len(energy_axes) == 1
+    assert energy_axes[0]["bins"] == [0.0, 1.0e6, 14.0e6]
+    assert energy_axes[0]["units"] == "eV"
+    assert energy_axes[0]["kind"] == "edges"
+
+
+def test_openmc_tally_to_dataset_with_spec_mismatch_sets_issues():
+    filters = [
+        _make_filter(openmc.ParticleFilter, ["neutron"], num_bins=1),
+        _make_filter(openmc.CellFilter, [1], num_bins=1),
+    ]
+    tally = DummyTally(
+        tally_id=10,
+        name="cell_flux",
+        filters=filters,
+        nuclides=["total"],
+        scores=["flux"],
+        mean_nd=np.ones((1, 1, 1, 1)),
+        std_nd=np.full((1, 1, 1, 1), 0.1),
+    )
+
+    # Intentionally mismatch score name.
+    spec_tally = {
+        "name": "cell_flux",
+        "particle": "neutron",
+        "filters": [{"type": "cell", "values": [1]}],
+        "scores": ["heating"],
+        "nuclides": ["total"],
+    }
+
+    ds = backend.openmc_tally_to_dataset(tally=tally, spec_tally=spec_tally)
+    assert ds.attrs["spec_consistent"] == 0
+    issues = __import__("json").loads(ds.attrs["spec_consistency_issues"])
+    assert any("scores mismatch" in issue for issue in issues)
