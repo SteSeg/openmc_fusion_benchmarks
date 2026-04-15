@@ -9,6 +9,8 @@ import numpy as np
 import openmc
 import xarray as xr
 
+from ...validate_results import normalize_filter_type, validate_tally_consistency
+
 
 def make_default_openmc_normalizer(mesh: str | Path | object):
     """
@@ -75,6 +77,89 @@ def _unique_filter_dims(filters: list[openmc.Filter]) -> list[str]:
     return dims
 
 
+def _serialize_filter_bins(flt: openmc.Filter):
+    """Serialize OpenMC filter bins into JSON-compatible Python objects."""
+    bins = flt.bins
+    arr = np.asarray(bins)
+
+        # Store energy filters as edge lists (E0..En), consistent with specifications.yaml.
+    if isinstance(flt, openmc.EnergyFilter):
+        if arr.ndim == 1:
+            return arr.tolist()
+        if arr.ndim == 2 and arr.shape[1] == 2:
+            low = arr[:, 0]
+            high = arr[:, 1]
+            if low.size == 0:
+                return []
+            return np.concatenate([low[:1], high]).tolist()
+        return arr.reshape(-1).tolist()
+
+    # Scalar bins -> simple list of values.
+    if arr.ndim <= 1:
+        return arr.tolist()
+
+    # Structured bins (for example mesh-like tuples) -> nested lists.
+    return [list(np.asarray(b).tolist()) for b in bins]
+
+
+def _build_filter_axis_metadata(
+    filters: list[openmc.Filter],
+    filter_dims: list[str],
+    spec_tally: dict | None = None,
+):
+    """Create rich per-filter metadata with axis names and bin definitions."""
+    spec_filters = []
+    if isinstance(spec_tally, dict):
+        spec_filters = list(spec_tally.get("filters", []))
+
+    spec_idx = 0
+    axes = []
+    for flt, dim in zip(filters, filter_dims):
+        ftype = normalize_filter_type(type(flt).__name__)
+        spec_filter = None
+        if ftype != "particle" and spec_idx < len(spec_filters):
+            spec_filter = spec_filters[spec_idx]
+            spec_idx += 1
+
+        axis_meta = {
+            "name": type(flt).__name__,
+            "axis": dim,
+            "num_bins": int(flt.num_bins),
+            "bins": _serialize_filter_bins(flt),
+        }
+
+        if isinstance(spec_filter, dict) and "units" in spec_filter:
+            axis_meta["units"] = spec_filter.get("units")
+
+        if ftype == "energy":
+            # Energy filters are represented as edge lists in OFB results.
+            axis_meta["kind"] = "edges"
+            axis_meta["units"] = (
+                spec_filter.get("units", "eV")
+                if isinstance(spec_filter, dict)
+                else "eV"
+            )
+
+        axes.append(axis_meta)
+    return axes
+
+
+def _build_spec_lookup(spec_tallies) -> dict[str, dict]:
+    """Build a lookup map from tally name to tally specification entry."""
+    if spec_tallies is None:
+        return {}
+    if isinstance(spec_tallies, dict):
+        return spec_tallies
+
+    lookup = {}
+    for entry in spec_tallies:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        if name:
+            lookup[str(name)] = entry
+    return lookup
+
 def _to_1d_coord(values) -> np.ndarray:
     """Normalize scalar/list-like coordinate input into a 1D numpy array."""
     arr = np.asarray(values)
@@ -87,6 +172,7 @@ def openmc_tally_to_dataset(
     tally: openmc.Tally,
     tmc_coords: dict[str, Iterable] | None = None,
     normalizer: Callable[[openmc.Tally, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]] | None = None,
+    spec_tally: dict | None = None,
 ) -> xr.Dataset:
     """
     Convert one OpenMC tally into an xarray Dataset with variables `mean` and `mc_std`.
@@ -148,19 +234,35 @@ def openmc_tally_to_dataset(
     ds["mc_std"].attrs["tally_id"] = int(tally.id)
     ds["mc_std"].attrs["tally_name"] = tally_name
 
-    ds.attrs["filter_axes"] = json.dumps(
-        [{"name": type(f).__name__, "num_bins": int(f.num_bins)} for f in filters]
-    )
+    filter_axes = _build_filter_axis_metadata(filters, filter_dims, spec_tally=spec_tally)
+    
+    ds.attrs["filter_axes"] = json.dumps(filter_axes)
     ds.attrs["nuclides"] = json.dumps(nuclides)
     ds.attrs["scores"] = json.dumps(scores)
 
-    return ds
+    observed_tally = {
+        "name": tally_name,
+        "id": int(tally.id),
+        "filters": filter_axes,
+        "scores": scores,
+        "nuclides": nuclides,
+    }
+    ds.attrs["observed_tally"] = json.dumps(observed_tally)
 
+    if spec_tally is not None:
+        ds.attrs["spec_tally"] = json.dumps(spec_tally)
+        consistent, issues = validate_tally_consistency(spec_tally, observed_tally)
+        # h5netcdf/netCDF attrs do not support boolean dtype reliably.
+        ds.attrs["spec_consistent"] = int(bool(consistent))
+        ds.attrs["spec_consistency_issues"] = json.dumps(issues)
+
+        return ds
 
 def save_openmc_statepoint_tallies(
     statepoint: openmc.StatePoint,
     filename: str | Path,
     tally_names: Iterable[str] | None = None,
+    spec_tallies: Iterable[dict] | dict[str, dict] | None = None,
     tmc_coords: dict[str, Iterable] | None = None,
     append_dim: str | None = None,
     normalizer: Callable[[openmc.Tally, np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]] | None = None,
@@ -182,6 +284,7 @@ def save_openmc_statepoint_tallies(
         raise ValueError("group_by must be either 'name' or 'id'")
     
     filename = Path(filename)
+    spec_lookup = _build_spec_lookup(spec_tallies)
     if tally_names is None:
         selected = list(statepoint.tallies.values())
     else:
@@ -192,6 +295,7 @@ def save_openmc_statepoint_tallies(
             tally=tally,
             tmc_coords=tmc_coords,
             normalizer=normalizer,
+            spec_tally=spec_lookup.get(str(tally.name)),
         )
         if group_by == "name" and tally.name:
             group = str(tally.name)
