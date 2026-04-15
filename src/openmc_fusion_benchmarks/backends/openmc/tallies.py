@@ -256,7 +256,7 @@ def openmc_tally_to_dataset(
         ds.attrs["spec_consistent"] = int(bool(consistent))
         ds.attrs["spec_consistency_issues"] = json.dumps(issues)
 
-        return ds
+    return ds
 
 def save_openmc_statepoint_tallies(
     statepoint: openmc.StatePoint,
