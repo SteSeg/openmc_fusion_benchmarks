@@ -4,7 +4,7 @@ import warnings
 from abc import ABC, abstractmethod
 import numpy as np
 
-from .validate import validate_benchmark
+from .validate_spec import validate_benchmark
 from .backends.openmc.tallies import (
     make_default_openmc_normalizer,
     save_openmc_statepoint_tallies,
@@ -418,6 +418,7 @@ class OpenmcBenchmark(Benchmark):
                 statepoint=sp,
                 filename="benchmark_results.h5",
                 tally_names=tally_names,
+                spec_tallies=tallies_data,
                 tmc_coords={"realization": ["baseline"]},
                 append_dim="realization",
                 normalizer=normalizer,
@@ -428,6 +429,7 @@ class OpenmcBenchmark(Benchmark):
                     statepoint=sp,
                     filename="benchmark_results.h5",
                     tally_names=tally_names,
+                    spec_tallies=tallies_data,
                     tmc_coords={"realization": ["baseline"]},
                     append_dim="realization",
                     normalizer=normalizer,
