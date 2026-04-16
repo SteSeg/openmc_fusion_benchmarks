@@ -150,8 +150,8 @@ def _legacy_group_to_dataset(group_name: str, arr: np.ndarray, columns: list[str
     first = arr[0, :, :]
     low = np.asarray(first[:, low_idx], dtype=float)
     high = np.asarray(first[:, high_idx], dtype=float)
-    mean = np.asarray(first[:, mean_idx], dtype=float)
-    mc_std = np.asarray(first[:, std_idx], dtype=float)
+    mean_all = np.asarray(arr[:, :, mean_idx], dtype=float)
+    mc_std_all = np.asarray(arr[:, :, std_idx], dtype=float)
 
     if len(low) == 0:
         energy_edges = np.asarray([], dtype=float)
@@ -168,50 +168,120 @@ def _legacy_group_to_dataset(group_name: str, arr: np.ndarray, columns: list[str
         elif "photon" in low_name or "gamma" in low_name:
             particle = "photon"
 
-    mean_5d = mean.reshape(1, 1, mean.shape[0], 1, 1)
-    std_5d = mc_std.reshape(1, 1, mc_std.shape[0], 1, 1)
+    n_real = int(arr.shape[0])
+    n_rows = int(arr.shape[1])
 
-    dims = ("particle", "surface", "energy", "nuclide", "score")
-    coords = {
-        "particle": ("particle", np.asarray([0], dtype=int)),
-        "surface": ("surface", np.asarray([0], dtype=int)),
-        "energy": ("energy", np.arange(mean.shape[0], dtype=int)),
-        "nuclide": ("nuclide", np.asarray([0], dtype=int)),
-        "score": ("score", np.asarray([0], dtype=int)),
-    }
-
-    ds = xr.Dataset(
-        {
-            "mean": xr.DataArray(mean_5d, dims=dims, coords=coords),
-            "mc_std": xr.DataArray(std_5d, dims=dims, coords=coords),
-        }
-    )
-
-    filter_axes = [
+    # Build filter metadata in the same style as backend/openmc/tallies.py.
+    filter_axes: list[dict] = [
         {
             "name": "ParticleFilter",
             "axis": "particle",
             "num_bins": 1,
             "bins": [particle] if particle is not None else [],
-        },
-        {
-            "name": "SurfaceFilter",
-            "axis": "surface",
-            "num_bins": 1,
-            "bins": [7],
-        },
-        {
-            "name": "EnergyFilter",
-            "axis": "energy",
-            "num_bins": int(mean.shape[0]),
-            "bins": energy_edges.tolist(),
-            "kind": "edges",
-            "units": "eV",
-        },
+        }
     ]
 
-    scores = ["current"]
-    nuclides = ["total"]
+    spec_filters = list(spec_tally.get("filters", [])) if isinstance(spec_tally, dict) else []
+    used_dims: dict[str, int] = {}
+    non_particle_axes: list[dict] = []
+
+    for sf in spec_filters:
+        ftype = _normalize_filter_type(sf.get("type", ""))
+        class_name = f"{ftype.capitalize()}Filter" if ftype else "Filter"
+
+        base_dim = ftype or "filter"
+        dim_idx = used_dims.get(base_dim, 0)
+        used_dims[base_dim] = dim_idx + 1
+        axis_name = base_dim if dim_idx == 0 else f"{base_dim}_{dim_idx}"
+
+        if ftype == "energy":
+            bins = energy_edges.tolist()
+            num_bins = max(len(bins) - 1, 0)
+            axis_meta = {
+                "name": class_name,
+                "axis": axis_name,
+                "num_bins": int(num_bins),
+                "bins": bins,
+                "kind": "edges",
+                "units": sf.get("units", "eV"),
+            }
+        else:
+            bins = list(sf.get("values", []))
+            axis_meta = {
+                "name": class_name,
+                "axis": axis_name,
+                "num_bins": int(len(bins)),
+                "bins": bins,
+            }
+            if "units" in sf:
+                axis_meta["units"] = sf.get("units")
+
+        non_particle_axes.append(axis_meta)
+
+    # Fallback when specs are absent/incomplete: keep a single energy axis.
+    if not non_particle_axes:
+        non_particle_axes = [
+            {
+                "name": "EnergyFilter",
+                "axis": "energy",
+                "num_bins": int(n_rows),
+                "bins": energy_edges.tolist() if len(energy_edges) == n_rows + 1 else np.arange(n_rows + 1, dtype=float).tolist(),
+                "kind": "edges",
+                "units": "eV",
+            }
+        ]
+
+    # Legacy rows represent flattened non-particle filter bins. If the spec-driven
+    # product does not match, fall back to a single energy axis to preserve data.
+    non_particle_sizes = [int(a.get("num_bins", 0)) for a in non_particle_axes]
+    prod = int(np.prod(non_particle_sizes)) if non_particle_sizes else 0
+    if prod != n_rows:
+        non_particle_axes = [
+            {
+                "name": "EnergyFilter",
+                "axis": "energy",
+                "num_bins": int(n_rows),
+                "bins": energy_edges.tolist() if len(energy_edges) == n_rows + 1 else np.arange(n_rows + 1, dtype=float).tolist(),
+                "kind": "edges",
+                "units": "eV",
+            }
+        ]
+        non_particle_sizes = [n_rows]
+
+    filter_axes.extend(non_particle_axes)
+
+    # Legacy files typically carry a single score/nuclide aggregate per row.
+    if isinstance(spec_tally, dict) and len(spec_tally.get("scores", [])) == 1:
+        scores = [str(spec_tally["scores"][0])]
+    else:
+        scores = ["current"]
+
+    if isinstance(spec_tally, dict) and len(spec_tally.get("nuclides", [])) == 1:
+        nuclides = [str(spec_tally["nuclides"][0])]
+    else:
+        nuclides = ["total"]
+
+    dims = ("realization", "particle", *(a["axis"] for a in non_particle_axes), "nuclide", "score")
+
+    mean_nd = mean_all.reshape((n_real, 1, *non_particle_sizes, 1, 1))
+    std_nd = mc_std_all.reshape((n_real, 1, *non_particle_sizes, 1, 1))
+
+    coords = {
+        "realization": ("realization", np.arange(n_real, dtype=int)),
+        "particle": ("particle", np.asarray([0], dtype=int)),
+        "nuclide": ("nuclide", np.asarray(nuclides, dtype="U")),
+        "score": ("score", np.asarray(scores, dtype="U")),
+    }
+    for axis_meta in non_particle_axes:
+        axis = axis_meta["axis"]
+        coords[axis] = (axis, np.arange(int(axis_meta["num_bins"]), dtype=int))
+
+    ds = xr.Dataset(
+        {
+            "mean": xr.DataArray(mean_nd, dims=dims, coords=coords),
+            "mc_std": xr.DataArray(std_nd, dims=dims, coords=coords),
+        }
+    )
 
     ds.attrs["filter_axes"] = json.dumps(filter_axes)
     ds.attrs["scores"] = json.dumps(scores)
