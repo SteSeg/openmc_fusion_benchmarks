@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Union
 import h5py
+import numpy as np
 import xarray as xr
 
 from .database import _resolve_database_path
@@ -130,7 +131,17 @@ class Results:
                 attrs = f[group].attrs
                 spec_consistent = attrs.get("spec_consistent")
                 if spec_consistent is not None:
-                    spec_consistent = int(spec_consistent)
+                    try:
+                        # h5 attrs may come back as numpy scalars/arrays depending on backend.
+                        if isinstance(spec_consistent, np.ndarray):
+                            if spec_consistent.size == 0:
+                                spec_consistent = None
+                            else:
+                                spec_consistent = int(np.ravel(spec_consistent)[0])
+                        else:
+                            spec_consistent = int(spec_consistent)
+                    except Exception:
+                        spec_consistent = None
 
                 entry = {
                     "group": group,
