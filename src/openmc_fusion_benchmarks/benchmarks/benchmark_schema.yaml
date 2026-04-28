@@ -165,89 +165,167 @@ components:
     
     Source:
       type: object
-      required: [particle, spatial_distribution, angular_energy_distribution, strength]
+      required: [particle, spatial_distribution, angular_energy_distribution]
       properties:
         particle:
           type: string
           enum: [neutron, photon]
         strength:
           type: number
+        rate:
+          type: object
+          required: [value, units]
+          properties:
+            value:
+              type: number
+            units:
+              type: string
+              enum: [n/s, particles/s]
         spatial_distribution:
-          type: object
-          required: [type]
-          properties:
-            type:
-              type: string
-              enum: [point, box, cylinder, sphere, cartesian, mesh, domain]
-            domain:
+          oneOf:
+            - type: object
+              required: [type, center]
+              properties:
+                type:
+                  const: point
+                center:
+                  type: array
+                  items:
+                    type: number
+                  minItems: 3
+                  maxItems: 3
+            - type: object
+              required: [type]
+              properties:
+                type:
+                  enum: [box, cylinder, sphere, cartesian, mesh, domain]
         angular_energy_distribution:
+          oneOf:
+            - $ref: '#/components/schemas/LegacyAngularEnergyDistribution'
+            - $ref: '#/components/schemas/PolarAzimuthalWithSpectraDistribution'
+
+    LegacyAngularEnergyDistribution:
+      type: object
+      required: [angle, energy, weights, strength, polar_direction]
+      properties:
+        polar_direction:
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+        dims:
+          type: array
+          items:
+            type: string
+        angle:
           type: object
-          required: [dims, angle, energy, weights]
+          required: [bins, units]
           properties:
-          interpolation: str
-          properties:
-            type:
+            bins:
+              type: array
+              items:
+                type: number
+              minItems: 2
+            units:
               type: string
-              enum: [isotropic, tabulated]
+              enum: [degrees, radians]
+        energy:
+          type: object
+          required: [values, units, interpolation]
+          properties:
+            values:
+              type: array
+              items:
+                type: number
+              minItems: 1
+            units:
+              type: string
+              enum: [eV, keV, MeV, GeV]
+            interpolation:
+              type: string
+              enum: [histogram, linear-linear, linear-logarithmic, logarithmic-linear, logarithmic-logarithmic]
+        weights:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+        strength:
+          type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                type: number
+
+    PolarAzimuthalWithSpectraDistribution:
+      type: object
+      required: [model, angular, energy]
+      properties:
+        model:
+          const: polar_azimuthal_with_spectra
+        angular:
+          type: object
+          required: [units, reference_uvw, bins]
+          properties:
+            units:
+              type: string
+              enum: [degrees, radians]
             reference_uvw:
               type: array
               items:
                 type: number
               minItems: 3
               maxItems: 3
-              description: A 3D direction or position vector [x, y, z]
             bins:
               type: array
+              minItems: 1
               items:
                 type: object
-                required: [angle_range, energy_distribution]
+                required: [polar, azimuth]
                 properties:
-                  angle_range:
+                  polar:
                     type: array
                     items:
                       type: number
                     minItems: 2
                     maxItems: 2
-                  energy_distribution:
-                    type: object
-                    required: [type, bins, weights, strength]
-                    properties:
-                      type:
-                        type: string
-                        enum: [tabular]
-                      interpolation:
-                        type: string
-                        enum: [histogram, linear-linear, linear-logarithmic, logarithmic-linear, logarithmic-logarithmic]
-                      bins: 
-                        type: object
-                        required: [values, units]
-                        properties:
-                          values:
-                            type: array
-                            items:
-                              type: number
-                          units:
-                            type: string
-                            enum: [eV, keV, MeV, GeV]
-                      probabilities:
-                        type: object
-                        required: [values]
-                        properties:
-                          values:
-                            type: array
-                            items:
-                              type: number
-                      strength:
+                  azimuth:
+                    type: array
+                    items:
+                      type: number
+                    minItems: 2
+                    maxItems: 2
+                  strength:
+                    type: number
+        energy:
+          type: object
+          required: [units, interpolation, spectra]
+          properties:
+            units:
+              type: string
+              enum: [eV, keV, MeV, GeV]
+            interpolation:
+              type: string
+              enum: [histogram, linear-linear, linear-logarithmic, logarithmic-linear, logarithmic-logarithmic]
+            spectra:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [points]
+                properties:
+                  points:
+                    type: array
+                    minItems: 1
+                    items:
+                      type: array
+                      minItems: 2
+                      maxItems: 2
+                      items:
                         type: number
-      rate:
-        type: object
-        required: [value, units]
-        properties:
-          value:
-            type: number
-          units:
-            type: string
-            enum: [n/s, particles/s]
 
     Settings:
       type: object
