@@ -16,7 +16,7 @@ class BenchmarkStatus(str, Enum):
     PROBLEMATIC = "problematic"
 
 @dataclass
-class Measurement:
+class DataPoint:
     """A single experimental or calculated measurement."""
     value: float
     uncertainty: float
@@ -45,8 +45,8 @@ class ComparisonPoint:
     """One comparison point (detector, foil, energy bin, etc.)."""
     id: str
     observable_type: str  # "reaction_rate", "spectrum", "leakage", etc.
-    experiment: Measurement
-    calculation: Measurement
+    experiment: DataPoint
+    calculation: DataPoint
     metrics: Optional[PointMetrics] = None
     covariance_index: Optional[int] = None  # Index in covariance matrix if available
 
