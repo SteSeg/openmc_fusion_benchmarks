@@ -18,7 +18,6 @@ def compute_point_metrics(point: ComparisonPoint) -> PointMetrics:
     
     combined_u = np.sqrt(u_e**2 + u_c**2)
     norm_residual = (c - e) / combined_u if combined_u > 0 else np.inf
-    z_score = norm_residual  # Synonym
     
     chi2_contrib = (c - e)**2 / combined_u**2 if combined_u > 0 else 0
     
@@ -36,7 +35,6 @@ def compute_point_metrics(point: ComparisonPoint) -> PointMetrics:
         absolute_deviation=abs_dev,
         combined_uncertainty=combined_u,
         normalized_residual=norm_residual,
-        z_score=z_score,
         chi2_contribution=chi2_contrib,
         status=status
     )

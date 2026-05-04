@@ -35,7 +35,6 @@ class PointMetrics:
     absolute_deviation: float
     combined_uncertainty: float
     normalized_residual: float
-    z_score: float
     chi2_contribution: float
     status: PointStatus
 
