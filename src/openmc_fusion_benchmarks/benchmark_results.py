@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Union
 import h5py
+import numpy as np
 import xarray as xr
 
 from .database import _resolve_database_path
@@ -90,6 +92,76 @@ class Results:
         da_mean = ds["mean"]
         da_mc_std = ds["mc_std"] if "mc_std" in ds else None
         return Tally(da_mean, da_mc_std, parent_ds=ds)
+    
+    def get_spec_consistency_report(self, only_mismatches: bool = False):
+        """
+        Return spec-vs-observed consistency metadata for each tally group.
+
+        Parameters
+        ----------
+        only_mismatches:
+            If True, return only entries with `spec_consistent == 0`.
+
+        Returns
+        -------
+        list[dict]
+            One entry per tally group with fields:
+            - `group`
+            - `tally_name`
+            - `spec_consistent` (0/1/None)
+            - `issues` (list[str])
+            - `spec_tally` (dict)
+            - `observed_tally` (dict)
+        """
+
+        def _loads_attr(attrs, key, default):
+            value = attrs.get(key)
+            if value is None:
+                return default
+            if isinstance(value, bytes):
+                value = value.decode("utf-8")
+            try:
+                return json.loads(value)
+            except Exception:
+                return default
+
+        report = []
+        with h5py.File(self.filepath, "r") as f:
+            for group in f.keys():
+                attrs = f[group].attrs
+                spec_consistent = attrs.get("spec_consistent")
+                if spec_consistent is not None:
+                    try:
+                        # h5 attrs may come back as numpy scalars/arrays depending on backend.
+                        if isinstance(spec_consistent, np.ndarray):
+                            if spec_consistent.size == 0:
+                                spec_consistent = None
+                            else:
+                                spec_consistent = int(np.ravel(spec_consistent)[0])
+                        else:
+                            spec_consistent = int(spec_consistent)
+                    except Exception:
+                        spec_consistent = None
+
+                entry = {
+                    "group": group,
+                    "tally_name": attrs.get("tally_name"),
+                    "spec_consistent": spec_consistent,
+                    "issues": _loads_attr(attrs, "spec_consistency_issues", []),
+                    "spec_tally": _loads_attr(attrs, "spec_tally", {}),
+                    "observed_tally": _loads_attr(attrs, "observed_tally", {}),
+                }
+
+                # Fallback tally_name from nested metadata when variable-level attrs were used.
+                if entry["tally_name"] in (None, ""):
+                    entry["tally_name"] = entry["observed_tally"].get("name")
+
+                if only_mismatches and entry["spec_consistent"] != 0:
+                    continue
+
+                report.append(entry)
+
+        return report
 
 
 class BenchmarkResults(Results):
