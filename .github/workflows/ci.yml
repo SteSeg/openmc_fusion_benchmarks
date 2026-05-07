@@ -5,9 +5,6 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      PYTHONNOUSERSITE: "1"
-      PIP_USER: "0"
     steps:
       - name: Apt dependencies
         shell: bash
@@ -35,20 +32,14 @@ jobs:
       - name: Install pymoab and pydagmc
         shell: bash -l {0}
         run: |
-          conda run -n test-env python -m pip install --no-user --extra-index-url https://shimwell.github.io/wheels moab
-          conda run -n test-env python -m pip install --no-user git+https://github.com/svalinn/pydagmc
+          conda run -n test-env python -m pip install --extra-index-url https://shimwell.github.io/wheels moab
+          conda run -n test-env python -m pip install git+https://github.com/svalinn/pydagmc
   
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda run -n test-env pip install --no-user coveralls
-          conda run -n test-env python -m pip install --no-user .[tests]
-
-      - name: Debug Python environment
-        shell: bash -l {0}
-        run: |
-          conda run -n test-env python -c "import sys; print(sys.executable)"
-          conda run -n test-env python -c "import site; print(site.getsitepackages())"
+          conda run -n test-env pip install coveralls
+          conda run -n test-env python -m pip install .[tests]
 
       - name: Run tests
         shell: bash -l {0}
