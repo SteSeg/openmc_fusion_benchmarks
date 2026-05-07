@@ -6,7 +6,10 @@ import numpy as np
 from pathlib import Path
 from openmc_fusion_benchmarks.uq.tmc_engine import tmc_engine
 
-OPENMC_AVAILABLE = importlib.util.find_spec("openmc") is not None
+try:
+    OPENMC_AVAILABLE = importlib.util.find_spec("openmc") is not None
+except ValueError:
+    OPENMC_AVAILABLE = False
 
 
 @pytest.fixture
