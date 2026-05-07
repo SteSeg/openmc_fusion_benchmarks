@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 from .validate_spec import validate_benchmark
-from .uq.tmc_engine import tmc_engine
 
 
 BENCHMARK_DIR = Path(__file__).parent / "benchmarks"
@@ -452,6 +451,8 @@ class OpenmcBenchmark(Benchmark):
 
     def _uncertainty_quantification(self, *args, **kwargs):
         """Perform uncertainty quantification for the benchmark."""
+        from .uq.tmc_engine import tmc_engine
+        
         uq_data = self._benchmark_spec['uncertainty_quantification']
         tallies_data = self._benchmark_spec['tallies']
 
