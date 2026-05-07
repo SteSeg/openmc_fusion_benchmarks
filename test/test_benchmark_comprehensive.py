@@ -510,10 +510,16 @@ def test_postprocess():
                 with patch.object(OpenmcBenchmark, '_build_settings', return_value=openmc.Settings()):
                     bench = OpenmcBenchmark("test")
                     
-                    mock_sp = Mock()
-                    with patch("openmc_fusion_benchmarks.benchmark._openmc_to_ofb") as mock_post:
-                        bench._postprocess(statepoint=mock_sp, mesh="test.h5m")
-                        mock_post.assert_called_once()
+                    class DummyStatePoint:
+                        pass
+
+                    with patch("openmc_fusion_benchmarks.benchmark.openmc.StatePoint", new=DummyStatePoint):
+                        mock_sp = DummyStatePoint()
+                        with patch("openmc_fusion_benchmarks.benchmark.make_default_openmc_normalizer", return_value="norm") as mock_norm:
+                            with patch("openmc_fusion_benchmarks.benchmark.save_openmc_statepoint_tallies") as mock_post:
+                                bench._postprocess(statepoint=mock_sp, mesh="test.h5m")
+                                mock_norm.assert_called_once_with("test.h5m")
+                                mock_post.assert_called_once()
 
 
 def test_run_without_uq():

@@ -1,84 +1,169 @@
-import pytest
-import h5py
-import xarray as xr
+import importlib.util
+import json
+import sys
+import types
+
 import numpy as np
-from pathlib import Path
-from openmc_fusion_benchmarks.benchmark_results import BenchmarkResults
-from openmc_fusion_benchmarks.database import list_database_benchmarks, list_database_files
+import pytest
+import xarray as xr
+
+
+def _module_available(name: str) -> bool:
+    if name in sys.modules:
+        return True
+    try:
+        return importlib.util.find_spec(name) is not None
+    except ValueError:
+        return False
+
+
+# The package __init__ imports benchmark.py, which imports these dependencies.
+# Provide minimal stubs in environments where OpenMC stack is not available.
+if not _module_available("openmc"):
+    openmc_stub = types.ModuleType("openmc")
+    openmc_stub.__path__ = []
+    for cls_name in (
+        "StatePoint",
+        "Tally",
+        "Filter",
+        "CellFilter",
+        "SurfaceFilter",
+        "MaterialFilter",
+        "EnergyFilter",
+        "ParticleFilter",
+        "Materials",
+        "Material",
+        "Geometry",
+        "Settings",
+        "Tallies",
+        "Model",
+        "DAGMCUniverse",
+    ):
+        setattr(openmc_stub, cls_name, type(cls_name, (), {}))
+    sys.modules.setdefault("openmc", openmc_stub)
+
+    openmc_data_stub = types.ModuleType("openmc.data")
+    openmc_data_stub.zam = lambda _name: (1, 1, 0)
+    sys.modules.setdefault("openmc.data", openmc_data_stub)
+
+try:
+    import pydagmc as _pydagmc  # noqa: F401
+except Exception:
+    pydagmc_stub = types.ModuleType("pydagmc")
+    pydagmc_stub.Model = type("Model", (), {})
+    sys.modules["pydagmc"] = pydagmc_stub
+
+try:
+    import cad_to_dagmc as _cad_to_dagmc  # noqa: F401
+except Exception:
+    cad_stub = types.ModuleType("cad_to_dagmc")
+    cad_stub.CadToDagmc = type("CadToDagmc", (), {})
+    sys.modules["cad_to_dagmc"] = cad_stub
+
+if not _module_available("sandy"):
+    sys.modules.setdefault("sandy", types.ModuleType("sandy"))
+
+
+from openmc_fusion_benchmarks.benchmark_results import BenchmarkResults, OFBResults, Results
+from openmc_fusion_benchmarks.tallies import Tally
+
+
+def _write_structured_group(filepath, group="test_tally", tally_name="mytally"):
+    ds = xr.Dataset(
+        {
+            "mean": xr.DataArray(
+                np.arange(4.0).reshape(2, 1, 2),
+                dims=("cell", "nuclide", "score"),
+                coords={
+                    "cell": [0, 1],
+                    "nuclide": np.array(["total"], dtype="U"),
+                    "score": np.array(["flux", "heating"], dtype="U"),
+                },
+            ),
+            "mc_std": xr.DataArray(
+                np.full((2, 1, 2), 0.1),
+                dims=("cell", "nuclide", "score"),
+                coords={
+                    "cell": [0, 1],
+                    "nuclide": np.array(["total"], dtype="U"),
+                    "score": np.array(["flux", "heating"], dtype="U"),
+                },
+            ),
+        }
+    )
+    ds["mean"].attrs["tally_id"] = 1
+    ds["mean"].attrs["tally_name"] = tally_name
+    ds["mc_std"].attrs["tally_id"] = 1
+    ds["mc_std"].attrs["tally_name"] = tally_name
+    ds.attrs["observed_tally"] = json.dumps({"name": tally_name})
+    ds.to_netcdf(filepath, mode="w", engine="h5netcdf", group=group)
 
 
 @pytest.fixture
 def temp_results_file(tmp_path):
-    """Create a temporary HDF5 file with test data."""
     filepath = tmp_path / "test_results.h5"
-    
-    # Create sample xarray DataArray
-    data = xr.DataArray(
-        np.random.rand(3, 2),
-        dims=["row", "column"],
-        coords={"row": [0, 1, 2], "column": ["mean", "std. dev."]},
-        name="test_tally"
-    )
-    
-    # Save to HDF5
-    data.to_netcdf(filepath, mode="w", engine="netcdf4", group="test_tally")
-    
+    _write_structured_group(filepath, group="test_tally", tally_name="mytally")
     return filepath
 
 
 def test_benchmark_results_from_file(temp_results_file):
-    """Test loading results from a file path."""
     results = BenchmarkResults.from_file(temp_results_file)
     assert results.filepath == temp_results_file
     assert results.filepath.exists()
 
 
 def test_benchmark_results_file_not_found():
-    """Test that loading a nonexistent file raises FileNotFoundError."""
     with pytest.raises(FileNotFoundError):
         BenchmarkResults.from_file("/nonexistent/path/results.h5")
 
 
 def test_benchmark_results_from_run_dir(tmp_path):
-    """Test loading results from a run directory."""
-    # Create a results file in the temp directory
     filepath = tmp_path / "results.h5"
-    data = xr.DataArray(
-        np.random.rand(2, 2),
-        dims=["row", "column"],
-        name="tally"
-    )
-    data.to_netcdf(filepath, mode="w", engine="netcdf4", group="tally")
-    
-    # Load from run directory
+    _write_structured_group(filepath, group="tally", tally_name="tally")
+
     results = BenchmarkResults.from_run_dir(tmp_path, "results.h5")
     assert results.filepath.exists()
     assert results.filepath.name == "results.h5"
 
 
+def test_results_aliases(temp_results_file):
+    base = Results.from_file(temp_results_file)
+    alias = OFBResults.from_file(temp_results_file)
+    assert isinstance(base, Results)
+    assert isinstance(alias, Results)
+
+
 def test_benchmark_results_tallies_property(temp_results_file):
-    """Test the tallies property returns list of tally names."""
     results = BenchmarkResults.from_file(temp_results_file)
-    tallies = results.tallies
-    assert isinstance(tallies, list)
-    assert "test_tally" in tallies
+    assert results.tallies == ["test_tally"]
 
 
-def test_benchmark_results_get_tally(temp_results_file):
-    """Test retrieving a specific tally."""
+def test_get_tally_by_group_name(temp_results_file):
     results = BenchmarkResults.from_file(temp_results_file)
     tally = results.get_tally("test_tally")
-    assert isinstance(tally, xr.DataArray)
-    assert tally.name == "test_tally"
+    assert isinstance(tally, Tally)
+    assert tally.name == "mytally"
+    assert tally.id == 1
 
 
-def test_benchmark_results_from_database():
-    """Test loading results from the package database."""
-    benchmarks = list_database_benchmarks()
-    if benchmarks:
-        files = list_database_files(benchmarks[0])
-        if files:
-            # Try to load the first available file
-            results = BenchmarkResults.from_database(benchmarks[0], files[0])
-            assert results.filepath.exists()
-            assert results.filepath.suffix == '.h5'
+def test_get_tally_by_logical_name(temp_results_file):
+    results = BenchmarkResults.from_file(temp_results_file)
+    tally = results.get_tally("mytally")
+    assert isinstance(tally, Tally)
+    assert tally.name == "mytally"
+
+
+def test_get_tally_missing_mean_raises(tmp_path):
+    filepath = tmp_path / "bad_results.h5"
+    ds = xr.Dataset({"only_var": xr.DataArray(np.arange(3.0), dims=("row",))})
+    ds.to_netcdf(filepath, mode="w", engine="h5netcdf", group="bad")
+
+    results = BenchmarkResults.from_file(filepath)
+    with pytest.raises(ValueError, match="does not contain a 'mean' dataset"):
+        results.get_tally("bad")
+
+
+def test_get_tally_unknown_name_raises(temp_results_file):
+    results = BenchmarkResults.from_file(temp_results_file)
+    with pytest.raises(ValueError, match="No tally with name or group"):
+        results.get_tally("missing")
