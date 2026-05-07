@@ -78,18 +78,17 @@ class BenchmarkComparison:
     benchmark_id: str
     code_name: str
     code_version: str
-    reference_source: str  # "database", "path", etc.
-    
+    reference_source: str
+
     observables: list[ObservableComparison] = field(default_factory=list)
-    
-    # Benchmark-level aggregates
+
     weighted_mean_bias: float = field(default=0.0)
-    weighted_rms_deviation: float = field(default=0.0)
+    weighted_rms_relative_deviation: float = field(default=0.0)
     global_reduced_chi2: float = field(default=0.0)
     total_point_count: int = field(default=0)
-    
+
     benchmark_status: BenchmarkStatus = field(default=BenchmarkStatus.ACCEPTABLE)
-    dashboard_score: float = field(default=50.0)  # 0-100
-    
+    dashboard_score: float = field(default=50.0)
+
     quality_flags: Dict[str, bool] = field(default_factory=dict)
     assumptions: Dict[str, Any] = field(default_factory=dict)
