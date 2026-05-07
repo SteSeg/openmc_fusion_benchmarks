@@ -45,22 +45,25 @@ def fake_zam(nuclide):
     raise Exception("Invalid nuclide")
 
 
-openmc = types.SimpleNamespace(data=types.SimpleNamespace(zam=fake_zam))
-
-# Inject the fake openmc into the global scope of the function
-globals()['openmc'] = openmc
+def _fake_openmc_with_data(**data_overrides):
+    data = types.SimpleNamespace(zam=fake_zam, gnds_name=fake_gnds_name, REACTION_MT={})
+    for key, value in data_overrides.items():
+        setattr(data, key, value)
+    return types.SimpleNamespace(data=data)
 
 
 def test_int_input():
     assert get_nuclide_zaid(1001) == 1001
 
 
-def test_str_input_valid():
+def test_str_input_valid(monkeypatch):
+    monkeypatch.setattr('openmc_fusion_benchmarks.uq.uq_utils.openmc', _fake_openmc_with_data(), raising=False)
     assert get_nuclide_zaid('H1') == 1001
     assert get_nuclide_zaid('U238') == 92238
 
 
-def test_str_input_invalid():
+def test_str_input_invalid(monkeypatch):
+    monkeypatch.setattr('openmc_fusion_benchmarks.uq.uq_utils.openmc', _fake_openmc_with_data(), raising=False)
     with pytest.raises(ValueError, match="Invalid GNDS nuclide string"):
         get_nuclide_zaid('X999')
 
@@ -86,28 +89,34 @@ def fake_gnds_name(z, a, m):
 
 # Patch globally (or use monkeypatch fixture in pytest)
 globals()['zaid_to_zam'] = zaid_to_zam
-openmc = types.SimpleNamespace(
-    data=types.SimpleNamespace(gnds_name=fake_gnds_name))
-globals()['openmc'] = openmc
+def _fake_openmc_gnds():
+    return types.SimpleNamespace(data=types.SimpleNamespace(gnds_name=fake_gnds_name))
 
 
 def test_str_input():
     assert get_nuclide_gnds("U235") == "U235"
 
 
-def test_int_input_valid():
+def test_int_input_valid(monkeypatch):
+    monkeypatch.setattr('openmc_fusion_benchmarks.uq.uq_utils.openmc', _fake_openmc_gnds(), raising=False)
     assert get_nuclide_gnds(1001) == "H1"
     assert get_nuclide_gnds(92238) == "U238"
 
 
-def test_int_input_invalid():
+def test_int_input_invalid(monkeypatch):
+    def _raise_gnds(_z, _a, _m):
+        raise ValueError("Invalid ZAID")
+
+    fake_openmc = types.SimpleNamespace(data=types.SimpleNamespace(gnds_name=_raise_gnds))
+    monkeypatch.setattr('openmc_fusion_benchmarks.uq.uq_utils.openmc', fake_openmc, raising=False)
     with pytest.raises(ValueError, match="Invalid ZAID"):
         get_nuclide_gnds(999999)
 
 
 def test_get_reaction_mt_with_string():
     """Test get_reaction_mt with a reaction name string."""
-    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc.data.REACTION_MT', {'(n,2n)': 16, '(n,gamma)': 102}):
+    fake_openmc = _fake_openmc_with_data(REACTION_MT={'(n,2n)': 16, '(n,gamma)': 102})
+    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc', fake_openmc, create=True):
         from openmc_fusion_benchmarks.uq.uq_utils import get_reaction_mt
         assert get_reaction_mt('(n,2n)') == 16
         assert get_reaction_mt('(n,gamma)') == 102
@@ -115,7 +124,8 @@ def test_get_reaction_mt_with_string():
 
 def test_get_reaction_mt_with_int():
     """Test get_reaction_mt with an MT number directly."""
-    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc.data.REACTION_MT', {}):
+    fake_openmc = _fake_openmc_with_data(REACTION_MT={})
+    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc', fake_openmc, create=True):
         from openmc_fusion_benchmarks.uq.uq_utils import get_reaction_mt
         assert get_reaction_mt(16) == 16
 
@@ -131,7 +141,8 @@ def test_get_nuclide_gnds_unsupported_type():
 
 def test_get_reaction_mt_unknown_reaction():
     """Test get_reaction_mt with unknown reaction returns input."""
-    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc.data.REACTION_MT', {}):
+    fake_openmc = _fake_openmc_with_data(REACTION_MT={})
+    with patch('openmc_fusion_benchmarks.uq.uq_utils.openmc', fake_openmc, create=True):
         from openmc_fusion_benchmarks.uq.uq_utils import get_reaction_mt
         # Unknown reaction should return the input
         assert get_reaction_mt(999) == 999
