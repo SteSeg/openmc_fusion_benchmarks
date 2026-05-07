@@ -27,6 +27,7 @@ dependencies = [
     "netCDF4",
     "h5netcdf",
     "h5py",
+    "openmc",
     "cad-to-dagmc",
     "pydagmc @ git+https://github.com/svalinn/pydagmc.git",
     "sandy",
