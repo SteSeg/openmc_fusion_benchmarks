@@ -5,7 +5,9 @@ from typing import Iterable, Sequence
 
 import numpy as np
 
-from .models import (
+from .model import (
+    BenchmarkComparison,
+    BenchmarkStatus,
     ComparisonPoint,
     DataPoint,
     ObservableComparison,
@@ -120,4 +122,56 @@ def _aggregate_observable(
         pass_count=int(within_1),
         warning_count=int(within_2 - within_1),
         outlier_count=int(beyond_3),
+    )
+
+
+def aggregate_benchmark(
+    benchmark_id: str,
+    code_name: str,
+    code_version: str,
+    reference_source: str,
+    observables: Sequence[ObservableComparison],
+) -> BenchmarkComparison:
+    """Aggregate observable-level comparisons into a benchmark-level result."""
+    if not observables:
+        return BenchmarkComparison(
+            benchmark_id=benchmark_id,
+            code_name=code_name,
+            code_version=code_version,
+            reference_source=reference_source,
+            observables=[],
+            benchmark_status=BenchmarkStatus.ACCEPTABLE,
+        )
+
+    total_points = sum(len(obs.points) for obs in observables)
+    if total_points == 0:
+        return BenchmarkComparison(
+            benchmark_id=benchmark_id,
+            code_name=code_name,
+            code_version=code_version,
+            reference_source=reference_source,
+            observables=list(observables),
+            benchmark_status=BenchmarkStatus.ACCEPTABLE,
+        )
+
+    weights = np.array([len(obs.points) for obs in observables], dtype=float)
+    mean_biases = np.array([obs.mean_bias for obs in observables], dtype=float)
+    rms_devs = np.array([obs.rms_relative_deviation for obs in observables], dtype=float)
+    chi2_vals = np.array([obs.reduced_chi2 for obs in observables], dtype=float)
+
+    weighted_mean_bias = float(np.average(mean_biases, weights=weights))
+    weighted_rms_relative_deviation = float(np.average(rms_devs, weights=weights))
+    global_reduced_chi2 = float(np.average(chi2_vals, weights=weights))
+
+    return BenchmarkComparison(
+        benchmark_id=benchmark_id,
+        code_name=code_name,
+        code_version=code_version,
+        reference_source=reference_source,
+        observables=list(observables),
+        weighted_mean_bias=weighted_mean_bias,
+        weighted_rms_relative_deviation=weighted_rms_relative_deviation,
+        global_reduced_chi2=global_reduced_chi2,
+        total_point_count=total_points,
+        benchmark_status=BenchmarkStatus.ACCEPTABLE,
     )
