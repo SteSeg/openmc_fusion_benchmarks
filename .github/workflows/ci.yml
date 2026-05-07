@@ -16,11 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
-
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -32,27 +27,33 @@ jobs:
       - name: Install OpenMC via Conda
         shell: bash -l {0}
         run: |
-          mamba install -n test-env -c conda-forge openmc>=0.14.0
+          conda activate test-env
+          mamba install -c conda-forge openmc>=0.14.0
 
       - name: Install pymoab and pydagmc
         shell: bash -l {0}
         run: |
-          conda run -n test-env python -m pip install --extra-index-url https://shimwell.github.io/wheels moab
-          conda run -n test-env python -m pip install git+https://github.com/svalinn/pydagmc
+          conda activate test-env
+          python -m pip install --extra-index-url https://shimwell.github.io/wheels moab
+          python -m pip install git+https://github.com/svalinn/pydagmc
   
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          conda run -n test-env pip install coveralls
-          conda run -n test-env python -m pip install .[tests]
+          conda activate test-env
+          pip install coveralls
+          python -m pip install .[tests]
 
       - name: Run tests
         shell: bash -l {0}
         run: |
-          conda run -n test-env python -m pytest test/ --cov openmc_fusion_benchmarks --cov-report xml --cov-report term
+          conda activate test-env
+          python -m pytest test/ --cov openmc_fusion_benchmarks --cov-report xml --cov-report term
 
       - name: Upload coverage to Coveralls
         shell: bash -l {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: conda run -n test-env coveralls || true
+        run: |
+          conda activate test-env
+          coveralls || true
