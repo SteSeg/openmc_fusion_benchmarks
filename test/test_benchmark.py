@@ -1,3 +1,4 @@
+import importlib.util
 import pytest
 import yaml
 import numpy as np
@@ -6,6 +7,8 @@ from unittest.mock import patch, mock_open, Mock, MagicMock
 
 from openmc_fusion_benchmarks import Benchmark
 from openmc_fusion_benchmarks.benchmark import OpenmcBenchmark
+
+OPENMC_AVAILABLE = importlib.util.find_spec("openmc") is not None
 
 
 # Minimal subclass for testing abstract class
@@ -146,7 +149,7 @@ def test_read_metadata_with_full_spec():
     assert "MIT" in bench.metadata
 
 
-@pytest.mark.skipif(not hasattr(__import__('openmc'), '__version__'), reason="OpenMC not installed")
+@pytest.mark.skipif(not OPENMC_AVAILABLE, reason="OpenMC not installed")
 def test_openmc_benchmark_build_materials():
     """Test OpenmcBenchmark._build_materials with atomic fractions."""
     import openmc
@@ -184,7 +187,7 @@ def test_openmc_benchmark_build_materials():
     assert materials[0].name == "aluminum"
 
 
-@pytest.mark.skipif(not hasattr(__import__('openmc'), '__version__'), reason="OpenMC not installed")
+@pytest.mark.skipif(not OPENMC_AVAILABLE, reason="OpenMC not installed")
 def test_openmc_benchmark_build_materials_with_elements():
     """Test OpenmcBenchmark._build_materials with element composition."""
     import openmc
@@ -221,7 +224,7 @@ def test_openmc_benchmark_build_materials_with_elements():
     assert materials[0].name == "steel"
 
 
-@pytest.mark.skipif(not hasattr(__import__('openmc'), '__version__'), reason="OpenMC not installed")
+@pytest.mark.skipif(not OPENMC_AVAILABLE, reason="OpenMC not installed")
 def test_openmc_benchmark_invalid_fraction_type():
     """Test that invalid fraction type raises ValueError."""
     import openmc

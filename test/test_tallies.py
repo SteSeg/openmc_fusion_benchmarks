@@ -117,3 +117,79 @@ def test_tally_repr():
     mean.attrs["tally_name"] = "repr_tally"
     tally = Tally(mean)
     assert "repr_tally" in repr(tally)
+
+
+def test_dimension_report_with_filter_axes_metadata():
+    mean = xr.DataArray(
+        np.ones((2, 3, 4, 1, 2), dtype=float),
+        dims=("realization", "cell", "energy", "nuclide", "score"),
+        coords={
+            "realization": ["r0", "r1"],
+            "cell": [1, 2, 3],
+            "energy": [0, 1, 2, 3],
+            "nuclide": np.array(["total"], dtype="U"),
+            "score": np.array(["flux", "heating"], dtype="U"),
+        },
+    )
+    mean.attrs["tally_id"] = 21
+    mean.attrs["tally_name"] = "energy_current"
+
+    parent = xr.Dataset()
+    parent.attrs["filter_axes"] = json.dumps(
+        [
+            {"name": "CellFilter", "axis": "cell", "num_bins": 3, "bins": [1, 2, 3]},
+            {"name": "EnergyFilter", "axis": "energy", "num_bins": 4, "bins": [0.0, 1.0, 2.0, 3.0, 4.0]},
+        ]
+    )
+
+    tally = BaseTally(mean, parent_ds=parent)
+    report = tally.dimension_report()
+
+    assert report["tally_id"] == 21
+    assert report["tally_name"] == "energy_current"
+    assert report["filter_dims"] == ["cell", "energy"]
+    assert report["tmc_dims"] == ["realization"]
+    assert report["filter_dim_sizes"] == {"cell": 3, "energy": 4}
+    assert report["openmc_equivalent_raw_shape"] == (12, 1, 2)
+
+
+def test_dimension_report_fallback_without_filter_axes():
+    mean = xr.DataArray(
+        np.ones((2, 5, 1, 1), dtype=float),
+        dims=("sample", "mesh", "nuclide", "score"),
+        coords={
+            "sample": [0, 1],
+            "mesh": [0, 1, 2, 3, 4],
+            "nuclide": np.array(["total"], dtype="U"),
+            "score": np.array(["flux"], dtype="U"),
+        },
+    )
+    mean.attrs["tally_name"] = "fallback"
+
+    tally = BaseTally(mean)
+    report = tally.dimension_report()
+
+    # "sample" is treated as TMC; "mesh" should be inferred as filter axis.
+    assert report["tmc_dims"] == ["sample"]
+    assert report["filter_dims"] == ["mesh"]
+    assert report["openmc_equivalent_raw_shape"] == (5, 1, 1)
+
+
+def test_format_dimension_report_includes_sections():
+    mean = xr.DataArray(
+        np.ones((1, 1), dtype=float),
+        dims=("nuclide", "score"),
+        coords={
+            "nuclide": np.array(["total"], dtype="U"),
+            "score": np.array(["flux"], dtype="U"),
+        },
+    )
+    mean.attrs["tally_id"] = 99
+    mean.attrs["tally_name"] = "mini"
+
+    text = BaseTally(mean).format_dimension_report()
+    assert "Tally mini (id=99)" in text
+    assert "OFB dims" in text
+    assert "TMC axes" in text
+    assert "Filter axes" in text
+    assert "OpenMC raw equivalent" in text
