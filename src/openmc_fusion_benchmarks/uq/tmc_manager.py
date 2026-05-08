@@ -219,7 +219,7 @@ class TMCManager:
             extra_dims = ("perturbation", "realization")
             extra_coords = {
                 "perturbation": np.arange(n_perturbations),
-                "realization": np.arange(n_realizations)
+                "realization": np.arange(n_realizations),
             }
 
         elif mode == "diagonal":
@@ -241,7 +241,6 @@ class TMCManager:
 
             # Infer per-dimension sizes from the data:
             indices_array = np.array([rec["indices"] for rec in records], dtype=int)
-            # assume indices run from 0..(n_i-1) along each axis
             per_dim_sizes = indices_array.max(axis=0) + 1  # length per perturbation dim
 
             extra_shape = tuple(int(n) for n in per_dim_sizes)
@@ -728,7 +727,7 @@ class TMCTally(BaseTally):
         dims = tuple(self._da.dims)
         has_pert = "perturbation" in dims
         has_real = "realization" in dims
-        
+
         if has_pert and has_real:
             # Sequential mode: average over realizations only
             result = self._da.mean(dim="realization")
@@ -768,7 +767,7 @@ class TMCTally(BaseTally):
         dims = tuple(self._da.dims)
         has_pert = "perturbation" in dims
         has_real = "realization" in dims
-        
+
         if has_pert and has_real:
             # Sequential mode: std over realizations only
             result = self._da.std(dim="realization")
