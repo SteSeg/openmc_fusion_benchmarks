@@ -10,6 +10,7 @@ import itertools
 import h5py
 
 from ..tallies import BaseTally
+from ..backends.openmc.tallies import _unique_filter_dims, _build_filter_axis_metadata
 
 
 class TMCManager:
@@ -283,10 +284,7 @@ class TMCManager:
                 tally_filters[tid] = filters
 
                 axis_info = {
-                    "filter_axes": [
-                        {"name": type(f).__name__, "num_bins": f.num_bins}
-                        for f in filters
-                    ],
+                    "filter_axes": _build_filter_axis_metadata(filters, _unique_filter_dims(filters)),
                     "nuclides": [str(n) for n in tally.nuclides] if tally.nuclides else ["total"],
                     "scores": list(tally.scores),
                 }
@@ -373,11 +371,8 @@ class TMCManager:
             filters = tally_filters[tid]
             axisinfo = tally_axisinfo[tid]
 
-            # filter dims based on filter types
-            filter_dims = []
-            for f in filters:
-                filter_type = type(f).__name__.replace("Filter", "").lower()
-                filter_dims.append(filter_type)
+            # filter dims consistent with backend serializer
+            filter_dims = _unique_filter_dims(filters)
 
             # within each tally group, we can use generic "nuclide" and "score"
             dims = extra_dims + tuple(filter_dims) + ("nuclide", "score")
