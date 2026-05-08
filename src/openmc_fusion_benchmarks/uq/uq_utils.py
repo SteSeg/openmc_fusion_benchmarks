@@ -1,13 +1,10 @@
 from typing import Union
 from pathlib import Path
 import os
-import sandy
 
-try:
-    import openmc.data
-    import openmc
-except ModuleNotFoundError:
-    openmc = None
+import openmc
+import openmc.data
+import sandy
 
 
 def zaid_to_zam(zaid: int) -> tuple:

@@ -1,13 +1,10 @@
-from .uq_utils import perturb_xs_xml, get_nuclide_gnds, perturb_to_hdf5
 from pathlib import Path
+
 import numpy as np
+import openmc
 import xarray as xr
 
-try:
-    import openmc
-except ModuleNotFoundError:
-    openmc = None
-
+from .uq_utils import perturb_xs_xml, get_nuclide_gnds, perturb_to_hdf5
 from ..utils import _openmc_to_ofb, _save_result
 
 
