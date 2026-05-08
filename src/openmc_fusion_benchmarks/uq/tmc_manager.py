@@ -9,6 +9,8 @@ import inspect
 import itertools
 import h5py
 
+from ..tallies import BaseTally
+
 
 class TMCManager:
     def __init__(self, base_model: openmc.Model, perturbations: List[Callable],
@@ -571,7 +573,7 @@ class TMCStatePoint:
         return f"<TMCStatePoint: {n_realizations} TMC combinations, {n_tallies} tallies>"
 
 
-class TMCTally:
+class TMCTally(BaseTally):
     """
     Wrapper for a single TMC tally providing an OpenMC Tally-like interface.
 
@@ -586,9 +588,7 @@ class TMCTally:
     """
 
     def __init__(self, mean_da, mc_std_da=None, parent_ds=None):
-        self._da = mean_da
-        self._da_mc_std = mc_std_da
-        self._parent_ds = parent_ds
+        super().__init__(mean_da, mc_std_da=mc_std_da, parent_ds=parent_ds)
 
         # Identify TMC dimensions: "perturbation" and "realization" for sequential, "perturbation_*" for matrix
         self._tmc_dims = [
