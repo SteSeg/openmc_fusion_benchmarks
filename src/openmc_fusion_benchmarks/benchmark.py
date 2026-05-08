@@ -6,8 +6,14 @@ import warnings
 from abc import ABC, abstractmethod
 import numpy as np
 import openmc
+from cad_to_dagmc import CadToDagmc
 
 from .validate_spec import validate_benchmark
+from .backends.openmc.tallies import (
+    make_default_openmc_normalizer,
+    save_openmc_statepoint_tallies,
+)
+from .uq.tmc_engine import tmc_engine
 
 
 BENCHMARK_DIR = Path(__file__).parent / "benchmarks"
@@ -159,7 +165,6 @@ class OpenmcBenchmark(Benchmark):
         return materials
 
     def _build_geometry(self):
-        from cad_to_dagmc import CadToDagmc
 
         def build_mesh(cad_file: str, material_tags, set_size: dict, global_mesh_size_min: float, global_mesh_size_max: float, mesh_file: str = "mesh.h5m"):
 
@@ -406,11 +411,6 @@ class OpenmcBenchmark(Benchmark):
         """Post-process the model after running."""
         # Retrieve tallies data from specifications
         tallies_data = self._benchmark_spec['tallies']
-
-        from .backends.openmc.tallies import (
-            make_default_openmc_normalizer,
-            save_openmc_statepoint_tallies,
-        )
         
         tally_names = [t["name"] for t in tallies_data]
         normalizer = make_default_openmc_normalizer(mesh)
@@ -443,7 +443,6 @@ class OpenmcBenchmark(Benchmark):
 
     def _uncertainty_quantification(self, *args, **kwargs):
         """Perform uncertainty quantification for the benchmark."""
-        from .uq.tmc_engine import tmc_engine
         
         uq_data = self._benchmark_spec['uncertainty_quantification']
         tallies_data = self._benchmark_spec['tallies']
