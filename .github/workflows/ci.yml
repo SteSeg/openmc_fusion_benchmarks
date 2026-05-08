@@ -20,9 +20,16 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: test-env
+          python-version: "3.12"
           miniforge-version: latest
           channels: conda-forge
           auto-activate-base: false
+
+      - name: Ensure Python pin is cleared
+        shell: bash -l {0}
+        run: |
+          source "$CONDA/etc/profile.d/conda.sh"
+          conda config --remove pinned_packages python || true
 
       - name: Install OpenMC via Conda
         shell: bash -l {0}
