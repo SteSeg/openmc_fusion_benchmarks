@@ -36,6 +36,7 @@ jobs:
           conda run -n test-env python -c "import openmc; print('openmc', openmc.__version__)"
           conda run -n test-env python -c "import site; print(site.getsitepackages())"
           conda run -n test-env conda list openmc
+          
 
       - name: Install pymoab and pydagmc
         shell: bash -l {0}
