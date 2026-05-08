@@ -10,7 +10,7 @@ import itertools
 import h5py
 
 from ..tallies import BaseTally
-from ..backends.openmc.tallies import _unique_filter_dims, _build_filter_axis_metadata
+from ..backends.openmc.tallies import openmc_tally_to_dataset
 
 
 class TMCManager:
@@ -257,38 +257,27 @@ class TMCManager:
 
         # ---- 3. Use first statepoint as reference for tallies ----
         first_sp_path = resolve_statepoint_path(first_rec["statepoint"])
-        tally_names = {}    # tid -> name
-        tally_shapes = {}   # tid -> nd_shape (filters..., nuclide, score)
-        tally_filters = {}  # tid -> list of filters
-        tally_axisinfo = {} # tid -> axis_info dict
+        tally_names = {}       # tid -> name
+        tally_shapes = {}      # tid -> nd_shape (filters..., nuclide, score)
+        tally_templates = {}   # tid -> xarray.Dataset template
+        tally_dims = {}        # tid -> tuple of dims (filters..., nuclide, score)
+        tally_coords = {}      # tid -> dim -> coord values
 
         with openmc.StatePoint(str(first_sp_path)) as sp0:
             for tally in sp0.tallies.values():
                 tid = tally.id
 
-                filters = tally.filters
-                filter_bins = [f.num_bins for f in filters]
-                n_nuclides = max(len(tally.nuclides), 1)
-                n_scores = len(tally.scores)
-
-                flat_shape = tally.mean.shape  # (prod_bins, n_nuclides, n_scores)
-                nd_shape = tuple(filter_bins) + (n_nuclides, n_scores)
-
-                assert flat_shape[0] == np.prod(filter_bins)
-                assert flat_shape[1] == n_nuclides
-                assert flat_shape[2] == n_scores
+                ds_template = openmc_tally_to_dataset(tally)
+                da_template = ds_template["mean"]
 
                 tally_names[tid] = tally.name
-                tally_shapes[tid] = nd_shape
-                tally_filters[tid] = filters
-
-                axis_info = {
-                    "filter_axes": _build_filter_axis_metadata(filters, _unique_filter_dims(filters)),
-                    "nuclides": [str(n) for n in tally.nuclides] if tally.nuclides else ["total"],
-                    "scores": list(tally.scores),
+                tally_shapes[tid] = tuple(int(s) for s in da_template.shape)
+                tally_templates[tid] = ds_template
+                tally_dims[tid] = tuple(da_template.dims)
+                tally_coords[tid] = {
+                    dim: np.asarray(da_template.coords[dim].values)
+                    for dim in da_template.dims
                 }
-
-                tally_axisinfo[tid] = axis_info
 
         # ---- 4. Allocate arrays: one per tally ----
         tmc_data = {}    # tid -> ndarray (extra_shape + nd_shape)
@@ -366,31 +355,15 @@ class TMCManager:
         # ---- 6. Build per-tally Datasets and write each into its own group ----
 
         for tid, arr in tmc_data.items():
-            nd_shape = tally_shapes[tid]
-            filters = tally_filters[tid]
-            axisinfo = tally_axisinfo[tid]
+            template = tally_templates[tid]
+            template_dims = tally_dims[tid]
 
-            # filter dims consistent with backend serializer
-            filter_dims = _unique_filter_dims(filters)
+            dims = extra_dims + template_dims
 
-            # within each tally group, we can use generic "nuclide" and "score"
-            dims = extra_dims + tuple(filter_dims) + ("nuclide", "score")
-
-            # coords: TMC dims
             coords = dict(extra_coords)
+            for dim in template_dims:
+                coords[dim] = (dim, tally_coords[tid][dim])
 
-            # coords: filter dimensions (add integer indices for each filter)
-            for i, (f, fdim) in enumerate(zip(filters, filter_dims)):
-                coords[fdim] = (fdim, np.arange(f.num_bins))
-
-            # coords: nuclide / score for this tally
-            nuclides = axisinfo["nuclides"]
-            scores   = axisinfo["scores"]
-
-            coords["nuclide"] = ("nuclide", np.array(nuclides, dtype="U"))
-            coords["score"]   = ("score",   np.array(scores,   dtype="U"))
-
-            # Per-tally dataset
             ds_tid = xr.Dataset()
 
             da_mean = xr.DataArray(
@@ -413,16 +386,9 @@ class TMCManager:
                 target_da.attrs["tally_id"] = tid
                 target_da.attrs["tally_name"] = tally_name
 
-            # serialize complex axisinfo at dataset level
-            for k, v in axisinfo.items():
-                if isinstance(v, (int, float, bool, str, np.number)):
-                    ds_tid.attrs[k] = v
-                else:
-                    if isinstance(v, np.ndarray):
-                        to_dump = v.tolist()
-                    else:
-                        to_dump = v
-                    ds_tid.attrs[k] = json.dumps(to_dump)
+            # copy dataset-level metadata from template
+            for key, value in template.attrs.items():
+                ds_tid.attrs[key] = value
 
             ds_tid["mean"] = da_mean
             ds_tid["mc_std"] = da_mc_std
