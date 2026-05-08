@@ -5,6 +5,7 @@ from pathlib import Path
 import warnings
 from abc import ABC, abstractmethod
 import numpy as np
+import openmc
 
 from .validate_spec import validate_benchmark
 
@@ -132,9 +133,6 @@ class OpenmcBenchmark(Benchmark):
         self.model = self._build_model()
 
     def _build_materials(self):
-        # Import openmc dependencies here to avoid import errors if not installed
-        import openmc
-        
         # Implement the logic to build materials for OpenMC
         material_data = self._benchmark_spec['materials']
 
@@ -162,7 +160,6 @@ class OpenmcBenchmark(Benchmark):
 
     def _build_geometry(self):
         from cad_to_dagmc import CadToDagmc
-        import openmc
 
         def build_mesh(cad_file: str, material_tags, set_size: dict, global_mesh_size_min: float, global_mesh_size_max: float, mesh_file: str = "mesh.h5m"):
 
@@ -213,7 +210,6 @@ class OpenmcBenchmark(Benchmark):
         return openmc.Geometry(root=dag_universe)
 
     def _build_source(self):
-        import openmc
         
         source_data = self._benchmark_spec['sources']
 
@@ -330,7 +326,6 @@ class OpenmcBenchmark(Benchmark):
         return source
 
     def _build_tallies(self):
-        import openmc
         
         tallies_data = self._benchmark_spec['tallies']
 
@@ -369,7 +364,6 @@ class OpenmcBenchmark(Benchmark):
         return tallies
 
     def _build_settings(self):
-        import openmc
         
         settings_data = self._benchmark_spec['settings']
 
@@ -395,7 +389,6 @@ class OpenmcBenchmark(Benchmark):
         return settings
 
     def _build_model(self):
-        import openmc
         
         materials = self._build_materials()
         geometry = self._build_geometry()
@@ -418,7 +411,6 @@ class OpenmcBenchmark(Benchmark):
             make_default_openmc_normalizer,
             save_openmc_statepoint_tallies,
         )
-        import openmc
         
         tally_names = [t["name"] for t in tallies_data]
         normalizer = make_default_openmc_normalizer(mesh)
