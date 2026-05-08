@@ -16,8 +16,8 @@ def test_postprocess_with_open_statepoint_object():
     fake_self = SimpleNamespace(_benchmark_spec={"tallies": [{"name": "t1"}, {"name": "t2"}]})
     fake_sp = object()
 
-    with patch("openmc_fusion_benchmarks.backends.openmc.tallies.make_default_openmc_normalizer", return_value="norm") as mk_norm:
-        with patch("openmc_fusion_benchmarks.backends.openmc.tallies.save_openmc_statepoint_tallies") as save:
+    with patch("openmc_fusion_benchmarks.benchmark.make_default_openmc_normalizer", return_value="norm") as mk_norm:
+        with patch("openmc_fusion_benchmarks.benchmark.save_openmc_statepoint_tallies") as save:
             with patch("openmc.StatePoint", new=object):
                 OpenmcBenchmark._postprocess(fake_self, statepoint=fake_sp, mesh="mesh.h5m")
 
@@ -44,8 +44,8 @@ def test_postprocess_with_statepoint_path_uses_context_manager():
         def __exit__(self, *_exc):
             return False
 
-    with patch("openmc_fusion_benchmarks.backends.openmc.tallies.make_default_openmc_normalizer", return_value="norm"):
-        with patch("openmc_fusion_benchmarks.backends.openmc.tallies.save_openmc_statepoint_tallies") as save:
+    with patch("openmc_fusion_benchmarks.benchmark.make_default_openmc_normalizer", return_value="norm"):
+        with patch("openmc_fusion_benchmarks.benchmark.save_openmc_statepoint_tallies") as save:
             with patch("openmc.StatePoint", new=DummyStatePoint):
                 OpenmcBenchmark._postprocess(fake_self, statepoint=Path("statepoint.10.h5"))
 
