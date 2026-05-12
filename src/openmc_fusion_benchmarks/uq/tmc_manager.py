@@ -198,6 +198,10 @@ class TMCManager:
         else:
             raise RuntimeError("Unrecognized manifest record format")
 
+        # Persist the detected mode for downstream consumers
+        with h5py.File(tmc_statepoint, "a") as h5f:
+            h5f.attrs["tmc_mode"] = mode
+
         # ---- 2. Sort & index logic depending on mode ----
         if mode == "sequential":
             # sort by (perturbation, realization)
@@ -444,6 +448,15 @@ class TMCStatePoint:
         self.path = Path(path).resolve()
         # We won't keep one global ds; we'll open per-tally groups as needed.
         self._tallies = None
+        self._tmc_mode = None
+
+    @property
+    def tmc_mode(self):
+        """TMC mode recorded in the statepoint file (sequential, matrix, diagonal)."""
+        if self._tmc_mode is None:
+            with h5py.File(self.path, "r") as h5f:
+                self._tmc_mode = h5f.attrs.get("tmc_mode")
+        return self._tmc_mode
 
     @property
     def tallies(self):
@@ -530,7 +543,8 @@ class TMCStatePoint:
                 for d in tmc_dims:
                     sz *= any_tally._da.sizes[d]
                 n_realizations = sz
-        return f"<TMCStatePoint: {n_realizations} TMC combinations, {n_tallies} tallies>"
+        mode = self.tmc_mode or "unknown"
+        return f"<TMCStatePoint: mode={mode}, {n_realizations} TMC combinations, {n_tallies} tallies>"
 
 
 class TMCTally(BaseTally):
