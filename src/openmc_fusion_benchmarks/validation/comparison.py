@@ -105,6 +105,7 @@ def _aggregate_observable(
     within_1 = np.sum(np.abs(norm_res) <= 1.0)
     within_2 = np.sum(np.abs(norm_res) <= 2.0)
     beyond_3 = np.sum(np.abs(norm_res) > 3.0)
+    within_3 = total - beyond_3
 
     return ObservableComparison(
         name=name,
@@ -117,7 +118,7 @@ def _aggregate_observable(
         reduced_chi2=float(np.sum(chi2) / max(total - 1, 1)),
         fraction_within_1sigma=float(within_1 / total),
         fraction_within_2sigma=float(within_2 / total),
-        fraction_beyond_3sigma=float(beyond_3 / total),
+        fraction_within_3sigma=float(within_3 / total),
         outlier_fraction=float(beyond_3 / total),
         pass_count=int(within_1),
         warning_count=int(within_2 - within_1),

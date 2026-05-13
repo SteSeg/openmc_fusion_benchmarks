@@ -65,7 +65,7 @@ class ObservableComparison:
     reduced_chi2: float = field(default=0.0)
     fraction_within_1sigma: float = field(default=0.0)
     fraction_within_2sigma: float = field(default=0.0)
-    fraction_beyond_3sigma: float = field(default=0.0)
+    fraction_within_3sigma: float = field(default=0.0)
     outlier_fraction: float = field(default=0.0)
     pass_count: int = field(default=0)
     warning_count: int = field(default=0)
