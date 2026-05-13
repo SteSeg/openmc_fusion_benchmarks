@@ -124,7 +124,7 @@ def compare_benchmark_results(
     calculation: BenchmarkResults,
     tally_names: Sequence[str] | None = None,
     observable_type_map: dict[str, str] | None = None,
-    flatten_dims: Sequence[str] | None = None,
+    flatten_dims_map: dict[str, Sequence[str]] | None = None,
 ) -> BenchmarkComparison:
     """
     Compare two BenchmarkResults objects and aggregate to benchmark-level metrics.
@@ -139,14 +139,15 @@ def compare_benchmark_results(
         Optional list of tally names/groups to compare. Defaults to experiment.tallies.
     observable_type_map:
         Optional mapping from tally name to observable type.
-    flatten_dims:
-        Dimensions to flatten into points. Defaults to all tally dims.
+    flatten_dims_map:
+        Optional per-tally flatten dims. If provided, overrides flatten_dims per tally.
     """
     names = list(tally_names) if tally_names is not None else list(experiment.tallies)
     if not names:
         raise ValueError("No tallies found to compare.")
 
     observable_type_map = observable_type_map or {}
+    flatten_dims_map = flatten_dims_map or {}
     observables: list[ObservableComparison] = []
 
     for name in names:
@@ -154,12 +155,14 @@ def compare_benchmark_results(
         calc_tally = calculation.get_tally(name)
         observable_type = observable_type_map.get(name, "tally")
 
+        tally_flatten_dims = flatten_dims_map.get(name)
+
         obs = compare_tallies(
             observable_name=name,
             observable_type=observable_type,
             experiment=exp_tally,
             calculation=calc_tally,
-            flatten_dims=flatten_dims,
+            flatten_dims=tally_flatten_dims,
         )
         observables.append(obs)
 
