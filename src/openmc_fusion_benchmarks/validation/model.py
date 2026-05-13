@@ -49,6 +49,15 @@ class ComparisonPoint:
     metrics: Optional[PointMetrics] = None
     covariance_index: Optional[int] = None  # Index in covariance matrix if available
 
+    def __repr__(self) -> str:
+        metrics = self.metrics
+        status = metrics.status.value if metrics is not None else "uncomputed"
+        return (
+            f"<ComparisonPoint id={self.id!r}, type={self.observable_type!r}, "
+            f"calc={self.calculation.value:.6g}, exp={self.experiment.value:.6g}, "
+            f"status={status}>"
+        )
+
 
 @dataclass
 class ObservableComparison:
@@ -70,6 +79,14 @@ class ObservableComparison:
     pass_count: int = field(default=0)
     warning_count: int = field(default=0)
     outlier_count: int = field(default=0)
+
+    def __repr__(self) -> str:
+        return (
+            f"<ObservableComparison name={self.name!r}, type={self.observable_type!r}, "
+            f"points={len(self.points)}, mean_bias={self.mean_bias:.3g}, "
+            f"rms_rel_dev={self.rms_relative_deviation:.3g}, "
+            f"reduced_chi2={self.reduced_chi2:.3g}>"
+        )
 
 
 @dataclass
