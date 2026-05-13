@@ -1,5 +1,5 @@
 import numpy as np
-from .models import ComparisonPoint, PointMetrics, PointStatus
+from .model import ComparisonPoint, PointMetrics, PointStatus
 
 
 def compute_point_metrics(point: ComparisonPoint) -> PointMetrics:
