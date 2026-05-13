@@ -4,9 +4,9 @@ from .metrics import compute_point_metrics
 from .model import (
 	BenchmarkComparison,
 	BenchmarkStatus,
-	ComparisonPoint,
 	DataPoint,
 	ObservableComparison,
+	PointComparison,
 	PointMetrics,
 	PointStatus,
 )
@@ -14,9 +14,9 @@ from .model import (
 __all__ = [
 	"BenchmarkComparison",
 	"BenchmarkStatus",
-	"ComparisonPoint",
 	"DataPoint",
 	"ObservableComparison",
+	"PointComparison",
 	"PointMetrics",
 	"PointStatus",
 	"aggregate_benchmark",

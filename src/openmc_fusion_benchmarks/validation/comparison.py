@@ -8,9 +8,9 @@ import numpy as np
 from .model import (
     BenchmarkComparison,
     BenchmarkStatus,
-    ComparisonPoint,
     DataPoint,
     ObservableComparison,
+    PointComparison,
 )
 from .metrics import compute_point_metrics
 
@@ -66,13 +66,13 @@ def compare_point_set(
     if len(ids) != n:
         raise ValueError("point_ids length must match number of points.")
 
-    points: list[ComparisonPoint] = []
+    points: list[PointComparison] = []
 
     for pid, exp_raw, calc_raw in zip(ids, experiment_points, calculation_points):
         exp = _as_datapoint(exp_raw)
         calc = _as_datapoint(calc_raw)
 
-        point = ComparisonPoint(
+        point = PointComparison(
             id=str(pid),
             observable_type=observable_type,
             experiment=exp,
@@ -87,7 +87,7 @@ def compare_point_set(
 def _aggregate_observable(
     name: str,
     observable_type: str,
-    points: Sequence[ComparisonPoint],
+    points: Sequence[PointComparison],
 ) -> ObservableComparison:
     """Compute observable-level summary metrics."""
     if not points:

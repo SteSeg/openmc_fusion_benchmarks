@@ -1,8 +1,8 @@
 import numpy as np
-from .model import ComparisonPoint, PointMetrics, PointStatus
+from .model import PointComparison, PointMetrics, PointStatus
 
 
-def compute_point_metrics(point: ComparisonPoint) -> PointMetrics:
+def compute_point_metrics(point: PointComparison) -> PointMetrics:
     """Compute all metrics for a single comparison point."""
     exp = point.experiment
     calc = point.calculation

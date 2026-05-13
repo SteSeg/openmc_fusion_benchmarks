@@ -40,7 +40,7 @@ class PointMetrics:
 
 
 @dataclass
-class ComparisonPoint:
+class PointComparison:
     """One comparison point (detector, foil, energy bin, etc.)."""
     id: str
     observable_type: str  # "reaction_rate", "spectrum", "leakage", etc.
@@ -53,7 +53,7 @@ class ComparisonPoint:
         metrics = self.metrics
         status = metrics.status.value if metrics is not None else "uncomputed"
         return (
-            f"<ComparisonPoint id={self.id!r}, type={self.observable_type!r}, "
+            f"<PointComparison id={self.id!r}, type={self.observable_type!r}, "
             f"calc={self.calculation.value:.6g}, exp={self.experiment.value:.6g}, "
             f"status={status}>"
         )
@@ -64,7 +64,7 @@ class ObservableComparison:
     """Comparison of all points for one observable (one tally, one spectrum, one foil traverse)."""
     name: str
     observable_type: str
-    points: list[ComparisonPoint]
+    points: list[PointComparison]
     
     # Observable-level aggregates
     mean_bias: float = field(default=0.0)
