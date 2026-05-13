@@ -144,6 +144,31 @@ obs = compare_tallies(
   - compare_tallies
   - compare_benchmark_results
 
+### Under the hood (call chain)
+
+Starting from compare_benchmark_results:
+
+1) compare_benchmark_results (validation/adapters.py)
+   - selects which tallies to compare and loops over them
+   - for each tally name:
+     - BenchmarkResults.get_tally (benchmark_results.py)
+       - opens the tally group and returns a BaseTally wrapper
+     - compare_tallies (validation/adapters.py)
+       - standardizes each tally into point-level inputs
+       - hands off to point and observable aggregation
+       - datapoints_from_tally (validation/adapters.py)
+         - stacks and flattens the tally DataArray into a single point axis
+         - builds DataPoint lists and string point_ids for traceability
+       - compare_point_set (validation/comparison.py)
+         - creates PointComparison objects for each point
+         - computes PointMetrics via compute_point_metrics
+       - _aggregate_observable (validation/comparison.py)
+         - aggregates point metrics into ObservableComparison
+2) aggregate_benchmark (validation/comparison.py)
+   - computes weighted benchmark aggregates
+   - derives outlier_fraction from observable outlier counts
+   - applies grading thresholds and computes dashboard_score
+
 ### High-level flow
 
 compare_benchmark_results:
