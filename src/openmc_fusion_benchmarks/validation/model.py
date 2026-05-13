@@ -103,6 +103,7 @@ class BenchmarkComparison:
     weighted_rms_relative_deviation: float = field(default=0.0)
     global_reduced_chi2: float = field(default=0.0)
     total_point_count: int = field(default=0)
+    outlier_fraction: float = field(default=0.0)
 
     benchmark_status: BenchmarkStatus = field(default=BenchmarkStatus.ACCEPTABLE)
     dashboard_score: float = field(default=50.0)

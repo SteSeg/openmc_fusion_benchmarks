@@ -14,6 +14,18 @@ from .model import (
 )
 from .metrics import compute_point_metrics
 
+_DEFAULT_GRADING_THRESHOLDS = {
+    "rms_relative_deviation": {"good": 0.05, "bad": 0.15},
+    "reduced_chi2": {"good": 1.5, "bad": 3.0},
+    "outlier_fraction": {"good": 0.01, "bad": 0.05},
+}
+
+_DEFAULT_SCORE_WEIGHTS = {
+    "rms_relative_deviation": 0.5,
+    "reduced_chi2": 0.3,
+    "outlier_fraction": 0.2,
+}
+
 
 def _as_datapoint(item) -> DataPoint:
     """
@@ -126,6 +138,52 @@ def _aggregate_observable(
     )
 
 
+def _score_component(value: float, good: float, bad: float) -> float:
+    if bad <= good:
+        raise ValueError("Score thresholds must satisfy bad > good.")
+    if value <= good:
+        return 1.0
+    if value >= bad:
+        return 0.0
+    return 1.0 - (value - good) / (bad - good)
+
+
+def _grade_benchmark(
+    rms_relative_deviation: float,
+    reduced_chi2: float,
+    outlier_fraction: float,
+) -> tuple[BenchmarkStatus, float]:
+    thresholds = _DEFAULT_GRADING_THRESHOLDS
+    weights = _DEFAULT_SCORE_WEIGHTS
+
+    metrics = {
+        "rms_relative_deviation": rms_relative_deviation,
+        "reduced_chi2": reduced_chi2,
+        "outlier_fraction": outlier_fraction,
+    }
+
+    status = BenchmarkStatus.ACCEPTABLE
+    for name, value in metrics.items():
+        good = thresholds[name]["good"]
+        bad = thresholds[name]["bad"]
+        if value >= bad:
+            status = BenchmarkStatus.PROBLEMATIC
+            break
+        if value > good:
+            status = BenchmarkStatus.BORDERLINE
+
+    total_weight = sum(weights.values())
+    score = 0.0
+    for name, value in metrics.items():
+        good = thresholds[name]["good"]
+        bad = thresholds[name]["bad"]
+        component = _score_component(value, good, bad)
+        score += weights[name] * component
+    score = 100.0 * score / total_weight if total_weight > 0 else 0.0
+
+    return status, score
+
+
 def aggregate_benchmark(
     benchmark_id: str,
     code_name: str,
@@ -164,6 +222,14 @@ def aggregate_benchmark(
     weighted_rms_relative_deviation = float(np.average(rms_devs, weights=weights))
     global_reduced_chi2 = float(np.average(chi2_vals, weights=weights))
 
+    total_outliers = int(sum(obs.outlier_count for obs in observables))
+    outlier_fraction = float(total_outliers / total_points)
+    benchmark_status, dashboard_score = _grade_benchmark(
+        rms_relative_deviation=weighted_rms_relative_deviation,
+        reduced_chi2=global_reduced_chi2,
+        outlier_fraction=outlier_fraction,
+    )
+
     return BenchmarkComparison(
         benchmark_id=benchmark_id,
         code_name=code_name,
@@ -174,5 +240,7 @@ def aggregate_benchmark(
         weighted_rms_relative_deviation=weighted_rms_relative_deviation,
         global_reduced_chi2=global_reduced_chi2,
         total_point_count=total_points,
-        benchmark_status=BenchmarkStatus.ACCEPTABLE,
+        outlier_fraction=outlier_fraction,
+        benchmark_status=benchmark_status,
+        dashboard_score=dashboard_score,
     )
