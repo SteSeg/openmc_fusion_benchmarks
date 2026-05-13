@@ -52,7 +52,7 @@ def datapoints_from_tally(
     calculation:
         Calculated results tally.
     flatten_dims:
-        Dimensions to flatten into points. Defaults to all tally dims.
+        Dimensions to flatten into points. When omitted, all tally dims are used.
     """
     if experiment.dims != calculation.dims or experiment.shape != calculation.shape:
         raise ValueError("Experiment and calculation tallies must share dims and shape.")
@@ -99,7 +99,11 @@ def compare_tallies(
     calculation: BaseTally,
     flatten_dims: Sequence[str] | None = None,
 ) -> ObservableComparison:
-    """Compare two tallies by converting them into point metrics."""
+    """Compare two tallies by converting them into point metrics.
+
+    The flatten_dims parameter controls which tally dims are treated as
+    comparison points. When omitted, all dims are flattened.
+    """
     exp_points, calc_points, point_ids = datapoints_from_tally(
         experiment=experiment,
         calculation=calculation,
@@ -140,7 +144,7 @@ def compare_benchmark_results(
     observable_type_map:
         Optional mapping from tally name to observable type.
     flatten_dims_map:
-        Optional per-tally flatten dims. If provided, overrides flatten_dims per tally.
+        Optional per-tally flatten dims. Tallies missing from the map use all dims.
     """
     names = list(tally_names) if tally_names is not None else list(experiment.tallies)
     if not names:
