@@ -155,6 +155,7 @@ class Benchmark(ABC):
         code_version: str,
         nuclear_data_name: str | None = None,
         nuclear_data_version: str | None = None,
+        geometry: str | None = None,
         filename: str = "benchmark_results.h5",
     ) -> None:
         """Persist run metadata into the results file."""
@@ -176,6 +177,8 @@ class Benchmark(ABC):
                 group.attrs["nuclear_data_name"] = str(nuclear_data_name)
             if nuclear_data_version is not None:
                 group.attrs["nuclear_data_version"] = str(nuclear_data_version)
+            if geometry is not None:
+                group.attrs["geometry"] = str(geometry)
 
 
 class OpenmcBenchmark(Benchmark):
@@ -500,6 +503,7 @@ class OpenmcBenchmark(Benchmark):
             code_version=code_version,
             nuclear_data_name=None,
             nuclear_data_version=None,
+            geometry="cad",
             filename="benchmark_results.h5",
         )
 
