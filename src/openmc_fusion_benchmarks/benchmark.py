@@ -149,6 +149,34 @@ class Benchmark(ABC):
             group.attrs["benchmark_name"] = self.name
             group.create_dataset("yaml", data=np.bytes_(spec_bytes))
 
+    def _write_run_metadata(
+        self,
+        code_name: str,
+        code_version: str,
+        nuclear_data_name: str | None = None,
+        nuclear_data_version: str | None = None,
+        filename: str = "benchmark_results.h5",
+    ) -> None:
+        """Persist run metadata into the results file."""
+        path = Path(filename)
+        if not path.exists():
+            warnings.warn(
+                f"Results file '{filename}' not found. Skipping run metadata.",
+                UserWarning,
+            )
+            return
+
+        with h5py.File(path, "a") as handle:
+            if "run_metadata" in handle:
+                del handle["run_metadata"]
+            group = handle.create_group("run_metadata")
+            group.attrs["code_name"] = str(code_name)
+            group.attrs["code_version"] = str(code_version)
+            if nuclear_data_name is not None:
+                group.attrs["nuclear_data_name"] = str(nuclear_data_name)
+            if nuclear_data_version is not None:
+                group.attrs["nuclear_data_version"] = str(nuclear_data_version)
+
 
 class OpenmcBenchmark(Benchmark):
     def __init__(self, name: str):
@@ -437,8 +465,12 @@ class OpenmcBenchmark(Benchmark):
         normalizer = make_default_openmc_normalizer(mesh)
 
         # Accept both already-open StatePoint objects and statepoint file paths.
+        code_version = "unknown"
+
         if isinstance(statepoint, openmc.StatePoint):
             sp = statepoint
+            if hasattr(sp, "version"):
+                code_version = ".".join(str(v) for v in sp.version)
             save_openmc_statepoint_tallies(
                 statepoint=sp,
                 filename="benchmark_results.h5",
@@ -450,6 +482,8 @@ class OpenmcBenchmark(Benchmark):
             )
         else:
             with openmc.StatePoint(str(statepoint)) as sp:
+                if hasattr(sp, "version"):
+                    code_version = ".".join(str(v) for v in sp.version)
                 save_openmc_statepoint_tallies(
                     statepoint=sp,
                     filename="benchmark_results.h5",
@@ -461,6 +495,13 @@ class OpenmcBenchmark(Benchmark):
                 )
 
         self._write_spec_snapshot("benchmark_results.h5")
+        self._write_run_metadata(
+            code_name="openmc",
+            code_version=code_version,
+            nuclear_data_name=None,
+            nuclear_data_version=None,
+            filename="benchmark_results.h5",
+        )
 
         return
 
