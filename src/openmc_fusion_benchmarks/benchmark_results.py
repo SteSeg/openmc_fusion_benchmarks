@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import yaml
 from pathlib import Path
 from typing import Union
 import h5py
@@ -162,6 +163,28 @@ class Results:
                 report.append(entry)
 
         return report
+
+    def get_spec_snapshot(self) -> dict:
+        """Return the embedded specifications.yaml snapshot if present."""
+        with h5py.File(self.filepath, "r") as f:
+            if "specifications" not in f:
+                raise ValueError("No specifications snapshot found in results file")
+            group = f["specifications"]
+            if "yaml" not in group:
+                raise ValueError("Specifications snapshot is missing 'yaml' dataset")
+            raw = group["yaml"][()]
+            if isinstance(raw, np.ndarray):
+                if raw.size == 0:
+                    raise ValueError("Specifications snapshot dataset is empty")
+                raw = raw[()]
+            if isinstance(raw, bytes):
+                yaml_text = raw.decode("utf-8")
+            else:
+                yaml_text = str(raw)
+        try:
+            return json.loads(json.dumps(yaml.safe_load(yaml_text)))
+        except Exception as exc:
+            raise ValueError("Failed to parse specifications snapshot YAML") from exc
 
 
 class BenchmarkResults(Results):

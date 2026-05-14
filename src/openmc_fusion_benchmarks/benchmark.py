@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import yaml
+import h5py
 from pathlib import Path
 import warnings
 from abc import ABC, abstractmethod
@@ -126,6 +127,27 @@ class Benchmark(ABC):
         """Show metadata for the benchmark."""
 
         return self._metadata
+
+    def _write_spec_snapshot(self, filename: str = "benchmark_results.h5") -> None:
+        """Persist a snapshot of specifications.yaml into the results file."""
+        path = Path(filename)
+        if not path.exists():
+            warnings.warn(
+                f"Results file '{filename}' not found. Skipping spec snapshot.",
+                UserWarning,
+            )
+            return
+
+        spec_yaml = yaml.safe_dump(self._benchmark_spec, sort_keys=False)
+        spec_bytes = spec_yaml.encode("utf-8")
+
+        with h5py.File(path, "a") as handle:
+            if "specifications" in handle:
+                del handle["specifications"]
+            group = handle.create_group("specifications")
+            group.attrs["format"] = "yaml"
+            group.attrs["benchmark_name"] = self.name
+            group.create_dataset("yaml", data=np.bytes_(spec_bytes))
 
 
 class OpenmcBenchmark(Benchmark):
@@ -437,6 +459,8 @@ class OpenmcBenchmark(Benchmark):
                     append_dim="realization",
                     normalizer=normalizer,
                 )
+
+        self._write_spec_snapshot("benchmark_results.h5")
 
         return
 
