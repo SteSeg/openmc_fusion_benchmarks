@@ -186,6 +186,20 @@ class Results:
         except Exception as exc:
             raise ValueError("Failed to parse specifications snapshot YAML") from exc
 
+    def get_run_metadata(self) -> dict:
+        """Return run metadata embedded in the results file, if present."""
+        with h5py.File(self.filepath, "r") as f:
+            if "run_metadata" not in f:
+                raise ValueError("No run metadata found in results file")
+            attrs = f["run_metadata"].attrs
+            data: dict[str, str] = {}
+            for key, value in attrs.items():
+                if isinstance(value, bytes):
+                    data[key] = value.decode("utf-8")
+                else:
+                    data[key] = str(value)
+            return data
+
 
 class BenchmarkResults(Results):
     """Backward-compatible alias class for benchmark-centric naming."""
