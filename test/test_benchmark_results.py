@@ -64,6 +64,7 @@ if not _module_available("sandy"):
     sys.modules.setdefault("sandy", types.ModuleType("sandy"))
 
 
+from openmc_fusion_benchmarks.benchmark import Benchmark
 from openmc_fusion_benchmarks.benchmark_results import BenchmarkResults, OFBResults, Results
 from openmc_fusion_benchmarks.tallies import Tally
 
@@ -215,3 +216,33 @@ def test_get_spec_consistency_report_and_only_mismatches(tmp_path):
     assert mismatches[0]["group"] == "bad"
     assert mismatches[0]["tally_name"] == "fallback_name"
     assert mismatches[0]["issues"] == ["scores mismatch"]
+
+
+def test_get_spec_snapshot_and_run_metadata(tmp_path):
+    filepath = tmp_path / "metadata_results.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    fake_self = types.SimpleNamespace(
+        name="dummy",
+        _benchmark_spec={"metadata": {"title": "dummy"}, "tallies": []},
+    )
+
+    Benchmark._write_spec_snapshot(fake_self, filename=str(filepath))
+    Benchmark._write_run_metadata(
+        fake_self,
+        code_name="openmc",
+        code_version="0.15.2",
+        nuclear_data_name=None,
+        nuclear_data_version=None,
+        geometry="cad",
+        filename=str(filepath),
+    )
+
+    results = BenchmarkResults.from_file(filepath)
+    spec = results.get_spec_snapshot()
+    run_meta = results.get_run_metadata()
+
+    assert spec["metadata"]["title"] == "dummy"
+    assert run_meta["code_name"] == "openmc"
+    assert run_meta["code_version"] == "0.15.2"
+    assert run_meta["geometry"] == "cad"
