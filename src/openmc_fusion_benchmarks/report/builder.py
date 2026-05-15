@@ -117,6 +117,7 @@ def build_report(
         "code_name": report_metadata.code_name,
         "code_version": report_metadata.code_version,
         "notes": report_metadata.notes,
+        "verbosity": report_config.verbosity,
         "sources": source_entries,
     }
 
