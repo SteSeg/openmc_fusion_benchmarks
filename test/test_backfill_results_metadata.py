@@ -62,9 +62,11 @@ def test_backfill_experiment(tmp_path, monkeypatch):
 
     with h5py.File(results_path, "r") as handle:
         assert "specifications" in handle
-        assert "run_metadata" not in handle
+        assert "run_metadata" in handle
         spec_group = handle["specifications"]
         assert spec_group.attrs["benchmark_name"] == "test"
+        run_meta = handle["run_metadata"].attrs
+        assert run_meta["kind"] == "experiment"
 
 
 def test_backfill_calculation(tmp_path, monkeypatch):
