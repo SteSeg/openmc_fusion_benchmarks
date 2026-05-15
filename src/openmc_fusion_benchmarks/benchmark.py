@@ -497,15 +497,17 @@ class OpenmcBenchmark(Benchmark):
                     normalizer=normalizer,
                 )
 
-        self._write_spec_snapshot("benchmark_results.h5")
-        self._write_run_metadata(
-            code_name="openmc",
-            code_version=code_version,
-            nuclear_data_name=None,
-            nuclear_data_version=None,
-            geometry="cad",
-            filename="benchmark_results.h5",
-        )
+        if hasattr(self, "_write_spec_snapshot"):
+            self._write_spec_snapshot("benchmark_results.h5")
+        if hasattr(self, "_write_run_metadata"):
+            self._write_run_metadata(
+                code_name="openmc",
+                code_version=code_version,
+                nuclear_data_name=None,
+                nuclear_data_version=None,
+                geometry="cad",
+                filename="benchmark_results.h5",
+            )
 
         return
 
