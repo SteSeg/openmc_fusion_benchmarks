@@ -55,21 +55,22 @@ def render_pdf(report: Report, output_path: Path, plots_dir: Path) -> Path:
         fig = plt.figure(figsize=(8.5, 11))
         fig.text(0.5, 0.95, report.metadata.title, ha="center", fontsize=14)
         fig.text(0.1, 0.9, f"Benchmark: {report.metadata.benchmark_id}", fontsize=10)
-        fig.text(0.1, 0.86, f"Code: {report.metadata.code_name} {report.metadata.code_version}", fontsize=10)
-        y_cursor = _wrap_text(fig, 0.1, 0.82, report.metadata.description, fontsize=9, width_chars=80)
+
+        description = _resolve_benchmark_description(report)
+        y_cursor = _wrap_text(fig, 0.1, 0.86, description, fontsize=9, width_chars=80)
         y_cursor = _wrap_text(fig, 0.1, y_cursor - 0.02, report.metadata.model_description, fontsize=9, width_chars=80)
 
-        run_meta = report.data.get("run_metadata", {})
-        if run_meta:
-            code_name = run_meta.get("code_name", "")
-            code_version = run_meta.get("code_version", "")
-            geometry = run_meta.get("geometry", "")
-            fig.text(0.1, y_cursor - 0.02, f"Run: {code_name} {code_version} ({geometry})", fontsize=9)
-            y_notes = y_cursor - 0.06
-        else:
-            y_notes = y_cursor - 0.02
+        reference_line = _format_reference(report)
+        if reference_line:
+            fig.text(0.1, y_cursor - 0.02, f"Reference: {reference_line}", fontsize=9)
+            y_cursor -= 0.06
 
-        _wrap_text(fig, 0.1, y_notes, report.metadata.notes, fontsize=9, width_chars=80)
+        validation_line = _format_validation(report)
+        if validation_line:
+            fig.text(0.1, y_cursor - 0.02, f"Validation case: {validation_line}", fontsize=9)
+            y_cursor -= 0.06
+
+        _wrap_text(fig, 0.1, y_cursor - 0.02, report.metadata.notes, fontsize=9, width_chars=80)
         fig.tight_layout()
         pdf.savefig(fig)
         plt.close(fig)
@@ -106,3 +107,42 @@ def _wrap_text(fig, x: float, y: float, text: str, fontsize: int, width_chars: i
     for idx, line in enumerate(lines):
         fig.text(x, y - idx * line_height, line, fontsize=fontsize)
     return y - len(lines) * line_height
+
+
+def _resolve_benchmark_description(report: Report) -> str:
+    spec = report.data.get("specifications", {})
+    spec_meta = spec.get("metadata", {}) if isinstance(spec, dict) else {}
+    return spec_meta.get("description") or report.metadata.description
+
+
+def _format_reference(report: Report) -> str:
+    for entry in report.data.get("sources", []):
+        if entry.get("kind") != "experiment":
+            continue
+        run_meta = entry.get("run_metadata", {})
+        if run_meta.get("kind") == "experiment":
+            return "experiment"
+        return _format_run_metadata(run_meta)
+    return ""
+
+
+def _format_validation(report: Report) -> str:
+    for entry in report.data.get("sources", []):
+        if entry.get("kind") != "calculation":
+            continue
+        run_meta = entry.get("run_metadata", {})
+        return _format_run_metadata(run_meta)
+    return ""
+
+
+def _format_run_metadata(run_meta: dict) -> str:
+    if not run_meta:
+        return ""
+
+    code = " ".join([run_meta.get("code_name", ""), run_meta.get("code_version", "")]).strip()
+    library = " ".join(
+        [run_meta.get("nuclear_data_name", ""), run_meta.get("nuclear_data_version", "")]
+    ).strip()
+
+    parts = [p for p in (code, library) if p]
+    return " | ".join(parts)
