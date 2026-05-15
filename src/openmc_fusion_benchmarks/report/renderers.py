@@ -56,9 +56,20 @@ def render_pdf(report: Report, output_path: Path, plots_dir: Path) -> Path:
         fig.text(0.5, 0.95, report.metadata.title, ha="center", fontsize=14)
         fig.text(0.1, 0.9, f"Benchmark: {report.metadata.benchmark_id}", fontsize=10)
         fig.text(0.1, 0.86, f"Code: {report.metadata.code_name} {report.metadata.code_version}", fontsize=10)
-        fig.text(0.1, 0.82, report.metadata.description, fontsize=9)
-        fig.text(0.1, 0.78, report.metadata.model_description, fontsize=9)
-        fig.text(0.1, 0.74, report.metadata.notes, fontsize=9)
+        y_cursor = _wrap_text(fig, 0.1, 0.82, report.metadata.description, fontsize=9, width_chars=80)
+        y_cursor = _wrap_text(fig, 0.1, y_cursor - 0.02, report.metadata.model_description, fontsize=9, width_chars=80)
+
+        run_meta = report.data.get("run_metadata", {})
+        if run_meta:
+            code_name = run_meta.get("code_name", "")
+            code_version = run_meta.get("code_version", "")
+            geometry = run_meta.get("geometry", "")
+            fig.text(0.1, y_cursor - 0.02, f"Run: {code_name} {code_version} ({geometry})", fontsize=9)
+            y_notes = y_cursor - 0.06
+        else:
+            y_notes = y_cursor - 0.02
+
+        _wrap_text(fig, 0.1, y_notes, report.metadata.notes, fontsize=9, width_chars=80)
         fig.tight_layout()
         pdf.savefig(fig)
         plt.close(fig)
@@ -82,3 +93,16 @@ def render_pdf(report: Report, output_path: Path, plots_dir: Path) -> Path:
             plt.close(fig)
 
     return output_path
+
+
+def _wrap_text(fig, x: float, y: float, text: str, fontsize: int, width_chars: int) -> float:
+    if not text:
+        return y
+
+    import textwrap
+
+    lines = textwrap.wrap(text, width=width_chars, break_long_words=True, break_on_hyphens=False)
+    line_height = 0.02
+    for idx, line in enumerate(lines):
+        fig.text(x, y - idx * line_height, line, fontsize=fontsize)
+    return y - len(lines) * line_height

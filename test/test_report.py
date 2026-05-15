@@ -131,6 +131,20 @@ def test_build_report(results_pair, tmp_path):
     assert isinstance(report.plots[0].style, PlotStyle)
 
 
+def test_build_report_without_metadata(results_pair, tmp_path):
+    exp, calc = results_pair
+    sources = [
+        ResultSource(name="experiment", kind="experiment", results=exp),
+        ResultSource(name="calculation", kind="calculation", results=calc),
+    ]
+    config = ReportConfig(output_dir=tmp_path)
+
+    report = build_report(sources, config)
+
+    assert report.metadata.title
+    assert report.data["sources"][0]["name"] == "experiment"
+
+
 def test_render_yaml(results_pair, tmp_path):
     exp, calc = results_pair
     metadata = ReportMetadata(title="Test", benchmark_id="bench")
