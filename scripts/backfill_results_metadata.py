@@ -107,6 +107,8 @@ def main() -> None:
         else:
             if "run_metadata" in handle:
                 del handle["run_metadata"]
+            group = handle.create_group("run_metadata")
+            group.attrs["kind"] = "experiment"
 
     print(f"Updated: {args.file}")
 

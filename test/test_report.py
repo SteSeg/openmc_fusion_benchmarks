@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import xarray as xr
 import yaml
+import h5py
 
 
 def _module_available(name: str) -> bool:
@@ -104,6 +105,24 @@ def _write_structured_group(filepath: Path, group: str, tally_name: str) -> None
     ds.to_netcdf(filepath, mode="a" if filepath.exists() else "w", engine="h5netcdf", group=group)
 
 
+def _write_spec_and_metadata(filepath: Path) -> None:
+    spec = {"metadata": {"title": "Spec Title", "description": "Spec description"}}
+    spec_bytes = yaml.safe_dump(spec).encode("utf-8")
+
+    with h5py.File(filepath, "a") as handle:
+        if "specifications" in handle:
+            del handle["specifications"]
+        spec_group = handle.create_group("specifications")
+        spec_group.attrs["format"] = "yaml"
+        spec_group.create_dataset("yaml", data=np.bytes_(spec_bytes))
+
+        if "run_metadata" in handle:
+            del handle["run_metadata"]
+        meta_group = handle.create_group("run_metadata")
+        meta_group.attrs["code_name"] = "openmc"
+        meta_group.attrs["code_version"] = "0.15.2"
+
+
 @pytest.fixture
 def results_pair(tmp_path):
     exp_path = tmp_path / "reference_results.h5"
@@ -129,6 +148,43 @@ def test_build_report(results_pair, tmp_path):
     assert report.data["sources"][0]["name"] == "experiment"
     assert report.plots[0].tally_name == "tally_1"
     assert isinstance(report.plots[0].style, PlotStyle)
+
+
+def test_build_report_without_metadata(results_pair, tmp_path):
+    exp, calc = results_pair
+    sources = [
+        ResultSource(name="experiment", kind="experiment", results=exp),
+        ResultSource(name="calculation", kind="calculation", results=calc),
+    ]
+    config = ReportConfig(output_dir=tmp_path)
+
+    report = build_report(sources, config)
+
+    assert report.metadata.title
+    assert report.data["sources"][0]["name"] == "experiment"
+    assert report.data["verbosity"] == 2
+
+
+def test_build_report_includes_specs_and_run_metadata(tmp_path):
+    exp_path = tmp_path / "reference_results.h5"
+    calc_path = tmp_path / "benchmark_results.h5"
+    _write_structured_group(exp_path, group="tally_1", tally_name="tally_1")
+    _write_structured_group(calc_path, group="tally_1", tally_name="tally_1")
+    _write_spec_and_metadata(exp_path)
+    _write_spec_and_metadata(calc_path)
+
+    exp = BenchmarkResults.from_file(exp_path)
+    calc = BenchmarkResults.from_file(calc_path)
+    sources = [
+        ResultSource(name="experiment", kind="experiment", results=exp),
+        ResultSource(name="calculation", kind="calculation", results=calc),
+    ]
+    config = ReportConfig(output_dir=tmp_path)
+
+    report = build_report(sources, config)
+
+    assert report.data["specifications"]["metadata"]["title"] == "Spec Title"
+    assert report.data["run_metadata"]["code_name"] == "openmc"
 
 
 def test_render_yaml(results_pair, tmp_path):
