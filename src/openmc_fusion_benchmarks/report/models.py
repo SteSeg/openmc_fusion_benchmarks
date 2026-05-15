@@ -32,6 +32,7 @@ class ReportConfig:
     include_yaml: bool = True
     include_pdf: bool = False
     plot_tallies: Optional[Sequence[str]] = None
+    verbosity: int = 2
 
 
 @dataclass

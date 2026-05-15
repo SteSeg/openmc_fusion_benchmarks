@@ -75,6 +75,10 @@ def render_pdf(report: Report, output_path: Path, plots_dir: Path) -> Path:
         pdf.savefig(fig)
         plt.close(fig)
 
+        verbosity = int(report.data.get("verbosity", 0) or 0)
+        if verbosity > 0:
+            _render_specifications(pdf, report, verbosity)
+
         for entry in plot_entries:
             fig = plt.figure(figsize=(8.5, 11))
             fig.text(0.5, 0.95, f"Tally: {entry['tally']}", ha="center", fontsize=12)
@@ -100,13 +104,20 @@ def _wrap_text(fig, x: float, y: float, text: str, fontsize: int, width_chars: i
     if not text:
         return y
 
-    import textwrap
-
-    lines = textwrap.wrap(text, width=width_chars, break_long_words=True, break_on_hyphens=False)
+    lines = _wrap_lines(text, width_chars)
     line_height = 0.02
     for idx, line in enumerate(lines):
         fig.text(x, y - idx * line_height, line, fontsize=fontsize)
     return y - len(lines) * line_height
+
+
+def _wrap_lines(text: str, width_chars: int) -> list[str]:
+    if not text:
+        return []
+
+    import textwrap
+
+    return textwrap.wrap(text, width=width_chars, break_long_words=True, break_on_hyphens=False)
 
 
 def _resolve_benchmark_description(report: Report) -> str:
@@ -146,3 +157,130 @@ def _format_run_metadata(run_meta: dict) -> str:
 
     parts = [p for p in (code, library) if p]
     return " | ".join(parts)
+
+
+def _render_specifications(pdf, report: Report, verbosity: int) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+
+    spec = report.data.get("specifications", {})
+    if not isinstance(spec, dict) or not spec:
+        return
+
+    sections = _build_spec_sections(spec, verbosity)
+    if not sections:
+        return
+
+    fig = plt.figure(figsize=(8.5, 11))
+    y_cursor = 0.95
+    fig.text(0.5, y_cursor, "Specification Summary", ha="center", fontsize=13)
+    y_cursor -= 0.04
+
+    for title, body in sections:
+        body_lines = _wrap_lines(body, width_chars=100)
+        needed = 0.03 + (len(body_lines) * 0.02) + 0.03
+        if y_cursor - needed < 0.12:
+            fig.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
+            fig = plt.figure(figsize=(8.5, 11))
+            y_cursor = 0.95
+
+        fig.text(0.1, y_cursor, title, fontsize=10, weight="bold")
+        y_cursor -= 0.03
+        y_cursor = _wrap_text(fig, 0.1, y_cursor, body, fontsize=8, width_chars=100)
+        y_cursor -= 0.03
+
+    fig.tight_layout()
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _build_spec_sections(spec: dict, verbosity: int) -> list[tuple[str, str]]:
+    sections: list[tuple[str, str]] = []
+    meta = spec.get("metadata", {})
+
+    if meta:
+        fields = {k: v for k, v in meta.items() if k not in {"geometry", "settings"}}
+        sections.append(("Metadata", _format_inline(fields)))
+
+    materials = spec.get("materials", [])
+    if materials:
+        if verbosity >= 3:
+            sections.append(("Materials", _format_inline(materials)))
+        elif verbosity == 2:
+            sections.append((
+                "Materials",
+                _format_key_fields(
+                    materials,
+                    keys=["id", "name", "density", "composition"],
+                    max_items=10,
+                ),
+            ))
+        else:
+            names = [m.get("name", "") for m in materials if isinstance(m, dict)]
+            sections.append(("Materials", f"count={len(materials)}; names={', '.join(n for n in names if n)}"))
+
+    tallies = spec.get("tallies", [])
+    if tallies:
+        if verbosity >= 3:
+            sections.append(("Tallies", _format_inline(tallies)))
+        elif verbosity == 2:
+            sections.append((
+                "Tallies",
+                _format_key_fields(
+                    tallies,
+                    keys=["name", "particle", "scores", "filters"],
+                    max_items=12,
+                ),
+            ))
+        else:
+            names = [t.get("name", "") for t in tallies if isinstance(t, dict)]
+            sections.append(("Tallies", ", ".join(n for n in names if n)))
+
+    geometry = spec.get("geometry")
+    if geometry is not None:
+        if verbosity >= 3:
+            sections.append(("Geometry", _format_inline(geometry)))
+        elif verbosity == 2:
+            sections.append(("Geometry", _format_key_fields([geometry], keys=["cad_file", "meshing"], max_items=1)))
+
+    settings = spec.get("settings")
+    if settings is not None:
+        if verbosity >= 3:
+            sections.append(("Settings", _format_inline(settings)))
+        elif verbosity == 2:
+            sections.append((
+                "Settings",
+                _format_key_fields(
+                    [settings],
+                    keys=["run_mode", "batches", "particles_per_batch", "photon_transport"],
+                    max_items=1,
+                ),
+            ))
+
+    return sections
+
+
+def _format_inline(value: object) -> str:
+    import json
+
+    try:
+        return json.dumps(value, ensure_ascii=True, separators=(",", ":"))
+    except TypeError:
+        return json.dumps(str(value), ensure_ascii=True)
+
+
+def _format_key_fields(items: list, keys: list[str], max_items: int) -> str:
+    rows = []
+    for item in items[:max_items]:
+        if not isinstance(item, dict):
+            rows.append(_format_inline(item))
+            continue
+        row = {k: item.get(k) for k in keys if k in item}
+        rows.append(_format_inline(row))
+    if len(items) > max_items:
+        rows.append(f"... ({len(items) - max_items} more)")
+    return " | ".join(rows)
