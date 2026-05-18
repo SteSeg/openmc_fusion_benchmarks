@@ -116,6 +116,7 @@ def compare_tallies(
     experiment: BaseTally | None = None,
     calculation: BaseTally | None = None,
     flatten_dims: Sequence[str] | None = None,
+    include_grading: bool = False,
 ) -> ObservableComparison:
     """Compare two tallies by converting them into point metrics.
 
@@ -136,6 +137,7 @@ def compare_tallies(
         experiment_points=exp_points,
         calculation_points=calc_points,
         point_ids=point_ids,
+        include_grading=include_grading,
     )
 
 
@@ -152,6 +154,7 @@ def compare_benchmark_results(
     tally_names: Sequence[str] | None = None,
     observable_type_map: dict[str, str] | None = None,
     flatten_dims_map: dict[str, Sequence[str]] | None = None,
+    include_grading: bool = False,
 ) -> BenchmarkComparison:
     """
     Compare two BenchmarkResults objects and aggregate to benchmark-level metrics.
@@ -170,6 +173,8 @@ def compare_benchmark_results(
         Optional mapping from tally name to observable type.
     flatten_dims_map:
         Optional per-tally flatten dims. Tallies missing from the map use all dims.
+    include_grading:
+        When False, omit status/grade fields from the comparison output.
     """
     if reference is None:
         reference = experiment
@@ -228,6 +233,7 @@ def compare_benchmark_results(
             reference=exp_tally,
             candidate=calc_tally,
             flatten_dims=tally_flatten_dims,
+            include_grading=include_grading,
         )
         observables.append(obs)
 
@@ -237,4 +243,5 @@ def compare_benchmark_results(
         code_version=code_version,
         reference_source=reference_source,
         observables=observables,
+        include_grading=include_grading,
     )

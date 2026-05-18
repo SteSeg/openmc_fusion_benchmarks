@@ -36,7 +36,7 @@ class PointMetrics:
     combined_uncertainty: float
     normalized_residual: float
     chi2_contribution: float
-    status: PointStatus
+    status: Optional[PointStatus] = None
 
 
 @dataclass
@@ -51,7 +51,12 @@ class PointComparison:
 
     def __repr__(self) -> str:
         metrics = self.metrics
-        status = metrics.status.value if metrics is not None else "uncomputed"
+        if metrics is None:
+            status = "uncomputed"
+        elif metrics.status is None:
+            status = "ungraded"
+        else:
+            status = metrics.status.value
         return (
             f"<PointComparison id={self.id!r}, type={self.observable_type!r}, "
             f"calc={self.calculation.value:.6g}, exp={self.experiment.value:.6g}, "
@@ -72,13 +77,13 @@ class ObservableComparison:
     rms_relative_deviation: float = field(default=0.0)
     mean_abs_normalized_residual: float = field(default=0.0)
     reduced_chi2: float = field(default=0.0)
-    fraction_within_1sigma: float = field(default=0.0)
-    fraction_within_2sigma: float = field(default=0.0)
-    fraction_within_3sigma: float = field(default=0.0)
-    outlier_fraction: float = field(default=0.0)
-    pass_count: int = field(default=0)
-    warning_count: int = field(default=0)
-    outlier_count: int = field(default=0)
+    fraction_within_1sigma: Optional[float] = None
+    fraction_within_2sigma: Optional[float] = None
+    fraction_within_3sigma: Optional[float] = None
+    outlier_fraction: Optional[float] = None
+    pass_count: Optional[int] = None
+    warning_count: Optional[int] = None
+    outlier_count: Optional[int] = None
 
     def __repr__(self) -> str:
         return (
@@ -103,10 +108,10 @@ class BenchmarkComparison:
     weighted_rms_relative_deviation: float = field(default=0.0)
     global_reduced_chi2: float = field(default=0.0)
     total_point_count: int = field(default=0)
-    outlier_fraction: float = field(default=0.0)
+    outlier_fraction: Optional[float] = None
 
-    benchmark_status: BenchmarkStatus = field(default=BenchmarkStatus.ACCEPTABLE)
-    dashboard_score: float = field(default=50.0)
+    benchmark_status: Optional[BenchmarkStatus] = None
+    dashboard_score: Optional[float] = None
 
     quality_flags: Dict[str, bool] = field(default_factory=dict)
     assumptions: Dict[str, Any] = field(default_factory=dict)

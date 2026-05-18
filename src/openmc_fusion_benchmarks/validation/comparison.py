@@ -52,6 +52,7 @@ def compare_point_set(
     experiment_points: Sequence,
     calculation_points: Sequence,
     point_ids: Sequence[str] | None = None,
+    include_grading: bool = False,
 ) -> ObservableComparison:
     """
     Compare one observable point-by-point.
@@ -90,16 +91,22 @@ def compare_point_set(
             experiment=exp,
             calculation=calc,
         )
-        point.metrics = compute_point_metrics(point)
+        point.metrics = compute_point_metrics(point, include_grading=include_grading)
         points.append(point)
 
-    return _aggregate_observable(observable_name, observable_type, points)
+    return _aggregate_observable(
+        observable_name,
+        observable_type,
+        points,
+        include_grading=include_grading,
+    )
 
 
 def _aggregate_observable(
     name: str,
     observable_type: str,
     points: Sequence[PointComparison],
+    include_grading: bool = False,
 ) -> ObservableComparison:
     """Compute observable-level summary metrics."""
     if not points:
@@ -114,10 +121,24 @@ def _aggregate_observable(
     chi2 = np.array([m.chi2_contribution for m in metrics], dtype=float)
 
     total = len(points)
-    within_1 = np.sum(np.abs(norm_res) <= 1.0)
-    within_2 = np.sum(np.abs(norm_res) <= 2.0)
-    beyond_3 = np.sum(np.abs(norm_res) > 3.0)
-    within_3 = total - beyond_3
+    within_1 = None
+    within_2 = None
+    beyond_3 = None
+    within_3 = None
+    outlier_fraction = None
+    pass_count = None
+    warning_count = None
+    outlier_count = None
+
+    if include_grading:
+        within_1 = int(np.sum(np.abs(norm_res) <= 1.0))
+        within_2 = int(np.sum(np.abs(norm_res) <= 2.0))
+        beyond_3 = int(np.sum(np.abs(norm_res) > 3.0))
+        within_3 = total - beyond_3
+        outlier_fraction = float(beyond_3 / total)
+        pass_count = within_1
+        warning_count = within_2 - within_1
+        outlier_count = beyond_3
 
     return ObservableComparison(
         name=name,
@@ -128,13 +149,13 @@ def _aggregate_observable(
         rms_relative_deviation=float(np.sqrt(np.mean(rel_dev**2))),
         mean_abs_normalized_residual=float(np.mean(np.abs(norm_res))),
         reduced_chi2=float(np.sum(chi2) / max(total - 1, 1)),
-        fraction_within_1sigma=float(within_1 / total),
-        fraction_within_2sigma=float(within_2 / total),
-        fraction_within_3sigma=float(within_3 / total),
-        outlier_fraction=float(beyond_3 / total),
-        pass_count=int(within_1),
-        warning_count=int(within_2 - within_1),
-        outlier_count=int(beyond_3),
+        fraction_within_1sigma=None if within_1 is None else float(within_1 / total),
+        fraction_within_2sigma=None if within_2 is None else float(within_2 / total),
+        fraction_within_3sigma=None if within_3 is None else float(within_3 / total),
+        outlier_fraction=outlier_fraction,
+        pass_count=pass_count,
+        warning_count=warning_count,
+        outlier_count=outlier_count,
     )
 
 
@@ -190,6 +211,7 @@ def aggregate_benchmark(
     code_version: str,
     reference_source: str,
     observables: Sequence[ObservableComparison],
+    include_grading: bool = False,
 ) -> BenchmarkComparison:
     """Aggregate observable-level comparisons into a benchmark-level result."""
     if not observables:
@@ -199,7 +221,7 @@ def aggregate_benchmark(
             code_version=code_version,
             reference_source=reference_source,
             observables=[],
-            benchmark_status=BenchmarkStatus.ACCEPTABLE,
+            benchmark_status=None if not include_grading else BenchmarkStatus.ACCEPTABLE,
         )
 
     total_points = sum(len(obs.points) for obs in observables)
@@ -210,7 +232,7 @@ def aggregate_benchmark(
             code_version=code_version,
             reference_source=reference_source,
             observables=list(observables),
-            benchmark_status=BenchmarkStatus.ACCEPTABLE,
+            benchmark_status=None if not include_grading else BenchmarkStatus.ACCEPTABLE,
         )
 
     weights = np.array([len(obs.points) for obs in observables], dtype=float)
@@ -222,13 +244,20 @@ def aggregate_benchmark(
     weighted_rms_relative_deviation = float(np.average(rms_devs, weights=weights))
     global_reduced_chi2 = float(np.average(chi2_vals, weights=weights))
 
-    total_outliers = int(sum(obs.outlier_count for obs in observables))
-    outlier_fraction = float(total_outliers / total_points)
-    benchmark_status, dashboard_score = _grade_benchmark(
-        rms_relative_deviation=weighted_rms_relative_deviation,
-        reduced_chi2=global_reduced_chi2,
-        outlier_fraction=outlier_fraction,
-    )
+    outlier_fraction = None
+    benchmark_status = None
+    dashboard_score = None
+
+    if include_grading:
+        total_outliers = int(
+            sum(obs.outlier_count for obs in observables if obs.outlier_count is not None)
+        )
+        outlier_fraction = float(total_outliers / total_points)
+        benchmark_status, dashboard_score = _grade_benchmark(
+            rms_relative_deviation=weighted_rms_relative_deviation,
+            reduced_chi2=global_reduced_chi2,
+            outlier_fraction=outlier_fraction,
+        )
 
     return BenchmarkComparison(
         benchmark_id=benchmark_id,
