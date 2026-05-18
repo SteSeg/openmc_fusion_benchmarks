@@ -51,8 +51,15 @@ class Results:
 
     @property
     def tallies(self):
+        tallies: list[str] = []
         with h5py.File(self.filepath, "r") as f:
-            tallies = list(f.keys())
+            for group in f.keys():
+                try:
+                    with xr.open_dataset(self.filepath, group=group, engine="h5netcdf") as ds:
+                        if "mean" in ds:
+                            tallies.append(group)
+                except (OSError, ValueError, KeyError):
+                    continue
         return tallies
 
 
