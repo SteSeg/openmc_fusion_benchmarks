@@ -38,8 +38,11 @@ def _stack_dataarray(da: xr.DataArray, dims: Sequence[str]) -> xr.DataArray:
 
 
 def datapoints_from_tally(
-    experiment: BaseTally,
-    calculation: BaseTally,
+    reference: BaseTally | None = None,
+    candidate: BaseTally | None = None,
+    *,
+    experiment: BaseTally | None = None,
+    calculation: BaseTally | None = None,
     flatten_dims: Sequence[str] | None = None,
 ) -> tuple[list[DataPoint], list[DataPoint], list[str]]:
     """
@@ -47,26 +50,38 @@ def datapoints_from_tally(
 
     Parameters
     ----------
-    experiment:
+    reference:
         Reference results tally.
-    calculation:
+    candidate:
         Calculated results tally.
     flatten_dims:
         Dimensions to flatten into points. When omitted, all tally dims are used.
     """
-    if experiment.dims != calculation.dims or experiment.shape != calculation.shape:
-        raise ValueError("Experiment and calculation tallies must share dims and shape.")
+    if reference is None:
+        reference = experiment
+    if candidate is None:
+        candidate = calculation
 
-    dims = _normalize_flatten_dims(experiment, flatten_dims)
+    if reference is None or candidate is None:
+        raise ValueError("Both reference and candidate tallies are required.")
+    if experiment is not None and reference is not experiment:
+        raise ValueError("Both reference and experiment were provided but differ.")
+    if calculation is not None and candidate is not calculation:
+        raise ValueError("Both candidate and calculation were provided but differ.")
 
-    exp_da = experiment._da
-    calc_da = calculation._da
+    if reference.dims != candidate.dims or reference.shape != candidate.shape:
+        raise ValueError("Reference and candidate tallies must share dims and shape.")
 
-    exp_std = experiment._da_mc_std
+    dims = _normalize_flatten_dims(reference, flatten_dims)
+
+    exp_da = reference._da
+    calc_da = candidate._da
+
+    exp_std = reference._da_mc_std
     if exp_std is None:
         exp_std = xr.zeros_like(exp_da)
 
-    calc_std = calculation._da_mc_std
+    calc_std = candidate._da_mc_std
     if calc_std is None:
         calc_std = xr.zeros_like(calc_da)
 
@@ -76,7 +91,7 @@ def datapoints_from_tally(
     calc_unc = _stack_dataarray(calc_std, dims)
 
     if exp_vals.shape != calc_vals.shape:
-        raise ValueError("Experiment and calculation tallies produce mismatched point counts.")
+        raise ValueError("Reference and candidate tallies produce mismatched point counts.")
 
     point_ids = _format_point_ids(dims, exp_vals["point"].values)
 
@@ -95,8 +110,11 @@ def datapoints_from_tally(
 def compare_tallies(
     observable_name: str,
     observable_type: str,
-    experiment: BaseTally,
-    calculation: BaseTally,
+    reference: BaseTally | None = None,
+    candidate: BaseTally | None = None,
+    *,
+    experiment: BaseTally | None = None,
+    calculation: BaseTally | None = None,
     flatten_dims: Sequence[str] | None = None,
 ) -> ObservableComparison:
     """Compare two tallies by converting them into point metrics.
@@ -105,6 +123,8 @@ def compare_tallies(
     comparison points. When omitted, all dims are flattened.
     """
     exp_points, calc_points, point_ids = datapoints_from_tally(
+        reference=reference,
+        candidate=candidate,
         experiment=experiment,
         calculation=calculation,
         flatten_dims=flatten_dims,
@@ -121,11 +141,14 @@ def compare_tallies(
 
 def compare_benchmark_results(
     benchmark_id: str,
-    code_name: str,
-    code_version: str,
-    reference_source: str,
-    experiment: BenchmarkResults,
-    calculation: BenchmarkResults,
+    reference: BenchmarkResults | None = None,
+    candidate: BenchmarkResults | None = None,
+    *,
+    experiment: BenchmarkResults | None = None,
+    calculation: BenchmarkResults | None = None,
+    code_name: str | None = None,
+    code_version: str | None = None,
+    reference_source: str | None = None,
     tally_names: Sequence[str] | None = None,
     observable_type_map: dict[str, str] | None = None,
     flatten_dims_map: dict[str, Sequence[str]] | None = None,
@@ -137,16 +160,54 @@ def compare_benchmark_results(
     ----------
     benchmark_id, code_name, code_version, reference_source:
         Metadata for the benchmark comparison.
-    experiment, calculation:
+        When code_name or code_version is omitted, they are pulled from the
+        candidate run metadata (fallback: reference run metadata).
+    reference, candidate:
         Benchmark results with matching tally groups.
     tally_names:
-        Optional list of tally names/groups to compare. Defaults to experiment.tallies.
+        Optional list of tally names/groups to compare. Defaults to reference.tallies.
     observable_type_map:
         Optional mapping from tally name to observable type.
     flatten_dims_map:
         Optional per-tally flatten dims. Tallies missing from the map use all dims.
     """
-    names = list(tally_names) if tally_names is not None else list(experiment.tallies)
+    if reference is None:
+        reference = experiment
+    if candidate is None:
+        candidate = calculation
+
+    if reference is None or candidate is None:
+        raise ValueError("Both reference and candidate results are required.")
+    if experiment is not None and reference is not experiment:
+        raise ValueError("Both reference and experiment were provided but differ.")
+    if calculation is not None and candidate is not calculation:
+        raise ValueError("Both candidate and calculation were provided but differ.")
+
+    if code_name is None or code_version is None:
+        run_metadata = None
+        try:
+            run_metadata = candidate.get_run_metadata()
+        except ValueError:
+            try:
+                run_metadata = reference.get_run_metadata()
+            except ValueError:
+                run_metadata = None
+
+        if run_metadata is not None:
+            if code_name is None:
+                code_name = run_metadata.get("code_name")
+            if code_version is None:
+                code_version = run_metadata.get("code_version")
+
+    if code_name is None:
+        code_name = ""
+    if code_version is None:
+        code_version = ""
+
+    if reference_source is None:
+        raise ValueError("reference_source is required")
+
+    names = list(tally_names) if tally_names is not None else list(reference.tallies)
     if not names:
         raise ValueError("No tallies found to compare.")
 
@@ -155,8 +216,8 @@ def compare_benchmark_results(
     observables: list[ObservableComparison] = []
 
     for name in names:
-        exp_tally = experiment.get_tally(name)
-        calc_tally = calculation.get_tally(name)
+        exp_tally = reference.get_tally(name)
+        calc_tally = candidate.get_tally(name)
         observable_type = observable_type_map.get(name, "tally")
 
         tally_flatten_dims = flatten_dims_map.get(name)
@@ -164,8 +225,8 @@ def compare_benchmark_results(
         obs = compare_tallies(
             observable_name=name,
             observable_type=observable_type,
-            experiment=exp_tally,
-            calculation=calc_tally,
+            reference=exp_tally,
+            candidate=calc_tally,
             flatten_dims=tally_flatten_dims,
         )
         observables.append(obs)
