@@ -195,6 +195,8 @@ class Benchmark(ABC):
             warnings.warn("benchmark_results.h5 not found. Skipping report generation.", UserWarning)
             return
 
+        print("Generating validation report...")
+
         if report_config is None:
             report_config = ReportConfig(output_dir=Path("report"), include_yaml=True, include_pdf=True)
 
