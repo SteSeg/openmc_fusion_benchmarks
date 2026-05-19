@@ -30,6 +30,7 @@ dependencies = [
     "cad-to-dagmc",
     "pydagmc @ git+https://github.com/svalinn/pydagmc.git",
     "sandy",
+    "matplotlib",
 ]
 
 [tool.setuptools.package-data]

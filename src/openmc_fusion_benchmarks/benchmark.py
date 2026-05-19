@@ -10,6 +10,8 @@ import openmc
 from cad_to_dagmc import CadToDagmc
 
 from .validate_spec import validate_benchmark
+from .benchmark_results import BenchmarkResults
+from .report import ReportConfig, ResultSource, build_report, render_pdf, render_yaml
 from .backends.openmc.tallies import (
     make_default_openmc_normalizer,
     save_openmc_statepoint_tallies,
@@ -69,7 +71,13 @@ class Benchmark(ABC):
         pass
 
     @abstractmethod
-    def run(self):
+    def run(
+        self,
+        *args,
+        generate_report: bool = False,
+        report_config: ReportConfig | None = None,
+        **kwargs,
+    ):
         """Run the benchmark simulation."""
         pass
 
@@ -179,6 +187,36 @@ class Benchmark(ABC):
                 group.attrs["nuclear_data_version"] = str(nuclear_data_version)
             if geometry is not None:
                 group.attrs["geometry"] = str(geometry)
+
+    def _generate_report(self, report_config: ReportConfig | None = None) -> None:
+        """Generate a report from the current benchmark results file."""
+        results_path = Path("benchmark_results.h5")
+        if not results_path.exists():
+            warnings.warn("benchmark_results.h5 not found. Skipping report generation.", UserWarning)
+            return
+
+        print("Generating validation report...")
+
+        if report_config is None:
+            report_config = ReportConfig(output_dir=Path("report"), include_yaml=True, include_pdf=True)
+
+        sources: list[ResultSource] = []
+        calculation = BenchmarkResults.from_file(results_path)
+        sources.append(ResultSource(name="calculation", kind="calculation", results=calculation))
+
+        try:
+            reference = BenchmarkResults.from_database(self.name, filename="experiment.h5")
+            sources.append(ResultSource(name="reference", kind="experiment", results=reference))
+        except Exception:
+            pass
+
+        report = build_report(sources, report_config)
+        output_dir = Path(report_config.output_dir)
+        plots_dir = output_dir / "plots"
+        if report_config.include_yaml:
+            render_yaml(report, output_dir / "report.yaml")
+        if report_config.include_pdf:
+            render_pdf(report, output_dir / "report.pdf", plots_dir)
 
 
 class OpenmcBenchmark(Benchmark):
@@ -527,7 +565,14 @@ class OpenmcBenchmark(Benchmark):
 
         return
 
-    def run(self, uq: bool = False, *args, **kwargs):
+    def run(
+        self,
+        uq: bool = False,
+        *args,
+        generate_report: bool = False,
+        report_config: ReportConfig | None = None,
+        **kwargs,
+    ):
         """Run the benchmark simulation."""
 
         # Check if benchmark_results.h5 already exists and delete it
@@ -547,5 +592,8 @@ class OpenmcBenchmark(Benchmark):
             statepoint = openmc.StatePoint(sp)
             # Post-process the results
             self._postprocess(statepoint=statepoint)
+
+        if generate_report:
+            self._generate_report(report_config=report_config)
 
         return

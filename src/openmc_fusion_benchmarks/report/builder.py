@@ -129,16 +129,16 @@ def build_report(
     plot_tallies = _resolve_plot_tallies(report_sources, report_config.plot_tallies)
     plots: list[PlotSpec] = []
 
-    experiment = next((s for s in report_sources if s.kind == "experiment"), None)
-    calculation = next((s for s in report_sources if s.kind == "calculation"), None)
+    reference_source = next((s for s in report_sources if s.kind == "experiment"), None)
+    candidate_source = next((s for s in report_sources if s.kind == "calculation"), None)
 
-    if experiment is not None and calculation is not None:
+    if reference_source is not None and candidate_source is not None:
         for tally_name in plot_tallies:
             plots.append(
                 PlotSpec(
                     tally_name=tally_name,
-                    experiment=experiment.results,
-                    calculation=calculation.results,
+                    experiment=reference_source.results,
+                    calculation=candidate_source.results,
                 )
             )
 
