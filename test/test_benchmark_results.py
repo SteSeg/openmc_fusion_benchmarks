@@ -3,6 +3,8 @@ import json
 import sys
 import types
 
+import h5py
+
 import numpy as np
 import pytest
 import xarray as xr

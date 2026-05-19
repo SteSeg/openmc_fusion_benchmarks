@@ -161,10 +161,10 @@ def test_process_tmc_matrix_mismatch_raises(tmp_path, monkeypatch):
 
     manifest = tmp_path / "tmc_manifest.jsonl"
     records = []
-    for i in range(2):
-        name = f"sp{i}.h5"
+    for idx_tuple in ([0, 0], [1, 1]):
+        name = f"sp{idx_tuple[0]}{idx_tuple[1]}.h5"
         (tmp_path / name).write_text("data")
-        records.append({"mode": "matrix", "indices": [i, 0], "statepoint": name})
+        records.append({"mode": "matrix", "indices": idx_tuple, "statepoint": name})
     manifest.write_text("\n".join(json.dumps(r) for r in records))
 
     _patch_tmc_processing(monkeypatch)
