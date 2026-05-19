@@ -55,6 +55,14 @@ class PlotSpec:
     calculation: BenchmarkResults
     style: PlotStyle = field(default_factory=PlotStyle)
 
+    @property
+    def reference(self) -> BenchmarkResults:
+        return self.experiment
+
+    @property
+    def candidate(self) -> BenchmarkResults:
+        return self.calculation
+
 
 @dataclass
 class Report:

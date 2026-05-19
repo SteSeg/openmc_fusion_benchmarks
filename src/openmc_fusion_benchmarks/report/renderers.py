@@ -3,9 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
+import numpy as np
 
 from .models import Report
-from .plots import build_plot_artifacts, render_plots
+from .plots import (
+    build_plot_artifacts,
+    build_quality_plot_artifacts,
+    quality_metric_title,
+    render_plots,
+    render_quality_plots,
+)
+from ..validation.adapters import compare_tallies
 
 
 def render_yaml(report: Report, output_path: Path) -> Path:
@@ -18,17 +26,20 @@ def render_yaml(report: Report, output_path: Path) -> Path:
 def render_plots_for_report(report: Report, output_dir: Path) -> list[dict]:
     output_dir.mkdir(parents=True, exist_ok=True)
     entries: list[dict] = []
+    quality_entries: list[dict] = []
+    verbosity = int(report.data.get("verbosity", 0) or 0)
+    quality_metrics = _quality_metrics_for_verbosity(verbosity)
     for plot in report.plots:
         artifacts = build_plot_artifacts(
             tally_name=plot.tally_name,
-            experiment=plot.experiment.get_tally(plot.tally_name),
-            calculation=plot.calculation.get_tally(plot.tally_name),
+            experiment=plot.reference.get_tally(plot.tally_name),
+            calculation=plot.candidate.get_tally(plot.tally_name),
             output_dir=output_dir,
         )
         render_plots(
             artifacts,
-            plot.experiment.get_tally(plot.tally_name),
-            plot.calculation.get_tally(plot.tally_name),
+            plot.reference.get_tally(plot.tally_name),
+            plot.candidate.get_tally(plot.tally_name),
             style=plot.style,
         )
         entries.append(
@@ -38,7 +49,28 @@ def render_plots_for_report(report: Report, output_dir: Path) -> list[dict]:
                 "ce_plot": str(artifacts.ce_plot),
             }
         )
+
+        if quality_metrics:
+            quality_artifacts = build_quality_plot_artifacts(
+                tally_name=plot.tally_name,
+                output_dir=output_dir,
+                metrics=quality_metrics,
+            )
+            render_quality_plots(
+                quality_artifacts,
+                plot.reference.get_tally(plot.tally_name),
+                plot.candidate.get_tally(plot.tally_name),
+                metrics=quality_metrics,
+                style=plot.style,
+            )
+            quality_entries.append(
+                {
+                    "tally": plot.tally_name,
+                    "metrics": {k: str(v) for k, v in quality_artifacts.metric_plots.items()},
+                }
+            )
     report.data["plots"] = entries
+    report.data["quality_plots"] = quality_entries
     return entries
 
 
@@ -50,6 +82,10 @@ def render_pdf(report: Report, output_path: Path, plots_dir: Path) -> Path:
         raise RuntimeError("matplotlib is required for PDF rendering. Install it to enable PDF output.") from exc
 
     plot_entries = render_plots_for_report(report, plots_dir)
+    observable_entries = _collect_observable_metrics(report)
+    if observable_entries:
+        report.data["observable_summary"] = observable_entries
+    quality_entries = report.data.get("quality_plots", [])
 
     with PdfPages(output_path) as pdf:
         fig = plt.figure(figsize=(8.5, 11))
@@ -96,6 +132,12 @@ def render_pdf(report: Report, output_path: Path, plots_dir: Path) -> Path:
             fig.tight_layout()
             pdf.savefig(fig)
             plt.close(fig)
+
+        if observable_entries:
+            _render_observable_summary(pdf, observable_entries, verbosity)
+
+        if quality_entries:
+            _render_quality_section(pdf, quality_entries, verbosity)
 
     return output_path
 
@@ -194,6 +236,192 @@ def _render_specifications(pdf, report: Report, verbosity: int) -> None:
         y_cursor -= 0.03
 
     fig.tight_layout()
+    pdf.savefig(fig)
+    plt.close(fig)
+
+
+def _quality_metrics_for_verbosity(verbosity: int) -> list[str]:
+    verbosity = max(0, min(int(verbosity), 3))
+    if verbosity == 0:
+        return ["ce"]
+    if verbosity == 1:
+        return ["ce", "chi2_contribution"]
+    if verbosity == 2:
+        return ["ce", "relative_deviation", "combined_uncertainty", "chi2_contribution"]
+    return [
+        "ce",
+        "relative_deviation",
+        "absolute_deviation",
+        "combined_uncertainty",
+        "normalized_residual",
+        "chi2_contribution",
+    ]
+
+
+def _observable_metrics_for_verbosity(verbosity: int) -> list[str]:
+    verbosity = max(0, min(int(verbosity), 3))
+    if verbosity == 0:
+        return ["rms_relative_deviation"]
+    if verbosity == 1:
+        return ["rms_relative_deviation", "reduced_chi2"]
+    if verbosity == 2:
+        return [
+            "mean_bias",
+            "mean_abs_relative_deviation",
+            "rms_relative_deviation",
+            "reduced_chi2",
+        ]
+    return [
+        "mean_bias",
+        "mean_abs_relative_deviation",
+        "rms_relative_deviation",
+        "mean_abs_normalized_residual",
+        "reduced_chi2",
+    ]
+
+
+def _collect_observable_metrics(report: Report) -> list[dict]:
+    entries: list[dict] = []
+    for plot in report.plots:
+        try:
+            obs = compare_tallies(
+                observable_name=plot.tally_name,
+                observable_type="tally",
+                reference=plot.reference.get_tally(plot.tally_name),
+                candidate=plot.candidate.get_tally(plot.tally_name),
+                include_grading=False,
+            )
+        except Exception:
+            continue
+
+        entries.append(
+            {
+                "tally": plot.tally_name,
+                "mean_bias": obs.mean_bias,
+                "mean_abs_relative_deviation": obs.mean_abs_relative_deviation,
+                "rms_relative_deviation": obs.rms_relative_deviation,
+                "mean_abs_normalized_residual": obs.mean_abs_normalized_residual,
+                "reduced_chi2": obs.reduced_chi2,
+            }
+        )
+
+    return entries
+
+
+def _quality_metric_equation(metric: str) -> str:
+    equations = {
+        "ce": r"$\frac{C}{E}$",
+        "relative_deviation": r"$\frac{C - E}{E}$",
+        "absolute_deviation": r"$|C - E|$",
+        "combined_uncertainty": r"$\sqrt{u_E^2 + u_C^2}$",
+        "normalized_residual": r"$\frac{C - E}{\sqrt{u_E^2 + u_C^2}}$",
+        "chi2_contribution": r"$\frac{(C - E)^2}{u_E^2 + u_C^2}$",
+    }
+    return equations.get(metric, "")
+
+
+def _quality_metric_description(metric: str) -> str:
+    descriptions = {
+        "ce": "Ratio of calculation to experiment (ideal = 1).",
+        "relative_deviation": "Signed fractional bias relative to experiment.",
+        "absolute_deviation": "Absolute difference between calculation and experiment.",
+        "combined_uncertainty": "Combined statistical uncertainty of C and E.",
+        "normalized_residual": "Deviation in units of combined uncertainty.",
+        "chi2_contribution": "Pointwise contribution to chi2 misfit.",
+    }
+    return descriptions.get(metric, "")
+
+
+def _render_quality_section(pdf, quality_entries: list[dict], verbosity: int) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+
+    metrics = _quality_metrics_for_verbosity(verbosity)
+    if not metrics:
+        return
+
+    for entry in quality_entries:
+        fig = plt.figure(figsize=(8.5, 11))
+        fig.text(0.5, 0.95, f"Quality evaluation - Tally: {entry['tally']}", ha="center", fontsize=12)
+
+        metric_paths = entry.get("metrics", {})
+        cols = 2 if len(metrics) > 1 else 1
+        rows = int(np.ceil(len(metrics) / cols))
+        top = 0.88
+        bottom = 0.08
+        left = 0.08
+        right = 0.92
+        v_gap = 0.04
+        h_gap = 0.06
+
+        cell_h = (top - bottom - (rows - 1) * v_gap) / rows
+        cell_w = (right - left - (cols - 1) * h_gap) / cols
+
+        for idx, metric in enumerate(metrics):
+            row = idx // cols
+            col = idx % cols
+            x0 = left + col * (cell_w + h_gap)
+            y0 = top - (row + 1) * cell_h - row * v_gap
+            ax = fig.add_axes([x0, y0, cell_w, cell_h])
+            path = metric_paths.get(metric)
+            if path:
+                try:
+                    img = plt.imread(path)
+                    ax.imshow(img)
+                except Exception:
+                    ax.text(0.5, 0.5, "Plot image could not be loaded.", ha="center", va="center", fontsize=8)
+            else:
+                ax.text(0.5, 0.5, "Plot missing.", ha="center", va="center", fontsize=8)
+            title = quality_metric_title(metric)
+            equation = _quality_metric_equation(metric)
+            if equation:
+                ax.text(0.5, 1.05, equation, ha="center", va="bottom", fontsize=8, transform=ax.transAxes)
+            description = _quality_metric_description(metric)
+            if description:
+                ax.text(0.5, 1.0, description, ha="center", va="bottom", fontsize=7, transform=ax.transAxes)
+            ax.set_title(title, fontsize=9, pad=24)
+            ax.axis("off")
+
+        fig.tight_layout()
+        pdf.savefig(fig)
+        plt.close(fig)
+
+
+def _render_observable_summary(pdf, observable_entries: list[dict], verbosity: int) -> None:
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return
+
+    metrics = _observable_metrics_for_verbosity(verbosity)
+    if not metrics or not observable_entries:
+        return
+
+    tallies = [entry["tally"] for entry in observable_entries]
+    cols = 2 if len(metrics) > 1 else 1
+    rows = int(np.ceil(len(metrics) / cols))
+
+    fig, axes = plt.subplots(rows, cols, figsize=(8.5, 11))
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([axes])
+    axes = axes.flatten()
+
+    for idx, metric in enumerate(metrics):
+        ax = axes[idx]
+        values = [entry.get(metric, np.nan) for entry in observable_entries]
+        ax.bar(range(len(tallies)), values, color="#4C72B0")
+        ax.set_title(metric.replace("_", " "))
+        ax.set_xticks(range(len(tallies)))
+        ax.set_xticklabels(tallies, rotation=45, ha="right", fontsize=8)
+        ax.grid(axis="y", linestyle="--", linewidth=0.5, alpha=0.6)
+
+    for idx in range(len(metrics), len(axes)):
+        axes[idx].axis("off")
+
+    fig.suptitle("Observable summary", fontsize=12)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     pdf.savefig(fig)
     plt.close(fig)
 
