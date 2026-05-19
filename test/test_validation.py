@@ -76,6 +76,7 @@ from openmc_fusion_benchmarks.validation.metrics import compute_point_metrics
 from openmc_fusion_benchmarks.validation.model import (
     BenchmarkStatus,
     DataPoint,
+    ObservableComparison,
     PointComparison,
     PointStatus,
 )
@@ -364,6 +365,25 @@ def test_compare_benchmark_results_no_tallies_raises(tmp_path):
             candidate=candidate,
             tally_names=[],
         )
+
+
+def test_model_repr_and_relative_uncertainty():
+    point = DataPoint(value=0.0, uncertainty=0.1)
+    assert point.relative_uncertainty == np.inf
+
+    comparison = PointComparison(
+        id="p1",
+        observable_type="tally",
+        experiment=DataPoint(value=1.0, uncertainty=0.1),
+        calculation=DataPoint(value=1.1, uncertainty=0.1),
+    )
+    assert "uncomputed" in repr(comparison)
+
+    comparison.metrics = compute_point_metrics(comparison, include_grading=False)
+    assert "ungraded" in repr(comparison)
+
+    obs = ObservableComparison(name="t1", observable_type="tally", points=[comparison])
+    assert "ObservableComparison" in repr(obs)
 
 
 def test_compare_benchmark_results_alias_conflicts(tmp_path):

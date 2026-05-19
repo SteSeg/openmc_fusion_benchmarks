@@ -611,3 +611,58 @@ def test_format_run_metadata_and_reference_lines():
 
     assert renderers._format_reference(report)
     assert renderers._format_validation(report) == ""
+
+
+def test_render_helper_lines_and_description_defaults():
+    report = Report(
+        metadata=ReportMetadata(title="Title", benchmark_id="bench", description="desc"),
+        sources=[],
+        plots=[],
+        data={},
+    )
+    assert renderers._wrap_lines("", 10) == []
+    assert renderers._resolve_benchmark_description(report) == "desc"
+    assert renderers._format_reference(report) == ""
+    assert renderers._format_validation(report) == ""
+
+
+def test_render_specifications_with_fake_matplotlib(tmp_path, monkeypatch):
+    _install_fake_matplotlib(monkeypatch)
+
+    report = Report(
+        metadata=ReportMetadata(title="Title", benchmark_id="bench"),
+        sources=[],
+        plots=[],
+        data={
+            "specifications": {
+                "metadata": {"title": "Demo"},
+                "materials": [],
+                "tallies": [],
+            }
+        },
+    )
+
+    class DummyPdf:
+        def savefig(self, *_args, **_kwargs):
+            return None
+
+    renderers._render_specifications(DummyPdf(), report, verbosity=1)
+
+
+def test_render_pdf_import_error(monkeypatch, tmp_path):
+    def _raise_import(name, *args, **kwargs):
+        if name.startswith("matplotlib"):
+            raise ImportError("no mpl")
+        return __import__(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", _raise_import)
+
+    report = Report(
+        metadata=ReportMetadata(title="Title", benchmark_id="bench"),
+        sources=[],
+        plots=[],
+        data={},
+    )
+
+    with pytest.raises(RuntimeError, match="matplotlib is required"):
+        renderers.render_pdf(report, tmp_path / "report.pdf", tmp_path / "plots")

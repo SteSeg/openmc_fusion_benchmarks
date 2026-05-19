@@ -288,6 +288,34 @@ def test_tmc_statepoint_skips_groups_without_mean(tmp_path):
     assert sp.tallies == {}
 
 
+def test_tmctally_get_slice_and_stats(tmp_path):
+    path = tmp_path / "tmc_statepoint.h5"
+    da_mean = xr.DataArray(
+        np.arange(8.0).reshape(2, 2, 2),
+        dims=("realization", "nuclide", "score"),
+        coords={
+            "realization": [0, 1],
+            "nuclide": ["total", "u235"],
+            "score": ["flux", "heating"],
+        },
+        name="mean",
+    )
+    da_std = xr.DataArray(np.ones_like(da_mean.values), dims=da_mean.dims, coords=da_mean.coords, name="mc_std")
+    da_mean.attrs["tally_id"] = 1
+    da_mean.attrs["tally_name"] = "tally"
+
+    ds = xr.Dataset({"mean": da_mean, "mc_std": da_std})
+    ds.to_netcdf(path, mode="w", group="tally_1", engine="h5netcdf")
+
+    sp = TMCStatePoint(path)
+    tally = sp.get_tally(tally_id=1)
+
+    sliced = tally.get_slice(scores=["flux"], nuclides=["total"])
+    assert sliced.shape == (2, 1, 1)
+    assert np.allclose(tally.mean, np.mean(da_mean.values, axis=0))
+    assert np.allclose(tally.std_dev, np.std(da_mean.values, axis=0))
+
+
 def test_run_invalid_mode_raises(tmp_path):
     manager = TMCManager(DummyModel(), [_make_factory("p0")], realizations=1, seed=123)
     with pytest.raises(ValueError, match="Unknown TMC mode"):
