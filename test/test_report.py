@@ -1,5 +1,6 @@
 import importlib.util
 import sys
+import sys
 import types
 from pathlib import Path
 
@@ -70,8 +71,10 @@ from openmc_fusion_benchmarks.report import (
     ReportConfig,
     ReportMetadata,
     ResultSource,
+    Report,
     build_report,
 )
+from openmc_fusion_benchmarks.report import renderers
 from openmc_fusion_benchmarks.report.renderers import (
     _collect_observable_metrics,
     _observable_metrics_for_verbosity,
@@ -388,3 +391,177 @@ def test_plot_utilities_flatten_tally():
     tally = BaseTally(da)
     flat = report_plots._flatten_tally(tally)
     assert flat.shape == (6,)
+
+
+def _install_fake_matplotlib(monkeypatch):
+    class DummyLine:
+        def __init__(self, color="#000"):
+            self._color = color
+
+        def get_color(self):
+            return self._color
+
+    class DummyAx:
+        def imshow(self, *_args, **_kwargs):
+            return None
+
+        def axis(self, *_args, **_kwargs):
+            return None
+
+        def set_title(self, *_args, **_kwargs):
+            return None
+
+        def text(self, *_args, **_kwargs):
+            return None
+
+        def bar(self, *_args, **_kwargs):
+            return None
+
+        def grid(self, *_args, **_kwargs):
+            return None
+
+        def set_xticks(self, *_args, **_kwargs):
+            return None
+
+        def set_xticklabels(self, *_args, **_kwargs):
+            return None
+
+    class DummyFig:
+        def text(self, *_args, **_kwargs):
+            return None
+
+        def add_axes(self, *_args, **_kwargs):
+            return DummyAx()
+
+        def tight_layout(self, *_args, **_kwargs):
+            return None
+
+    class DummyPdfPages:
+        def __init__(self, path):
+            self.path = Path(path)
+            self.path.write_text("pdf")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def savefig(self, *_args, **_kwargs):
+            return None
+
+    class DummyPlt:
+        def figure(self, *_args, **_kwargs):
+            return DummyFig()
+
+        def imread(self, *_args, **_kwargs):
+            return np.zeros((2, 2, 3))
+
+        def close(self, *_args, **_kwargs):
+            return None
+
+        def subplots(self, rows, cols, **_kwargs):
+            fig = DummyFig()
+            axes = np.array([[DummyAx() for _ in range(cols)] for _ in range(rows)])
+            return fig, axes
+
+        def plot(self, *_args, **_kwargs):
+            return [DummyLine()]
+
+        def fill_between(self, *_args, **_kwargs):
+            return None
+
+        def axhline(self, *_args, **_kwargs):
+            return DummyLine()
+
+        def xlabel(self, *_args, **_kwargs):
+            return None
+
+        def ylabel(self, *_args, **_kwargs):
+            return None
+
+        def yscale(self, *_args, **_kwargs):
+            return None
+
+        def xscale(self, *_args, **_kwargs):
+            return None
+
+        def title(self, *_args, **_kwargs):
+            return None
+
+        def legend(self, *_args, **_kwargs):
+            return None
+
+        def tight_layout(self, *_args, **_kwargs):
+            return None
+
+        def savefig(self, path, **_kwargs):
+            Path(path).write_text("png")
+
+    import types
+
+    fake_pdf = types.SimpleNamespace(PdfPages=DummyPdfPages)
+    fake_plt = DummyPlt()
+    monkeypatch.setitem(sys.modules, "matplotlib.backends.backend_pdf", fake_pdf)
+    monkeypatch.setitem(sys.modules, "matplotlib.pyplot", fake_plt)
+
+
+def test_render_pdf_with_quality_and_observable(tmp_path, monkeypatch):
+    _install_fake_matplotlib(monkeypatch)
+
+    report = Report(
+        metadata=ReportMetadata(title="Title", benchmark_id="bench"),
+        sources=[],
+        plots=[],
+        data={
+            "verbosity": 2,
+            "specifications": {"metadata": {"description": "desc"}, "materials": []},
+            "sources": [{"kind": "experiment", "run_metadata": {"code_name": "openmc"}}],
+        },
+    )
+
+    quality_plot = tmp_path / "ce.png"
+    quality_plot.write_text("img")
+    plot_entries = [
+        {"tally": "t1", "absolute_plot": str(quality_plot), "ce_plot": str(quality_plot)}
+    ]
+
+    def _fake_render_plots_for_report(_report, _plots_dir):
+        _report.data["quality_plots"] = [
+            {"tally": "t1", "metrics": {"ce": str(quality_plot)}}
+        ]
+        return plot_entries
+
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.report.renderers.render_plots_for_report",
+        _fake_render_plots_for_report,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.report.renderers._collect_observable_metrics",
+        lambda _report: [{"tally": "t1", "rms_relative_deviation": 0.1}],
+    )
+
+    output_path = renderers.render_pdf(report, tmp_path / "report.pdf", tmp_path / "plots")
+    assert output_path.exists()
+
+
+def test_render_plots_and_quality_plots(tmp_path, monkeypatch):
+    _install_fake_matplotlib(monkeypatch)
+
+    mean = xr.DataArray(
+        np.array([1.0, 2.0, 3.0]),
+        dims=("cell",),
+        coords={"cell": [0, 1, 2]},
+    )
+    std = xr.DataArray(np.array([0.1, 0.1, 0.1]), dims=("cell",), coords=mean.coords)
+    exp = BaseTally(mean, std)
+    calc = BaseTally(mean * 1.1, std)
+
+    artifacts = report_plots.build_plot_artifacts("tally", exp, calc, tmp_path)
+    report_plots.render_plots(artifacts, exp, calc, style=PlotStyle())
+    assert artifacts.absolute_plot.exists()
+    assert artifacts.ce_plot.exists()
+
+    quality = report_plots.build_quality_plot_artifacts("tally", tmp_path, ["ce"])
+    report_plots.render_quality_plots(quality, exp, calc, ["ce"], style=PlotStyle())
+    assert quality.metric_plots["ce"].exists()
