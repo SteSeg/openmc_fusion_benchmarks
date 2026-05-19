@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
+import h5py
 
 from openmc_fusion_benchmarks.uq.tmc_manager import TMCManager, TMCStatePoint
 
@@ -224,6 +225,67 @@ def test_process_tmc_unrecognized_format_raises(tmp_path):
     manifest.write_text(json.dumps({"statepoint": "sp0.h5"}))
     with pytest.raises(RuntimeError, match="Unrecognized manifest record format"):
         manager._process_tmc(manifest_path=manifest)
+
+
+def test_tmc_statepoint_tally_discovery_and_metadata(tmp_path):
+    path = tmp_path / "tmc_statepoint.h5"
+    da_mean = xr.DataArray(
+        np.array([[1.0, 2.0]]),
+        dims=("realization", "score"),
+        coords={"realization": [0], "score": ["flux", "heating"]},
+        name="mean",
+    )
+    da_std = xr.DataArray(
+        np.array([[0.1, 0.2]]),
+        dims=da_mean.dims,
+        coords=da_mean.coords,
+        name="mc_std",
+    )
+    da_mean.attrs["tally_name"] = "my_tally"
+
+    ds = xr.Dataset({"mean": da_mean, "mc_std": da_std})
+    ds.attrs["scores"] = json.dumps(["flux", "heating"])
+    ds.attrs["nuclides"] = json.dumps(["total"])
+    ds.attrs["filter_axes"] = json.dumps([{"axis": "cell", "num_bins": 1}])
+
+    ds.to_netcdf(path, mode="w", group="tally_5", engine="h5netcdf")
+
+    with h5py.File(path, "a") as handle:
+        handle.attrs["tmc_mode"] = "sequential"
+
+    sp = TMCStatePoint(path)
+    assert sp.tmc_mode == "sequential"
+    tally = sp.get_tally(tally_id=5)
+    assert tally.name == "my_tally"
+    assert tally.scores == ["flux", "heating"]
+    assert tally.nuclides == ["total"]
+    assert tally.filters == [{"axis": "cell", "num_bins": 1}]
+
+
+def test_tmctally_stats_without_mc_std(tmp_path):
+    path = tmp_path / "tmc_statepoint.h5"
+    da_mean = xr.DataArray(
+        np.array([[1.0, 2.0]]),
+        dims=("realization", "score"),
+        coords={"realization": [0], "score": ["flux", "heating"]},
+        name="mean",
+    )
+    ds = xr.Dataset({"mean": da_mean})
+    ds.to_netcdf(path, mode="w", group="tally_1", engine="h5netcdf")
+
+    sp = TMCStatePoint(path)
+    tally = sp.get_tally(tally_id=1)
+    assert np.allclose(tally.per_realization_std_dev, np.zeros_like(tally.per_realization_mean))
+    assert np.allclose(tally.std_dev, np.zeros_like(tally.mean))
+
+
+def test_tmc_statepoint_skips_groups_without_mean(tmp_path):
+    path = tmp_path / "tmc_statepoint.h5"
+    ds = xr.Dataset({"other": xr.DataArray(np.array([1.0]), dims=("i",))})
+    ds.to_netcdf(path, mode="w", group="tally_1", engine="h5netcdf")
+
+    sp = TMCStatePoint(path)
+    assert sp.tallies == {}
 
 
 def test_run_invalid_mode_raises(tmp_path):
