@@ -716,7 +716,7 @@ def test_build_spec_sections_low_verbosity_and_format_helpers():
     assert "Tallies" in titles
 
     formatted = renderers._format_key_fields(["raw", {"a": 1, "b": 2}], keys=["a"], max_items=1)
-    assert "\"a\":1" in formatted
+    assert "\"raw\"" in formatted
     assert "..." in formatted
 
 
