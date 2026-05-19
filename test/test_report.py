@@ -74,9 +74,15 @@ from openmc_fusion_benchmarks.report import (
 )
 from openmc_fusion_benchmarks.report.renderers import (
     _collect_observable_metrics,
+    _observable_metrics_for_verbosity,
+    _quality_metric_description,
+    _quality_metric_equation,
+    _quality_metrics_for_verbosity,
     render_plots_for_report,
     render_yaml,
 )
+from openmc_fusion_benchmarks.report import plots as report_plots
+from openmc_fusion_benchmarks.tallies import BaseTally
 
 
 def _write_structured_group(filepath: Path, group: str, tally_name: str) -> None:
@@ -337,3 +343,48 @@ def test_collect_observable_metrics(results_pair, tmp_path):
     assert entries
     assert entries[0]["tally"] == "tally_1"
     assert "rms_relative_deviation" in entries[0]
+
+
+def test_quality_metrics_for_verbosity():
+    assert _quality_metrics_for_verbosity(0) == ["ce"]
+    assert _quality_metrics_for_verbosity(1) == ["ce", "chi2_contribution"]
+    assert "relative_deviation" in _quality_metrics_for_verbosity(2)
+    assert "normalized_residual" in _quality_metrics_for_verbosity(3)
+
+
+def test_observable_metrics_for_verbosity():
+    assert _observable_metrics_for_verbosity(0) == ["rms_relative_deviation"]
+    assert "reduced_chi2" in _observable_metrics_for_verbosity(1)
+    assert "mean_abs_normalized_residual" in _observable_metrics_for_verbosity(3)
+
+
+def test_quality_metric_equations_and_descriptions():
+    assert _quality_metric_equation("ce")
+    assert _quality_metric_description("ce")
+    assert _quality_metric_equation("unknown") == ""
+    assert _quality_metric_description("unknown") == ""
+
+
+def test_plot_utilities_auto_scale_and_default_x():
+    values = np.array([1.0, 1000.0])
+    assert report_plots._auto_scale(values, threshold=100.0) == "log"
+    assert report_plots._auto_scale(np.array([-1.0, 2.0]), threshold=100.0) == "linear"
+
+    da = xr.DataArray(
+        np.array([1.0, 2.0, 3.0]),
+        dims=("energy",),
+        coords={"energy": np.array([0.1, 1.0, 10.0])},
+    )
+    tally = BaseTally(da)
+    x_vals = report_plots._default_x(tally)
+    assert np.allclose(x_vals, np.array([0.1, 1.0, 10.0]))
+
+
+def test_plot_utilities_flatten_tally():
+    da = xr.DataArray(
+        np.arange(6.0).reshape(2, 3),
+        dims=("cell", "energy"),
+    )
+    tally = BaseTally(da)
+    flat = report_plots._flatten_tally(tally)
+    assert flat.shape == (6,)

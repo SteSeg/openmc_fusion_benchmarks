@@ -65,3 +65,21 @@ def test_resolve_database_path_provides_helpful_error():
     except FileNotFoundError as e:
         # Error message should contain available benchmarks
         assert "Available benchmarks:" in str(e)
+
+
+def test_list_database_benchmarks_fallback(monkeypatch):
+    def _raise_files(_pkg):
+        raise ModuleNotFoundError("no resources")
+
+    monkeypatch.setattr("openmc_fusion_benchmarks.database.files", _raise_files)
+    benchmarks = list_database_benchmarks()
+    assert "oktavian_al" in benchmarks
+
+
+def test_resolve_database_path_fallback(monkeypatch):
+    def _raise_files(_pkg):
+        raise ModuleNotFoundError("no resources")
+
+    monkeypatch.setattr("openmc_fusion_benchmarks.database.files", _raise_files)
+    path = _resolve_database_path("oktavian_al", "experiment.h5")
+    assert path.exists()
