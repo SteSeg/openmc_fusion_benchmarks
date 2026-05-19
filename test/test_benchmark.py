@@ -239,7 +239,9 @@ def test_write_run_metadata_writes_attrs(mock_validate, valid_yaml, tmp_path):
         bench = DummyBenchmark("dummy")
 
     results_path = tmp_path / "benchmark_results.h5"
-    results_path.write_text("data")
+    import h5py
+    with h5py.File(results_path, "w"):
+        pass
 
     bench._write_run_metadata(
         code_name="openmc",
