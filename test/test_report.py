@@ -72,7 +72,11 @@ from openmc_fusion_benchmarks.report import (
     ResultSource,
     build_report,
 )
-from openmc_fusion_benchmarks.report.renderers import render_plots_for_report, render_yaml
+from openmc_fusion_benchmarks.report.renderers import (
+    _collect_observable_metrics,
+    render_plots_for_report,
+    render_yaml,
+)
 
 
 def _write_structured_group(filepath: Path, group: str, tally_name: str) -> None:
@@ -242,3 +246,94 @@ def test_render_plots_for_report_records_plot_entries(results_pair, tmp_path, mo
     assert entries
     assert report.data["plots"][0]["tally"] == "tally_1"
     assert Path(entries[0]["absolute_plot"]).exists()
+
+
+def test_render_plots_for_report_quality_entries(results_pair, tmp_path, monkeypatch):
+    exp, calc = results_pair
+    metadata = ReportMetadata(title="Test", benchmark_id="bench")
+    sources = [
+        ResultSource(name="experiment", kind="experiment", results=exp),
+        ResultSource(name="calculation", kind="calculation", results=calc),
+    ]
+    config = ReportConfig(output_dir=tmp_path, verbosity=2)
+    report = build_report(metadata, sources, config)
+
+    class DummyArtifacts:
+        def __init__(self, tally):
+            self.tally_name = tally
+            self.absolute_plot = tmp_path / f"{tally}_absolute.png"
+            self.ce_plot = tmp_path / f"{tally}_ce.png"
+
+    class DummyQualityArtifacts:
+        def __init__(self, tally, metrics):
+            self.tally_name = tally
+            self.metric_plots = {m: tmp_path / f"{tally}_{m}.png" for m in metrics}
+
+    def _fake_build_plot_artifacts(tally_name, experiment, calculation, output_dir):
+        return DummyArtifacts(tally_name)
+
+    def _fake_render_plots(artifacts, experiment, calculation, style=None):
+        artifacts.absolute_plot.write_text("ok")
+        artifacts.ce_plot.write_text("ok")
+
+    def _fake_build_quality_plot_artifacts(tally_name, output_dir, metrics):
+        return DummyQualityArtifacts(tally_name, metrics)
+
+    def _fake_render_quality_plots(artifacts, experiment, calculation, metrics, style=None):
+        for path in artifacts.metric_plots.values():
+            path.write_text("ok")
+
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.report.renderers.build_plot_artifacts",
+        _fake_build_plot_artifacts,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.report.renderers.render_plots",
+        _fake_render_plots,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.report.renderers.build_quality_plot_artifacts",
+        _fake_build_quality_plot_artifacts,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.report.renderers.render_quality_plots",
+        _fake_render_quality_plots,
+    )
+
+    render_plots_for_report(report, tmp_path / "plots")
+
+    quality = report.data.get("quality_plots", [])
+    assert quality
+    assert quality[0]["tally"] == "tally_1"
+    assert "ce" in quality[0]["metrics"]
+
+
+def test_plot_spec_reference_candidate_aliases(results_pair, tmp_path):
+    exp, calc = results_pair
+    metadata = ReportMetadata(title="Test", benchmark_id="bench")
+    sources = [
+        ResultSource(name="experiment", kind="experiment", results=exp),
+        ResultSource(name="calculation", kind="calculation", results=calc),
+    ]
+    config = ReportConfig(output_dir=tmp_path)
+    report = build_report(metadata, sources, config)
+
+    plot = report.plots[0]
+    assert plot.reference is plot.experiment
+    assert plot.candidate is plot.calculation
+
+
+def test_collect_observable_metrics(results_pair, tmp_path):
+    exp, calc = results_pair
+    metadata = ReportMetadata(title="Test", benchmark_id="bench")
+    sources = [
+        ResultSource(name="experiment", kind="experiment", results=exp),
+        ResultSource(name="calculation", kind="calculation", results=calc),
+    ]
+    config = ReportConfig(output_dir=tmp_path)
+    report = build_report(metadata, sources, config)
+
+    entries = _collect_observable_metrics(report)
+    assert entries
+    assert entries[0]["tally"] == "tally_1"
+    assert "rms_relative_deviation" in entries[0]

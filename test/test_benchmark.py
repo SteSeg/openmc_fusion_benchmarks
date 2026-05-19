@@ -37,7 +37,8 @@ class DummyBenchmark(Benchmark):
     def _uncertainty_quantification(self):
         return "uncertainty_quantification"
 
-    def run(self): return "run"
+    def run(self):
+        return "run"
 
 
 @pytest.fixture
@@ -147,6 +148,68 @@ def test_read_metadata_with_full_spec():
     assert "Alice" in bench.metadata
     assert "Bob" in bench.metadata
     assert "MIT" in bench.metadata
+
+
+@patch("openmc_fusion_benchmarks.benchmark.validate_benchmark")
+def test_generate_report_uses_default_config(mock_validate, valid_yaml, tmp_path, monkeypatch):
+    with patch.object(Path, "open", mock_open(read_data=valid_yaml)):
+        bench = DummyBenchmark("dummy")
+
+    results_path = tmp_path / "benchmark_results.h5"
+    results_path.write_text("data")
+    monkeypatch.chdir(tmp_path)
+
+    captured = {}
+
+    def _fake_from_file(path):
+        captured["from_file"] = path
+        return Mock(filepath=Path(path))
+
+    def _fake_from_database(name, filename="reference_results.h5"):
+        captured["from_database"] = (name, filename)
+        return Mock(filepath=Path(filename))
+
+    def _fake_build_report(sources, config):
+        captured["config"] = config
+        captured["sources"] = sources
+        return Mock()
+
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.BenchmarkResults.from_file",
+        _fake_from_file,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.BenchmarkResults.from_database",
+        _fake_from_database,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.build_report",
+        _fake_build_report,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.render_yaml",
+        lambda report, path: path,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.render_pdf",
+        lambda report, path, plots_dir: path,
+    )
+
+    bench._generate_report(report_config=None)
+
+    assert captured["from_database"] == ("dummy", "experiment.h5")
+    assert captured["config"].include_yaml is True
+    assert captured["config"].include_pdf is True
+    assert captured["config"].output_dir == Path("report")
+
+
+@patch("openmc_fusion_benchmarks.benchmark.validate_benchmark")
+def test_generate_report_missing_results_warns(mock_validate, valid_yaml, tmp_path):
+    with patch.object(Path, "open", mock_open(read_data=valid_yaml)):
+        bench = DummyBenchmark("dummy")
+
+    with pytest.warns(UserWarning, match="benchmark_results.h5 not found"):
+        bench._generate_report(report_config=None)
 
 
 @pytest.mark.skipif(not OPENMC_AVAILABLE, reason="OpenMC not installed")
