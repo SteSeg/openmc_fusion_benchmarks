@@ -565,3 +565,49 @@ def test_render_plots_and_quality_plots(tmp_path, monkeypatch):
     quality = report_plots.build_quality_plot_artifacts("tally", tmp_path, ["ce"])
     report_plots.render_quality_plots(quality, exp, calc, ["ce"], style=PlotStyle())
     assert quality.metric_plots["ce"].exists()
+
+
+def test_build_spec_sections_and_format_helpers():
+    spec = {
+        "metadata": {"title": "Demo", "id": "demo", "geometry": "skip", "settings": "skip"},
+        "materials": [{"id": 1, "name": "mat", "density": 1.0, "composition": {"H": 1}}],
+        "tallies": [{"name": "t1", "particle": "neutron", "scores": ["flux"], "filters": []}],
+        "geometry": {"cad_file": "demo.step", "meshing": {}},
+        "settings": {"run_mode": "fixed_source", "batches": 1, "particles_per_batch": 10, "photon_transport": False},
+    }
+
+    sections = renderers._build_spec_sections(spec, verbosity=2)
+    titles = [title for title, _body in sections]
+    assert "Metadata" in titles
+    assert "Materials" in titles
+    assert "Tallies" in titles
+    assert "Geometry" in titles
+    assert "Settings" in titles
+
+    inline = renderers._format_inline({"a": 1})
+    assert "\"a\":1" in inline
+
+    formatted = renderers._format_key_fields([{"a": 1, "b": 2}], keys=["a"], max_items=1)
+    assert "\"a\":1" in formatted
+
+
+def test_format_run_metadata_and_reference_lines():
+    run_meta = {
+        "code_name": "openmc",
+        "code_version": "0.15.2",
+        "nuclear_data_name": "endfb",
+        "nuclear_data_version": "8.0",
+    }
+    line = renderers._format_run_metadata(run_meta)
+    assert "openmc 0.15.2" in line
+    assert "endfb 8.0" in line
+
+    report = Report(
+        metadata=ReportMetadata(title="Title", benchmark_id="bench"),
+        sources=[],
+        plots=[],
+        data={"sources": [{"kind": "experiment", "run_metadata": run_meta}]},
+    )
+
+    assert renderers._format_reference(report)
+    assert renderers._format_validation(report) == ""

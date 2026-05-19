@@ -68,6 +68,7 @@ from openmc_fusion_benchmarks.validate_results import (
 def test_normalize_filter_type():
     assert normalize_filter_type("CellFilter") == "cell"
     assert normalize_filter_type(" energy ") == "energy"
+    assert normalize_filter_type("ParticleFilter") == "particle"
 
 
 def test_filter_bins_match_energy_and_non_energy():
@@ -84,6 +85,20 @@ def test_filter_bins_match_energy_and_non_energy():
     assert not _filter_bins_match(
         {"type": "cell", "values": [1, 2]},
         {"bins": [1, 3]},
+    )
+
+    assert _filter_bins_match(
+        {"type": "cell", "values": None},
+        {"bins": [1, 2]},
+    )
+    assert _filter_bins_match(
+        {"type": "cell", "values": [1, 2]},
+        {"bins": None},
+    )
+
+    assert not _filter_bins_match(
+        {"type": "energy", "values": ["bad"]},
+        {"bins": [0.0, 1.0]},
     )
 
 
@@ -122,3 +137,22 @@ def test_validate_tally_consistency_success_and_mismatch():
     assert any("scores mismatch" in issue for issue in issues)
     assert any("particle mismatch" in issue for issue in issues)
     assert any("filter type/order mismatch" in issue for issue in issues)
+
+
+def test_validate_tally_consistency_missing_particle_filter():
+    spec = {
+        "particle": "neutron",
+        "scores": ["flux"],
+        "nuclides": ["total"],
+        "filters": [{"type": "cell", "values": [1]}],
+    }
+
+    observed = {
+        "scores": ["flux"],
+        "nuclides": ["total"],
+        "filters": [{"name": "CellFilter", "bins": [1]}],
+    }
+
+    consistent, issues = validate_tally_consistency(spec, observed)
+    assert not consistent
+    assert any("missing ParticleFilter" in issue for issue in issues)
