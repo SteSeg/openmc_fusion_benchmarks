@@ -220,6 +220,59 @@ def test_get_spec_consistency_report_and_only_mismatches(tmp_path):
     assert mismatches[0]["issues"] == ["scores mismatch"]
 
 
+def test_results_tallies_skips_non_tally_groups(tmp_path):
+    filepath = tmp_path / "mixed_groups.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        handle.create_group("run_metadata")
+        handle.create_group("specifications")
+        handle.create_group("empty_group")
+
+    results = BenchmarkResults.from_file(filepath)
+    assert results.tallies == ["tally_1"]
+
+
+def test_results_tallies_handles_invalid_group(tmp_path):
+    filepath = tmp_path / "invalid_group.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        handle.create_group("raw_group")
+
+    results = BenchmarkResults.from_file(filepath)
+    assert results.tallies == ["tally_1"]
+
+
+def test_get_spec_consistency_report_handles_empty_and_invalid_attrs(tmp_path):
+    filepath = tmp_path / "consistency_empty.h5"
+
+    ds = xr.Dataset(
+        {
+            "mean": xr.DataArray(
+                np.ones((1, 1), dtype=float),
+                dims=("nuclide", "score"),
+                coords={
+                    "nuclide": np.array(["total"], dtype="U"),
+                    "score": np.array(["flux"], dtype="U"),
+                },
+            )
+        }
+    )
+    ds.attrs["spec_consistent"] = np.array([], dtype=int)
+    ds.attrs["spec_consistency_issues"] = b"not json"
+    ds.attrs["observed_tally"] = json.dumps({"name": "fallback"}).encode("utf-8")
+    ds.attrs["tally_name"] = ""
+    ds.to_netcdf(filepath, mode="w", engine="h5netcdf", group="tally_1")
+
+    results = BenchmarkResults.from_file(filepath)
+    report = results.get_spec_consistency_report()
+
+    assert report[0]["spec_consistent"] is None
+    assert report[0]["issues"] == []
+    assert report[0]["tally_name"] == "fallback"
+
+
 def test_get_spec_snapshot_and_run_metadata(tmp_path):
     filepath = tmp_path / "metadata_results.h5"
     _write_structured_group(filepath, group="tally_1", tally_name="tally_1")

@@ -626,6 +626,23 @@ def test_render_helper_lines_and_description_defaults():
     assert renderers._format_validation(report) == ""
 
 
+def test_render_specifications_invalid_spec_noop(tmp_path, monkeypatch):
+    _install_fake_matplotlib(monkeypatch)
+
+    report = Report(
+        metadata=ReportMetadata(title="Title", benchmark_id="bench"),
+        sources=[],
+        plots=[],
+        data={"specifications": "not-a-dict"},
+    )
+
+    class DummyPdf:
+        def savefig(self, *_args, **_kwargs):
+            return None
+
+    renderers._render_specifications(DummyPdf(), report, verbosity=2)
+
+
 def test_render_specifications_with_fake_matplotlib(tmp_path, monkeypatch):
     _install_fake_matplotlib(monkeypatch)
 
@@ -647,6 +664,60 @@ def test_render_specifications_with_fake_matplotlib(tmp_path, monkeypatch):
             return None
 
     renderers._render_specifications(DummyPdf(), report, verbosity=1)
+
+
+def test_render_quality_section_handles_missing_and_bad_images(monkeypatch):
+    _install_fake_matplotlib(monkeypatch)
+
+    def _bad_imread(_path):
+        raise ValueError("bad image")
+
+    monkeypatch.setattr("matplotlib.pyplot.imread", _bad_imread)
+
+    class DummyPdf:
+        def savefig(self, *_args, **_kwargs):
+            return None
+
+    quality_entries = [
+        {"tally": "t1", "metrics": {}},
+        {"tally": "t2", "metrics": {"ce": "bad.png"}},
+    ]
+
+    renderers._render_quality_section(DummyPdf(), quality_entries, verbosity=1)
+
+
+def test_render_observable_summary_with_fake_matplotlib(monkeypatch):
+    _install_fake_matplotlib(monkeypatch)
+
+    class DummyPdf:
+        def savefig(self, *_args, **_kwargs):
+            return None
+
+    observable_entries = [
+        {"tally": "t1", "rms_relative_deviation": 0.1, "reduced_chi2": 1.2},
+        {"tally": "t2", "rms_relative_deviation": 0.2, "reduced_chi2": 0.9},
+    ]
+
+    renderers._render_observable_summary(DummyPdf(), observable_entries, verbosity=1)
+
+
+def test_build_spec_sections_low_verbosity_and_format_helpers():
+    spec = {
+        "metadata": {"title": "Demo", "settings": "skip"},
+        "materials": [{"name": "mat1"}, {"name": "mat2"}],
+        "tallies": [{"name": "t1"}, {"name": "t2"}],
+        "geometry": {"cad_file": "demo.step"},
+        "settings": {"run_mode": "fixed_source"},
+    }
+
+    sections = renderers._build_spec_sections(spec, verbosity=1)
+    titles = [title for title, _body in sections]
+    assert "Materials" in titles
+    assert "Tallies" in titles
+
+    formatted = renderers._format_key_fields(["raw", {"a": 1, "b": 2}], keys=["a"], max_items=1)
+    assert "\"a\":1" in formatted
+    assert "..." in formatted
 
 
 def test_render_pdf_import_error(monkeypatch, tmp_path):
