@@ -83,3 +83,12 @@ def test_resolve_database_path_fallback(monkeypatch):
     monkeypatch.setattr("openmc_fusion_benchmarks.database.files", _raise_files)
     path = _resolve_database_path("oktavian_al", "experiment.h5")
     assert path.exists()
+
+
+def test_list_database_files_fallback(monkeypatch):
+    def _raise_files(_pkg):
+        raise ModuleNotFoundError("no resources")
+
+    monkeypatch.setattr("openmc_fusion_benchmarks.database.files", _raise_files)
+    files = list_database_files("oktavian_al")
+    assert "experiment.h5" in files
