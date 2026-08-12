@@ -3,6 +3,8 @@ import json
 import sys
 import types
 
+import h5py
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -218,6 +220,59 @@ def test_get_spec_consistency_report_and_only_mismatches(tmp_path):
     assert mismatches[0]["issues"] == ["scores mismatch"]
 
 
+def test_results_tallies_skips_non_tally_groups(tmp_path):
+    filepath = tmp_path / "mixed_groups.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        handle.create_group("run_metadata")
+        handle.create_group("specifications")
+        handle.create_group("empty_group")
+
+    results = BenchmarkResults.from_file(filepath)
+    assert results.tallies == ["tally_1"]
+
+
+def test_results_tallies_handles_invalid_group(tmp_path):
+    filepath = tmp_path / "invalid_group.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        handle.create_group("raw_group")
+
+    results = BenchmarkResults.from_file(filepath)
+    assert results.tallies == ["tally_1"]
+
+
+def test_get_spec_consistency_report_handles_empty_and_invalid_attrs(tmp_path):
+    filepath = tmp_path / "consistency_empty.h5"
+
+    ds = xr.Dataset(
+        {
+            "mean": xr.DataArray(
+                np.ones((1, 1), dtype=float),
+                dims=("nuclide", "score"),
+                coords={
+                    "nuclide": np.array(["total"], dtype="U"),
+                    "score": np.array(["flux"], dtype="U"),
+                },
+            )
+        }
+    )
+    ds.attrs["spec_consistent"] = np.array([], dtype=int)
+    ds.attrs["spec_consistency_issues"] = b"not json"
+    ds.attrs["observed_tally"] = json.dumps({"name": "fallback"}).encode("utf-8")
+    ds.attrs["tally_name"] = ""
+    ds.to_netcdf(filepath, mode="w", engine="h5netcdf", group="tally_1")
+
+    results = BenchmarkResults.from_file(filepath)
+    report = results.get_spec_consistency_report()
+
+    assert report[0]["spec_consistent"] is None
+    assert report[0]["issues"] == []
+    assert report[0]["tally_name"] == "fallback"
+
+
 def test_get_spec_snapshot_and_run_metadata(tmp_path):
     filepath = tmp_path / "metadata_results.h5"
     _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
@@ -246,3 +301,111 @@ def test_get_spec_snapshot_and_run_metadata(tmp_path):
     assert run_meta["code_name"] == "openmc"
     assert run_meta["code_version"] == "0.15.2"
     assert run_meta["geometry"] == "cad"
+
+
+def test_get_spec_snapshot_missing_group_raises(tmp_path):
+    filepath = tmp_path / "no_spec.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    results = BenchmarkResults.from_file(filepath)
+    with pytest.raises(ValueError, match="No specifications snapshot"):
+        results.get_spec_snapshot()
+
+
+def test_get_spec_snapshot_missing_yaml_dataset_raises(tmp_path):
+    filepath = tmp_path / "bad_spec.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        if "specifications" in handle:
+            del handle["specifications"]
+        group = handle.create_group("specifications")
+        group.attrs["format"] = "yaml"
+
+    results = BenchmarkResults.from_file(filepath)
+    with pytest.raises(ValueError, match="missing 'yaml' dataset"):
+        results.get_spec_snapshot()
+
+
+def test_get_spec_snapshot_invalid_yaml_raises(tmp_path):
+    filepath = tmp_path / "invalid_spec.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        if "specifications" in handle:
+            del handle["specifications"]
+        group = handle.create_group("specifications")
+        group.create_dataset("yaml", data=np.bytes_(b": not yaml"))
+
+    results = BenchmarkResults.from_file(filepath)
+    with pytest.raises(ValueError, match="Failed to parse specifications snapshot"):
+        results.get_spec_snapshot()
+
+
+def test_get_spec_snapshot_empty_dataset_raises(tmp_path):
+    filepath = tmp_path / "empty_spec.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        if "specifications" in handle:
+            del handle["specifications"]
+        group = handle.create_group("specifications")
+        group.create_dataset("yaml", data=np.array([], dtype="S"))
+
+    results = BenchmarkResults.from_file(filepath)
+    with pytest.raises(ValueError, match="dataset is empty"):
+        results.get_spec_snapshot()
+
+
+def test_get_run_metadata_missing_group_raises(tmp_path):
+    filepath = tmp_path / "no_meta.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    results = BenchmarkResults.from_file(filepath)
+    with pytest.raises(ValueError, match="No run metadata found"):
+        results.get_run_metadata()
+
+
+def test_get_run_metadata_decodes_bytes(tmp_path):
+    filepath = tmp_path / "run_meta_bytes.h5"
+    _write_structured_group(filepath, group="tally_1", tally_name="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        group = handle.create_group("run_metadata")
+        group.attrs["code_name"] = b"openmc"
+        group.attrs["code_version"] = b"0.15.2"
+
+    results = BenchmarkResults.from_file(filepath)
+    run_meta = results.get_run_metadata()
+    assert run_meta["code_name"] == "openmc"
+    assert run_meta["code_version"] == "0.15.2"
+
+
+def test_get_spec_consistency_report_handles_bytes_and_numpy(tmp_path):
+    filepath = tmp_path / "consistency_bytes.h5"
+
+    ds = xr.Dataset(
+        {
+            "mean": xr.DataArray(
+                np.ones((1, 1), dtype=float),
+                dims=("nuclide", "score"),
+                coords={
+                    "nuclide": np.array(["total"], dtype="U"),
+                    "score": np.array(["flux"], dtype="U"),
+                },
+            )
+        }
+    )
+    ds.to_netcdf(filepath, mode="w", engine="h5netcdf", group="tally_1")
+
+    with h5py.File(filepath, "a") as handle:
+        attrs = handle["tally_1"].attrs
+        attrs["spec_consistent"] = np.array([1], dtype=int)
+        attrs["spec_consistency_issues"] = json.dumps(["ok"]).encode("utf-8")
+        attrs["observed_tally"] = json.dumps({"name": "from_bytes"}).encode("utf-8")
+
+    results = BenchmarkResults.from_file(filepath)
+    report = results.get_spec_consistency_report()
+    assert report[0]["spec_consistent"] == 1
+    assert report[0]["issues"] == ["ok"]
+    assert report[0]["tally_name"] == "from_bytes"

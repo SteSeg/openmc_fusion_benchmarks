@@ -70,11 +70,13 @@ from openmc_fusion_benchmarks.validation.adapters import (
     compare_tallies,
     datapoints_from_tally,
 )
+from openmc_fusion_benchmarks.validation import comparison as comparison_module
 from openmc_fusion_benchmarks.validation.comparison import compare_point_set
 from openmc_fusion_benchmarks.validation.metrics import compute_point_metrics
 from openmc_fusion_benchmarks.validation.model import (
     BenchmarkStatus,
     DataPoint,
+    ObservableComparison,
     PointComparison,
     PointStatus,
 )
@@ -144,6 +146,61 @@ def test_compare_point_set_point_ids_length_mismatch():
             calculation_points=[{"value": 1.0, "uncertainty": 0.1}],
             point_ids=["a", "b"],
         )
+
+
+def test_compare_point_set_invalid_item_type():
+    with pytest.raises(TypeError, match="Unsupported point type"):
+        compare_point_set(
+            observable_name="tally",
+            observable_type="tally",
+            experiment_points=["bad"],
+            calculation_points=[{"value": 1.0, "uncertainty": 0.1}],
+        )
+
+
+def test_score_component_invalid_thresholds():
+    with pytest.raises(ValueError, match="bad > good"):
+        comparison_module._score_component(0.1, good=1.0, bad=0.5)
+
+
+def test_aggregate_benchmark_empty_observables():
+    bench = comparison_module.aggregate_benchmark(
+        benchmark_id="fng",
+        code_name="openmc",
+        code_version="0.14.0",
+        reference_source="experiment",
+        observables=[],
+        include_grading=False,
+    )
+    assert bench.benchmark_status is None
+
+
+def test_aggregate_benchmark_with_grading():
+    point = PointComparison(
+        id="p0",
+        observable_type="tally",
+        experiment=DataPoint(value=1.0, uncertainty=0.1),
+        calculation=DataPoint(value=2.0, uncertainty=0.1),
+    )
+    point.metrics = compute_point_metrics(point, include_grading=True)
+
+    obs = comparison_module._aggregate_observable(
+        "tally",
+        "tally",
+        [point],
+        include_grading=True,
+    )
+
+    bench = comparison_module.aggregate_benchmark(
+        benchmark_id="fng",
+        code_name="openmc",
+        code_version="0.14.0",
+        reference_source="experiment",
+        observables=[obs],
+        include_grading=True,
+    )
+    assert bench.benchmark_status is not None
+    assert bench.dashboard_score is not None
 
 
 def test_datapoints_from_tally_flatten_dims_and_ids():
@@ -258,6 +315,75 @@ def test_compare_benchmark_results_missing_reference_source(tmp_path):
             reference=reference,
             candidate=candidate,
         )
+
+
+def test_compare_benchmark_results_alias_mismatch_raises(tmp_path):
+    ref_path = tmp_path / "ref.h5"
+    cand_path = tmp_path / "cand.h5"
+    other_path = tmp_path / "other.h5"
+    _write_results_file(ref_path)
+    _write_results_file(cand_path)
+    _write_results_file(other_path)
+
+    reference = BenchmarkResults.from_file(ref_path)
+    candidate = BenchmarkResults.from_file(cand_path)
+    other = BenchmarkResults.from_file(other_path)
+
+    with pytest.raises(ValueError, match="reference and experiment were provided but differ"):
+        compare_benchmark_results(
+            benchmark_id="fng",
+            reference_source="experiment",
+            reference=reference,
+            candidate=candidate,
+            experiment=other,
+        )
+
+    with pytest.raises(ValueError, match="candidate and calculation were provided but differ"):
+        compare_benchmark_results(
+            benchmark_id="fng",
+            reference_source="experiment",
+            reference=reference,
+            candidate=candidate,
+            calculation=other,
+        )
+
+
+def test_compare_benchmark_results_no_tallies_raises(tmp_path):
+    ref_path = tmp_path / "ref.h5"
+    cand_path = tmp_path / "cand.h5"
+    _write_results_file(ref_path)
+    _write_results_file(cand_path)
+
+    reference = BenchmarkResults.from_file(ref_path)
+    candidate = BenchmarkResults.from_file(cand_path)
+
+    with pytest.raises(ValueError, match="No tallies found"):
+        compare_benchmark_results(
+            benchmark_id="fng",
+            reference_source="experiment",
+            reference=reference,
+            candidate=candidate,
+            tally_names=[],
+        )
+
+
+def test_model_repr_and_relative_uncertainty():
+    point = DataPoint(value=0.0, uncertainty=0.1)
+    assert point.relative_uncertainty == np.inf
+
+    comparison = PointComparison(
+        id="p1",
+        observable_type="tally",
+        experiment=DataPoint(value=1.0, uncertainty=0.1),
+        calculation=DataPoint(value=1.1, uncertainty=0.1),
+    )
+    assert "uncomputed" in repr(comparison)
+
+    comparison.metrics = compute_point_metrics(comparison, include_grading=False)
+    assert "ungraded" in repr(comparison)
+
+    obs = ObservableComparison(name="t1", observable_type="tally", points=[comparison])
+    assert "ObservableComparison" in repr(obs)
 
 
 def test_compare_benchmark_results_alias_conflicts(tmp_path):

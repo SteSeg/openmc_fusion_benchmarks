@@ -156,7 +156,9 @@ def test_generate_report_uses_default_config(mock_validate, valid_yaml, tmp_path
         bench = DummyBenchmark("dummy")
 
     results_path = tmp_path / "benchmark_results.h5"
-    results_path.write_text("data")
+    import h5py
+    with h5py.File(results_path, "w"):
+        pass
     monkeypatch.chdir(tmp_path)
 
     captured = {}
@@ -210,6 +212,103 @@ def test_generate_report_missing_results_warns(mock_validate, valid_yaml, tmp_pa
 
     with pytest.warns(UserWarning, match="benchmark_results.h5 not found"):
         bench._generate_report(report_config=None)
+
+
+@patch("openmc_fusion_benchmarks.benchmark.validate_benchmark")
+def test_write_spec_snapshot_writes_group(mock_validate, valid_yaml, tmp_path):
+    with patch.object(Path, "open", mock_open(read_data=valid_yaml)):
+        bench = DummyBenchmark("dummy")
+
+    results_path = tmp_path / "benchmark_results.h5"
+    import h5py
+    with h5py.File(results_path, "w"):
+        pass
+
+    bench._write_spec_snapshot(str(results_path))
+
+    import h5py
+
+    with h5py.File(results_path, "r") as handle:
+        assert "specifications" in handle
+        assert "yaml" in handle["specifications"]
+
+
+@patch("openmc_fusion_benchmarks.benchmark.validate_benchmark")
+def test_write_run_metadata_writes_attrs(mock_validate, valid_yaml, tmp_path):
+    with patch.object(Path, "open", mock_open(read_data=valid_yaml)):
+        bench = DummyBenchmark("dummy")
+
+    results_path = tmp_path / "benchmark_results.h5"
+    import h5py
+    with h5py.File(results_path, "w"):
+        pass
+
+    bench._write_run_metadata(
+        code_name="openmc",
+        code_version="0.15.2",
+        nuclear_data_name="endfb",
+        nuclear_data_version="8.0",
+        geometry="cad",
+        filename=str(results_path),
+    )
+
+    import h5py
+
+    with h5py.File(results_path, "r") as handle:
+        attrs = handle["run_metadata"].attrs
+        assert attrs["code_name"] == "openmc"
+        assert attrs["code_version"] == "0.15.2"
+        assert attrs["nuclear_data_name"] == "endfb"
+        assert attrs["nuclear_data_version"] == "8.0"
+        assert attrs["geometry"] == "cad"
+
+
+@patch("openmc_fusion_benchmarks.benchmark.validate_benchmark")
+def test_generate_report_without_reference(mock_validate, valid_yaml, tmp_path, monkeypatch):
+    with patch.object(Path, "open", mock_open(read_data=valid_yaml)):
+        bench = DummyBenchmark("dummy")
+
+    results_path = tmp_path / "benchmark_results.h5"
+    results_path.write_text("data")
+    monkeypatch.chdir(tmp_path)
+
+    def _fake_from_file(path):
+        return Mock(filepath=Path(path))
+
+    def _fake_from_database(_name, filename="reference_results.h5"):
+        raise FileNotFoundError("missing")
+
+    captured = {}
+
+    def _fake_build_report(sources, config):
+        captured["sources"] = sources
+        return Mock()
+
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.BenchmarkResults.from_file",
+        _fake_from_file,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.BenchmarkResults.from_database",
+        _fake_from_database,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.build_report",
+        _fake_build_report,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.render_yaml",
+        lambda report, path: path,
+    )
+    monkeypatch.setattr(
+        "openmc_fusion_benchmarks.benchmark.render_pdf",
+        lambda report, path, plots_dir: path,
+    )
+
+    bench._generate_report(report_config=None)
+
+    assert captured["sources"][0].kind == "calculation"
+    assert len(captured["sources"]) == 1
 
 
 @pytest.mark.skipif(not OPENMC_AVAILABLE, reason="OpenMC not installed")
