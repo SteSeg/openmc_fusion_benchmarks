@@ -58,7 +58,7 @@ class TMCManager:
                         model_copy = copy.deepcopy(self.base_model)
 
                         # our current perturbations take (model, idx)
-                        perturbed_model = perturb(model_copy, r_idx)
+                        perturbed_model = perturb(model_copy, r_idx, stream="A")
 
                         run_dir = cwd / "tmc" / f"perturbation_{p_idx}" / f"realization_{r_idx}"
                         run_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +97,7 @@ class TMCManager:
 
                 # Apply all perturbations to the same model with their indices
                 for perturb, ridx in zip(self.perturbations, idx_tuple):
-                    perturbed_model = perturb(perturbed_model, ridx)
+                    perturbed_model = perturb(perturbed_model, ridx, stream="A")
 
                 # Directory name encoding the index tuple
                 s = ".".join(map(str, idx_tuple))
@@ -122,29 +122,38 @@ class TMCManager:
 
     def _build_indexed_perturbations(self, user_factories):
         """
-        user_factories: list of callables, each like:
-            factory() -> inner(model, rng)
+        Wrap user perturbation factories into indexed perturb(model, idx, stream)
+        functions.
 
-        Returns list of callables:
-            perturb(model, idx) -> model
+        stream="A" is the default and preserves existing behavior.
         """
         indexed = []
+
         for factory in user_factories:
-            # 1) get user's inner function: (model, rng) -> model
             inner = factory()
 
-            # 2) draw a unique base_seed for this perturbation
-            base_seed = int(self.master_rng.integers(0, 2**31))
+            base_seed_A = int(self.master_rng.integers(0, 2**31))
+            base_seed_B = int(self.master_rng.integers(0, 2**31))
 
-            # 3) wrap inner into perturb(model, idx)
-            def make_wrapper(inner_func, base_seed):
-                def perturb(model, idx):
+            def make_wrapper(inner_func, base_seed_A, base_seed_B):
+                def perturb(model, idx, stream="A"):
+                    if stream == "A":
+                        base_seed = base_seed_A
+                    elif stream == "B":
+                        base_seed = base_seed_B
+                    else:
+                        raise ValueError(f"Unknown perturbation stream: {stream!r}")
+
                     local_seed = base_seed + idx
                     local_rng = np.random.default_rng(local_seed)
+
                     return inner_func(model, local_rng)
+
                 return perturb
 
-            indexed.append(make_wrapper(inner, base_seed))
+            indexed.append(
+                make_wrapper(inner, base_seed_A, base_seed_B)
+            )
 
         return indexed
 
