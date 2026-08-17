@@ -294,6 +294,13 @@ class TMCManager:
         # Persist the detected mode for downstream consumers
         with h5py.File(tmc_statepoint, "a") as h5f:
             h5f.attrs["tmc_mode"] = mode
+        # Remember last produced TMC statepoint path for callers of get_tmc_statepoint()
+        try:
+            # Store resolved Path on the manager instance
+            self.tmc_statepoint_path = Path(tmc_statepoint).resolve()
+        except Exception:
+            # Best-effort: ignore failures to set the attribute
+            pass
 
         # ---- 2. Sort & index logic depending on mode ----
         if mode == "sequential":
@@ -809,7 +816,13 @@ class TMCStatePoint:
         """TMC mode recorded in the statepoint file (sequential, matrix, diagonal)."""
         if self._tmc_mode is None:
             with h5py.File(self.path, "r") as h5f:
-                self._tmc_mode = h5f.attrs.get("tmc_mode")
+                raw = h5f.attrs.get("tmc_mode")
+            # h5py can return bytes or numpy scalar types for attributes; normalize to str
+            if isinstance(raw, (bytes, bytearray)):
+                self._tmc_mode = raw.decode("utf-8")
+            else:
+                # covers str and numpy.string_ / numpy.str_
+                self._tmc_mode = str(raw) if raw is not None else None
         return self._tmc_mode
 
     @property
@@ -919,8 +932,19 @@ class TMCStatePoint:
 
     def close(self):
         """No persistent open Dataset to close, but keep for API symmetry."""
-        # If you decide to cache per-group ds objects, close them here.
-        pass
+        # Close any cached xarray Dataset objects opened in `tallies`.
+        if self._tallies is None:
+            return
+        for tally in list(self._tallies.values()):
+            parent_ds = getattr(tally, "_parent_ds", None)
+            if parent_ds is not None:
+                try:
+                    parent_ds.close()
+                except Exception:
+                    # best-effort close; ignore any issues
+                    pass
+        # Clear the cache
+        self._tallies = None
 
     def __enter__(self):
         return self
