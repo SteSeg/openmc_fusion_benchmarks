@@ -36,7 +36,7 @@ class TMCManager:
        # Wrap user perturbations into indexed perturb(model, idx)
         self.perturbations = self._build_indexed_perturbations(perturbations)
 
-    def run(self, mode="matrix", cwd='.', *args, **kwargs):
+    def run(self, mode="diagonal", cwd='.', *args, **kwargs):
 
         cwd = Path(cwd).resolve()
 
