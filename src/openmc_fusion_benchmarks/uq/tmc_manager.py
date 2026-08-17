@@ -1,5 +1,7 @@
 from typing import List, Callable
 from pathlib import Path
+
+from numpy import rec
 import openmc
 import numpy as np
 import json
@@ -279,9 +281,10 @@ class TMCManager:
 
         # Detect mode: sequential vs diagonal vs matrix
         first_rec = records[0]
-        if "indices" in first_rec:
-            # new: allow explicit "mode" in manifest for diagonal vs full matrix
-            mode = first_rec.get("mode", "matrix")  # default to matrix if not specified
+        if first_rec.get("mode") == "pick-freeze":
+            mode = "pick-freeze"
+        elif "indices" in first_rec:
+            mode = first_rec.get("mode", "matrix")
         elif "perturbation" in first_rec and "realization" in first_rec:
             mode = "sequential"
         else:
@@ -324,7 +327,7 @@ class TMCManager:
             extra_dims = ("realization",)
             extra_coords = {"realization": np.arange(n_points)}
 
-        else:  # mode == "matrix"
+        elif mode == "matrix":
             # each record: {"indices": [i0, i1, ..., i_{p-1}], "statepoint": ...}
             # sort lexicographically by indices
             records.sort(key=lambda r: tuple(r["indices"]))
@@ -347,6 +350,42 @@ class TMCManager:
                     f"Matrix TMC manifest has {n_combos} runs, but inferred grid shape "
                     f"{extra_shape} implies {expected_combos} combinations."
                 )
+            
+        elif mode == "pick-freeze":
+            A_records = [rec for rec in records if rec.get("set") == "A"]
+            B_records = [rec for rec in records if rec.get("set") == "B"]
+            AB_records = [rec for rec in records if rec.get("set") == "AB"]
+
+            # Infer number of realizations from A/B
+            n_realizations = max(
+                rec["index"] for rec in A_records + B_records
+            ) + 1
+
+            # Infer number of perturbations from AB
+            n_perturbations = max(
+                rec["perturbation"] for rec in AB_records
+            ) + 1
+
+            # Validate completeness
+            if len(A_records) != n_realizations:
+                raise RuntimeError("Incomplete A set")
+
+            if len(B_records) != n_realizations:
+                raise RuntimeError("Incomplete B set")
+
+            expected_AB = n_perturbations * n_realizations
+            if len(AB_records) != expected_AB:
+                raise RuntimeError(
+                    f"Pick-freeze AB set has {len(AB_records)} runs, "
+                    f"expected {expected_AB}"
+                )
+
+            A_records.sort(key=lambda rec: rec["index"])
+            B_records.sort(key=lambda rec: rec["index"])
+            AB_records.sort(
+                key=lambda rec: (rec["perturbation"], rec["index"])
+            )
+
 
         # ---- 3. Use first statepoint as reference for tallies ----
         first_sp_path = resolve_statepoint_path(first_rec["statepoint"])
@@ -375,6 +414,29 @@ class TMCManager:
         # ---- 4. Allocate arrays: one per tally ----
         tmc_data = {}    # tid -> ndarray (extra_shape + nd_shape)
         tmc_mc_std = {}  # tid -> ndarray (extra_shape + nd_shape)
+
+        pf_data = {}
+        pf_mc_std = {}
+
+        if mode == "pick-freeze":
+            for tid, nd_shape in tally_shapes.items():
+                pf_data[tid] = {
+                    "A": np.empty((n_realizations,) + nd_shape, dtype=float),
+                    "B": np.empty((n_realizations,) + nd_shape, dtype=float),
+                    "AB": np.empty(
+                        (n_perturbations, n_realizations) + nd_shape,
+                        dtype=float,
+                    ),
+                }
+
+                pf_mc_std[tid] = {
+                    "A": np.empty((n_realizations,) + nd_shape, dtype=float),
+                    "B": np.empty((n_realizations,) + nd_shape, dtype=float),
+                    "AB": np.empty(
+                        (n_perturbations, n_realizations) + nd_shape,
+                        dtype=float,
+                    ),
+                }
 
         for tid, nd_shape in tally_shapes.items():
             full_shape = extra_shape + nd_shape
@@ -414,7 +476,7 @@ class TMCManager:
                         tmc_data[tid][i, ...] = mean_nd
                         tmc_mc_std[tid][i, ...] = std_nd
 
-        else:  # mode == "matrix"
+        elif mode == "matrix":
             # Fill as flat (n_combos, ...) then reshape first axis into extra_shape
             n_combos = len(records)
             flat_data = {}
@@ -445,58 +507,255 @@ class TMCManager:
                 arr.shape = extra_shape + tally_shapes[tid]
                 tmc_mc_std[tid][...] = arr
 
+        elif mode == "pick-freeze":
+            for rec in records:
+                sp_path = resolve_statepoint_path(rec["statepoint"])
+
+                with openmc.StatePoint(str(sp_path)) as sp:
+                    for tid in pf_data.keys():
+                        tally = sp.tallies[tid]
+
+                        nd_shape = tally_shapes[tid]
+                        mean_nd = tally.mean.reshape(nd_shape)
+                        std_nd = tally.std_dev.reshape(nd_shape)
+
+                        if rec["set"] == "A":
+                            r_idx = rec["index"]
+
+                            pf_data[tid]["A"][r_idx, ...] = mean_nd
+                            pf_mc_std[tid]["A"][r_idx, ...] = std_nd
+
+                        elif rec["set"] == "B":
+                            r_idx = rec["index"]
+
+                            pf_data[tid]["B"][r_idx, ...] = mean_nd
+                            pf_mc_std[tid]["B"][r_idx, ...] = std_nd
+
+                        elif rec["set"] == "AB":
+                            p_idx = rec["perturbation"]
+                            r_idx = rec["index"]
+
+                            pf_data[tid]["AB"][p_idx, r_idx, ...] = mean_nd
+                            pf_mc_std[tid]["AB"][p_idx, r_idx, ...] = std_nd
+
+                        else:
+                            raise RuntimeError(f"Unknown pick-freeze set: {rec['set']!r}")
+
         # ---- 6. Build per-tally Datasets and write each into its own group ----
 
-        for tid, arr in tmc_data.items():
-            template = tally_templates[tid]
-            template_dims = tally_dims[tid]
+        if mode == "pick-freeze":
 
-            dims = extra_dims + template_dims
+            for tid in pf_data:
+                template = tally_templates[tid]
+                template_dims = tally_dims[tid]
 
-            coords = dict(extra_coords)
-            for dim in template_dims:
-                coords[dim] = (dim, tally_coords[tid][dim])
+                tally_name = tally_names[tid] or f"tally_{tid}"
 
-            ds_tid = xr.Dataset()
+                # ==========================================================
+                # A ensemble
+                # Shape:
+                #   (realization, tally_dims...)
+                # ==========================================================
+                A_dims_full = ("realization",) + template_dims
 
-            da_mean = xr.DataArray(
-                arr,
-                dims=dims,
-                coords=coords,
-                name="mean",
-            )
+                A_coords = {
+                    "realization": np.arange(n_realizations),
+                }
 
-            da_mc_std = xr.DataArray(
-                tmc_mc_std[tid],
-                dims=dims,
-                coords=coords,
-                name="mc_std",
-            )
+                for dim in template_dims:
+                    A_coords[dim] = (
+                        dim,
+                        tally_coords[tid][dim],
+                    )
 
-            # basic attrs
-            tally_name = tally_names[tid] or f"tally_{tid}"
-            for target_da in (da_mean, da_mc_std):
-                target_da.attrs["tally_id"] = tid
-                target_da.attrs["tally_name"] = tally_name
+                ds_A = xr.Dataset(
+                    {
+                        "mean": xr.DataArray(
+                            pf_data[tid]["A"],
+                            dims=A_dims_full,
+                            coords=A_coords,
+                            name="mean",
+                        ),
+                        "mc_std": xr.DataArray(
+                            pf_mc_std[tid]["A"],
+                            dims=A_dims_full,
+                            coords=A_coords,
+                            name="mc_std",
+                        ),
+                    }
+                )
 
-            # copy dataset-level metadata from template
-            for key, value in template.attrs.items():
-                ds_tid.attrs[key] = value
+                # ==========================================================
+                # B ensemble
+                # Shape:
+                #   (realization, tally_dims...)
+                # ==========================================================
+                B_dims_full = ("realization",) + template_dims
 
-            ds_tid["mean"] = da_mean
-            ds_tid["mc_std"] = da_mc_std
+                B_coords = {
+                    "realization": np.arange(n_realizations),
+                }
 
-            group_name = f"tally_{tid}"
+                for dim in template_dims:
+                    B_coords[dim] = (
+                        dim,
+                        tally_coords[tid][dim],
+                    )
 
-            # append this tally-dataset as a group in the same file
-            ds_tid.to_netcdf(
-                tmc_statepoint,
-                mode="a",
-                group=group_name,
-                engine="h5netcdf",  # or "netcdf4"
-            )
+                ds_B = xr.Dataset(
+                    {
+                        "mean": xr.DataArray(
+                            pf_data[tid]["B"],
+                            dims=B_dims_full,
+                            coords=B_coords,
+                            name="mean",
+                        ),
+                        "mc_std": xr.DataArray(
+                            pf_mc_std[tid]["B"],
+                            dims=B_dims_full,
+                            coords=B_coords,
+                            name="mc_std",
+                        ),
+                    }
+                )
 
-        self.tmc_statepoint_path = tmc_statepoint
+                # ==========================================================
+                # AB ensemble
+                # Shape:
+                #   (perturbation, realization, tally_dims...)
+                # ==========================================================
+                AB_dims_full = (
+                    "perturbation",
+                    "realization",
+                ) + template_dims
+
+                AB_coords = {
+                    "perturbation": np.arange(n_perturbations),
+                    "realization": np.arange(n_realizations),
+                }
+
+                for dim in template_dims:
+                    AB_coords[dim] = (
+                        dim,
+                        tally_coords[tid][dim],
+                    )
+
+                ds_AB = xr.Dataset(
+                    {
+                        "mean": xr.DataArray(
+                            pf_data[tid]["AB"],
+                            dims=AB_dims_full,
+                            coords=AB_coords,
+                            name="mean",
+                        ),
+                        "mc_std": xr.DataArray(
+                            pf_mc_std[tid]["AB"],
+                            dims=AB_dims_full,
+                            coords=AB_coords,
+                            name="mc_std",
+                        ),
+                    }
+                )
+
+                # ==========================================================
+                # Metadata
+                # ==========================================================
+                for ds in (ds_A, ds_B, ds_AB):
+
+                    for variable in ("mean", "mc_std"):
+                        ds[variable].attrs["tally_id"] = tid
+                        ds[variable].attrs["tally_name"] = tally_name
+
+                    # Copy metadata from the original tally template
+                    for key, value in template.attrs.items():
+                        ds.attrs[key] = value
+
+                # Explicitly record the pick-freeze ensemble
+                ds_A.attrs["pick_freeze_set"] = "A"
+                ds_B.attrs["pick_freeze_set"] = "B"
+                ds_AB.attrs["pick_freeze_set"] = "AB"
+
+                # ==========================================================
+                # Write A, B and AB as separate groups
+                # ==========================================================
+                ds_A.to_netcdf(
+                    tmc_statepoint,
+                    mode="a",
+                    group=f"tally_{tid}/A",
+                    engine="h5netcdf",
+                )
+
+                ds_B.to_netcdf(
+                    tmc_statepoint,
+                    mode="a",
+                    group=f"tally_{tid}/B",
+                    engine="h5netcdf",
+                )
+
+                ds_AB.to_netcdf(
+                    tmc_statepoint,
+                    mode="a",
+                    group=f"tally_{tid}/AB",
+                    engine="h5netcdf",
+                )
+
+        else:
+            # ==============================================================
+            # Existing sequential / diagonal / matrix writing
+            # ==============================================================
+            for tid, arr in tmc_data.items():
+
+                template = tally_templates[tid]
+                template_dims = tally_dims[tid]
+
+                dims = extra_dims + template_dims
+
+                coords = dict(extra_coords)
+
+                for dim in template_dims:
+                    coords[dim] = (
+                        dim,
+                        tally_coords[tid][dim],
+                    )
+
+                ds_tid = xr.Dataset()
+
+                da_mean = xr.DataArray(
+                    arr,
+                    dims=dims,
+                    coords=coords,
+                    name="mean",
+                )
+
+                da_mc_std = xr.DataArray(
+                    tmc_mc_std[tid],
+                    dims=dims,
+                    coords=coords,
+                    name="mc_std",
+                )
+
+                # Basic metadata
+                tally_name = tally_names[tid] or f"tally_{tid}"
+
+                for target_da in (da_mean, da_mc_std):
+                    target_da.attrs["tally_id"] = tid
+                    target_da.attrs["tally_name"] = tally_name
+
+                # Copy dataset-level metadata from template
+                for key, value in template.attrs.items():
+                    ds_tid.attrs[key] = value
+
+                ds_tid["mean"] = da_mean
+                ds_tid["mc_std"] = da_mc_std
+
+                group_name = f"tally_{tid}"
+
+                ds_tid.to_netcdf(
+                    tmc_statepoint,
+                    mode="a",
+                    group=group_name,
+                    engine="h5netcdf",
+                )
 
     def get_tmc_statepoint(self, path=None):
         """
