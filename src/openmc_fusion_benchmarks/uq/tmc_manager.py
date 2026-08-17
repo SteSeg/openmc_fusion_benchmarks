@@ -159,6 +159,7 @@ class TMCManager:
                         f_manifest.write(json.dumps(rec) + "\n")
                         f_manifest.flush()
 
+            self._process_tmc(manifest_path=manifest)
             return
 
         # --- Matrix / diagonal modes share the same structure and manifest keys ---
@@ -439,10 +440,14 @@ class TMCManager:
                     ),
                 }
 
-        for tid, nd_shape in tally_shapes.items():
-            full_shape = extra_shape + nd_shape
-            tmc_data[tid] = np.empty(full_shape, dtype=float)
-            tmc_mc_std[tid] = np.empty(full_shape, dtype=float)
+        # Allocate the standard TMC arrays only for non-pick-freeze modes.
+        # Pick-freeze uses the separate `pf_data` / `pf_mc_std` structures above,
+        # so we avoid referencing `extra_shape` which is undefined for pick-freeze.
+        if mode != "pick-freeze":
+            for tid, nd_shape in tally_shapes.items():
+                full_shape = extra_shape + nd_shape
+                tmc_data[tid] = np.empty(full_shape, dtype=float)
+                tmc_mc_std[tid] = np.empty(full_shape, dtype=float)
 
         # ---- 5. Fill arrays by looping over statepoints ----
         if mode == "sequential":
@@ -809,34 +814,78 @@ class TMCStatePoint:
 
     @property
     def tallies(self):
-        """Dictionary of tallies, indexed by tally ID (mimics openmc.StatePoint.tallies)."""
+        """Dictionary of tallies, indexed by tally ID."""
         if self._tallies is None:
             self._tallies = {}
-            # Discover tally groups via h5py
+
             with h5py.File(self.path, "r") as f:
+
                 for group_name in f.keys():
                     if not group_name.startswith("tally_"):
                         continue
-                    # Open this group as an xarray Dataset
-                    ds = xr.open_dataset(
-                        self.path,
-                        group=group_name,
-                        engine="h5netcdf",
-                    )
-                    if "mean" not in ds:
-                        continue
-                    da_mean = ds["mean"]
-                    da_mc_std = ds["mc_std"] if "mc_std" in ds else None
 
-                    tally_id = da_mean.attrs.get("tally_id")
-                    if tally_id is None:
-                        # Fallback: parse id from group name
-                        try:
-                            tally_id = int(group_name.split("_", 1)[1])
-                        except Exception:
+                    # Extract tally ID
+                    try:
+                        tally_id = int(group_name.split("_", 1)[1])
+                    except Exception:
+                        continue
+
+                    # --------------------------------------------------
+                    # Pick-freeze: tally_<id>/{A,B,AB}
+                    # --------------------------------------------------
+                    if self.tmc_mode == "pick-freeze":
+
+                        ds_A = xr.open_dataset(
+                            self.path,
+                            group=f"{group_name}/A",
+                            engine="h5netcdf",
+                        )
+
+                        ds_B = xr.open_dataset(
+                            self.path,
+                            group=f"{group_name}/B",
+                            engine="h5netcdf",
+                        )
+
+                        ds_AB = xr.open_dataset(
+                            self.path,
+                            group=f"{group_name}/AB",
+                            engine="h5netcdf",
+                        )
+
+                        self._tallies[tally_id] = TMCTally(
+                            mean_da=ds_AB["mean"],
+                            mc_std_da=ds_AB.get("mc_std"),
+                            parent_ds=ds_AB,
+                            A_da=ds_A["mean"],
+                            B_da=ds_B["mean"],
+                            A_mc_std_da=ds_A.get("mc_std"),
+                            B_mc_std_da=ds_B.get("mc_std"),
+                        )
+
+                    # --------------------------------------------------
+                    # Existing modes: tally_<id>
+                    # --------------------------------------------------
+                    else:
+
+                        ds = xr.open_dataset(
+                            self.path,
+                            group=group_name,
+                            engine="h5netcdf",
+                        )
+
+                        if "mean" not in ds:
                             continue
 
-                    self._tallies[tally_id] = TMCTally(da_mean, da_mc_std, parent_ds=ds)
+                        da_mean = ds["mean"]
+                        da_mc_std = ds["mc_std"] if "mc_std" in ds else None
+
+                        self._tallies[tally_id] = TMCTally(
+                            da_mean,
+                            da_mc_std,
+                            parent_ds=ds,
+                        )
+
         return self._tallies
 
     def get_tally(self, tally_id=None, name=None):
