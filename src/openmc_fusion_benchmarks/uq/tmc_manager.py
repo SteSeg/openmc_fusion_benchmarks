@@ -874,6 +874,7 @@ class TMCStatePoint:
                             B_da=ds_B["mean"],
                             A_mc_std_da=ds_A.get("mc_std"),
                             B_mc_std_da=ds_B.get("mc_std"),
+                            mode=self.tmc_mode,
                         )
 
                     # --------------------------------------------------
@@ -897,6 +898,7 @@ class TMCStatePoint:
                             da_mean,
                             da_mc_std,
                             parent_ds=ds,
+                            mode=self.tmc_mode,
                         )
 
         return self._tallies
@@ -992,6 +994,7 @@ class TMCTally(BaseTally):
         B_da=None,
         A_mc_std_da=None,
         B_mc_std_da=None,
+        mode=None,
     ):
         super().__init__(
             mean_da,
@@ -1003,6 +1006,7 @@ class TMCTally(BaseTally):
         self._B_da = B_da
         self._A_mc_std_da = A_mc_std_da
         self._B_mc_std_da = B_mc_std_da
+        self._mode = mode
 
         self._tmc_dims = [
             d for d in self._da.dims
@@ -1019,6 +1023,23 @@ class TMCTally(BaseTally):
     def name(self):
         """Tally name."""
         return self._da.attrs.get("tally_name")
+
+    @property
+    def mode(self):
+        """TMC execution mode for this tally (sequential, diagonal, matrix, pick-freeze)."""
+        return self._mode
+
+    @property
+    def ensemble_views(self):
+        """Return mode-specific ensemble views as a dictionary, if present."""
+        views = {}
+        if self._A_da is not None:
+            views["A"] = self._A_da
+        if self._B_da is not None:
+            views["B"] = self._B_da
+        if self._da is not None:
+            views["AB"] = self._da
+        return views
 
     # --- Metadata & helpers ---
 
@@ -1146,90 +1167,98 @@ class TMCTally(BaseTally):
     @property
     def per_perturbation_mean(self):
         """
-        Mean value for each perturbation type (averaging over all realizations).
-        
-        For sequential mode: shape (n_perturbations, filters..., nuclide, score)
-          - Averages over realizations, keeping separate perturbation results
-        
-        For matrix mode: shape (n_perturbations, filters..., nuclide, score)
-          - Averages over all perturbation_i dimensions (all realization grids)
-          - Returns one value per perturbation type
-        
-        For diagonal mode: returns overall mean (single realization dimension)
+        Mean value for each perturbation type, with mode-aware marginalization.
+
+        - sequential: average over realizations, keeping separate perturbation entries
+        - diagonal: collapse the single realization axis
+        - matrix: marginalize each perturbation axis separately and stack the results
+        - pick-freeze: average the AB ensemble over realization for each perturbation
         """
         dims = tuple(self._da.dims)
         has_pert = "perturbation" in dims
         has_real = "realization" in dims
 
+        if self.mode == "pick-freeze":
+            result = self._da.mean(dim="realization") if "realization" in self._da.dims else self._da
+            return result.values
+
         if has_pert and has_real:
-            # Sequential mode: average over realizations only
             result = self._da.mean(dim="realization")
             return result.values
-        elif has_pert:
-            # Edge case: perturbation dim exists but no realization dim
+        if has_pert:
             return self._da.values
-        else:
-            # Matrix mode: average over all perturbation_i dimensions
-            pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
-            if pert_dims:
-                # Average over all perturbation dimensions (all realization grids)
-                result = self._da.mean(dim=pert_dims)
-                # Result shape: (filters..., nuclide, score)
-                # Expand to add perturbation axis: (n_perturbations, filters..., nuclide, score)
-                n_perturbations = len(pert_dims)
-                # Repeat the result for each perturbation
-                result_expanded = np.tile(result.values, (n_perturbations,) + (1,) * (result.ndim))
-                return result_expanded
-            else:
-                # Diagonal or other: collapse all TMC dims
-                return self.mean
+
+        pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+        if pert_dims:
+            marginal_values = []
+            for dim in pert_dims:
+                kept = [d for d in pert_dims if d != dim]
+                if has_real:
+                    kept.append("realization")
+                if kept:
+                    result = self._da.mean(dim=kept)
+                else:
+                    result = self._da
+                marginal_values.append(result.values)
+            return np.stack(marginal_values, axis=0)
+        return self.mean
+
     @property
     def per_perturbation_std_dev(self):
         """
-        Standard deviation for each perturbation type (across all realizations).
-        
-        For sequential mode: shape (n_perturbations, filters..., nuclide, score)
-          - Std deviation across realizations, keeping separate perturbation results
-        
-        For matrix mode: shape (n_perturbations, filters..., nuclide, score)
-          - Std deviation over all perturbation_i dimensions (all realization grids)
-          - Returns one value per perturbation type
-        
-        For diagonal mode: returns overall std_dev (single realization dimension)
+        Standard deviation for each perturbation type with mode-aware marginalization.
         """
         dims = tuple(self._da.dims)
         has_pert = "perturbation" in dims
         has_real = "realization" in dims
 
+        if self.mode == "pick-freeze":
+            result = self._da.std(dim="realization") if "realization" in self._da.dims else self._da
+            return result.values
+
         if has_pert and has_real:
-            # Sequential mode: std over realizations only
             result = self._da.std(dim="realization")
             return result.values
-        elif has_pert:
-            # Edge case: perturbation dim exists but no realization dim
+        if has_pert:
             return np.zeros_like(self._da.values)
-        else:
-            # Matrix mode: std over all perturbation_i dimensions
-            pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
-            if pert_dims:
-                # Std over all perturbation dimensions (all realization grids)
-                result = self._da.std(dim=pert_dims)
-                # Result shape: (filters..., nuclide, score)
-                # Expand to add perturbation axis: (n_perturbations, filters..., nuclide, score)
-                n_perturbations = len(pert_dims)
-                # Repeat the result for each perturbation
-                result_expanded = np.tile(result.values, (n_perturbations,) + (1,) * (result.ndim))
-                return result_expanded
-            else:
-                # Diagonal or other: collapse all TMC dims
-                return self.std_dev
+
+        pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+        if pert_dims:
+            marginal_values = []
+            for dim in pert_dims:
+                kept = [d for d in pert_dims if d != dim]
+                if has_real:
+                    kept.append("realization")
+                if kept:
+                    result = self._da.std(dim=kept)
+                else:
+                    result = self._da
+                marginal_values.append(result.values)
+            return np.stack(marginal_values, axis=0)
+        return self.std_dev
 
     
     @property
     def perturbation_dims(self):
-        """Names of perturbation dimensions in matrix mode (e.g. 'perturbation_0', ...)."""
-        return tuple(d for d in self._tmc_dims if d.startswith("perturbation_"))
-    
+        """Names of perturbation dimensions used by the current TMC mode."""
+        dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+        if not dims and "perturbation" in self._tmc_dims:
+            dims = ["perturbation"]
+        return tuple(dims)
+
+    def mode_summary(self):
+        """Return a compact mode-aware summary that hides the internal manifest detail."""
+        summary = {
+            "mode": self.mode,
+            "tmc_dims": list(self.tmc_dims),
+            "perturbation_dims": list(self.perturbation_dims),
+            "shape": self.shape,
+            "has_pick_freeze_views": bool(self.ensemble_views),
+        }
+        if self.mode == "pick-freeze":
+            summary["ensemble_sets"] = sorted(self.ensemble_views.keys())
+        return summary
+
     def get_slice(self, scores=None, nuclides=None, **filter_kwargs):
         """
         Get a slice of the TMC data with optional filtering.
