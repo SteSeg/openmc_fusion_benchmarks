@@ -279,7 +279,7 @@ class TMCManager:
         if not records:
             raise RuntimeError("TMC manifest is empty; no runs to process")
 
-        # Detect mode: sequential vs diagonal vs matrix
+        # Detect mode: sequential vs diagonal vs matrix vs pick-freeze
         first_rec = records[0]
         if first_rec.get("mode") == "pick-freeze":
             mode = "pick-freeze"
@@ -352,6 +352,7 @@ class TMCManager:
                 )
             
         elif mode == "pick-freeze":
+            # records: {"set": "A"|"B"|"AB", "index": int, "perturbation": int (for AB), "statepoint": ...}
             A_records = [rec for rec in records if rec.get("set") == "A"]
             B_records = [rec for rec in records if rec.get("set") == "B"]
             AB_records = [rec for rec in records if rec.get("set") == "AB"]
@@ -909,13 +910,31 @@ class TMCTally(BaseTally):
         Parent dataset (group) containing metadata attributes.
     """
 
-    def __init__(self, mean_da, mc_std_da=None, parent_ds=None):
-        super().__init__(mean_da, mc_std_da=mc_std_da, parent_ds=parent_ds)
+    def __init__(
+        self,
+        mean_da,
+        mc_std_da=None,
+        parent_ds=None,
+        A_da=None,
+        B_da=None,
+        A_mc_std_da=None,
+        B_mc_std_da=None,
+    ):
+        super().__init__(
+            mean_da,
+            mc_std_da=mc_std_da,
+            parent_ds=parent_ds,
+        )
 
-        # Identify TMC dimensions: "perturbation" and "realization" for sequential, "perturbation_*" for matrix
+        self._A_da = A_da
+        self._B_da = B_da
+        self._A_mc_std_da = A_mc_std_da
+        self._B_mc_std_da = B_mc_std_da
+
         self._tmc_dims = [
             d for d in self._da.dims
-            if d in ("perturbation", "realization") or d.startswith("perturbation_")
+            if d in ("perturbation", "realization")
+            or d.startswith("perturbation_")
         ]
 
     @property
@@ -994,8 +1013,21 @@ class TMCTally(BaseTally):
     def dims(self):
         """Dimension names of the underlying mean data array."""
         return self._da.dims
+
+    # --- Pick-freeze ensembles ---
+    @property
+    def A(self):
+        return None if self._A_da is None else self._A_da.values
+
+    @property
+    def B(self):
+        return None if self._B_da is None else self._B_da.values
+
+    @property
+    def AB(self):
+        return self._da.values
     
-        # --- TMC statistics ---
+    # --- TMC statistics ---
 
     @property
     def mean(self):
