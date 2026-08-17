@@ -79,6 +79,86 @@ class TMCManager:
             self._process_tmc(manifest_path=manifest)
             return
 
+        if mode == "pick-freeze":
+            with manifest.open("a") as f_manifest:
+
+                # Generate A realizations
+                for r_idx in range(r):
+                    model_copy = copy.deepcopy(self.base_model)
+
+                    for perturb in self.perturbations:
+                        model_copy = perturb(model_copy, r_idx, stream="A")
+
+                    run_dir = cwd / "tmc" / f"A_{r_idx}"
+                    run_dir.mkdir(parents=True, exist_ok=True)
+
+                    sp_path = model_copy.run(cwd=run_dir, *args, **kwargs)
+                    sp_path = Path(sp_path).resolve()
+
+                    rec = {
+                        "mode": "pick-freeze",
+                        "set": "A",
+                        "index": int(r_idx),
+                        "statepoint": str(sp_path.relative_to(cwd)),
+                    }
+                    f_manifest.write(json.dumps(rec) + "\n")
+                    f_manifest.flush()
+
+                # Generate B realizations
+                for r_idx in range(r):
+                    model_copy = copy.deepcopy(self.base_model)
+
+                    for perturb in self.perturbations:
+                        model_copy = perturb(model_copy, r_idx, stream="B")
+
+                    run_dir = cwd / "tmc" / f"B_{r_idx}"
+                    run_dir.mkdir(parents=True, exist_ok=True)
+
+                    sp_path = model_copy.run(cwd=run_dir, *args, **kwargs)
+                    sp_path = Path(sp_path).resolve()
+
+                    rec = {
+                        "mode": "pick-freeze",
+                        "set": "B",
+                        "index": int(r_idx),
+                        "statepoint": str(sp_path.relative_to(cwd)),
+                    }
+                    f_manifest.write(json.dumps(rec) + "\n")
+                    f_manifest.flush()
+
+                                # Generate AB pick-freeze realizations
+                for p_idx in range(p):
+                    for r_idx in range(r):
+                        model_copy = copy.deepcopy(self.base_model)
+
+                        for i_idx, perturb in enumerate(self.perturbations):
+                            stream = "B" if i_idx == p_idx else "A"
+                            model_copy = perturb(
+                                model_copy,
+                                r_idx,
+                                stream=stream
+                            )
+
+                        run_dir = cwd / "tmc" / f"AB_{p_idx}_{r_idx}"
+                        run_dir.mkdir(parents=True, exist_ok=True)
+
+                        sp_path = model_copy.run(
+                            cwd=run_dir, *args, **kwargs
+                        )
+                        sp_path = Path(sp_path).resolve()
+
+                        rec = {
+                            "mode": "pick-freeze",
+                            "set": "AB",
+                            "perturbation": int(p_idx),
+                            "index": int(r_idx),
+                            "statepoint": str(sp_path.relative_to(cwd)),
+                        }
+                        f_manifest.write(json.dumps(rec) + "\n")
+                        f_manifest.flush()
+
+            return
+
         # --- Matrix / diagonal modes share the same structure and manifest keys ---
         # Choose index iterator
         if mode == "matrix":
