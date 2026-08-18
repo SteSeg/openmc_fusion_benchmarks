@@ -210,32 +210,50 @@ class TMCManager:
 
         stream="A" is the default and preserves existing behavior.
         """
+        # Use a SeedSequence hierarchy for robust, collision-resistant child
+        # seeds. This produces deterministic, well-spaced child sequences and
+        # is preferable to simple additive seed arithmetic.
         indexed = []
 
+        # Draw an integer master seed from the master RNG so we can create a
+        # reproducible SeedSequence root. Store it on the instance for
+        # provenance and later recording in the tmc_statepoint metadata.
+        master_seed = int(self.master_rng.integers(0, 2**31))
+        self._rng_master_seed = int(master_seed)
+        ss_master = np.random.SeedSequence(master_seed)
+
+        # For each user factory spawn two base sequences (A and B) and then
+        # spawn per-realization children so the wrapper can index directly by
+        # `idx` without dynamically spawning at call time.
         for factory in user_factories:
             inner = factory()
 
-            base_seed_A = int(self.master_rng.integers(0, 2**31))
-            base_seed_B = int(self.master_rng.integers(0, 2**31))
+            ss_A_base, ss_B_base = ss_master.spawn(2)
 
-            def make_wrapper(inner_func, base_seed_A, base_seed_B):
+            # Spawn per-realization child sequences using the configured
+            # `self.realizations` so each (perturbation, realization) has a
+            # dedicated SeedSequence.
+            ss_A_children = ss_A_base.spawn(int(self.realizations))
+            ss_B_children = ss_B_base.spawn(int(self.realizations))
+
+            def make_wrapper(inner_func, ss_A_children, ss_B_children):
                 def perturb(model, idx, stream="A"):
                     if stream == "A":
-                        base_seed = base_seed_A
+                        child_ss = ss_A_children[int(idx)]
                     elif stream == "B":
-                        base_seed = base_seed_B
+                        child_ss = ss_B_children[int(idx)]
                     else:
                         raise ValueError(f"Unknown perturbation stream: {stream!r}")
 
-                    local_seed = base_seed + idx
-                    local_rng = np.random.default_rng(local_seed)
+                    # Construct a Generator from the child SeedSequence.
+                    local_rng = np.random.default_rng(child_ss)
 
                     return inner_func(model, local_rng)
 
                 return perturb
 
             indexed.append(
-                make_wrapper(inner, base_seed_A, base_seed_B)
+                make_wrapper(inner, ss_A_children, ss_B_children)
             )
 
         return indexed
@@ -281,12 +299,18 @@ class TMCManager:
             raise RuntimeError("TMC manifest is empty; no runs to process")
 
         # Detect mode: sequential vs diagonal vs matrix vs pick-freeze
-        first_rec = records[0]
-        if first_rec.get("mode") == "pick-freeze":
+        # Do not rely on manifest ordering; inspect records to decide.
+        mode = None
+        # Prefer explicit pick-freeze marker
+        if any(rec.get("mode") == "pick-freeze" for rec in records):
             mode = "pick-freeze"
-        elif "indices" in first_rec:
-            mode = first_rec.get("mode", "matrix")
-        elif "perturbation" in first_rec and "realization" in first_rec:
+        # Next prefer records with explicit indices (matrix/diagonal)
+        elif any("indices" in rec for rec in records):
+            # Use mode field if present (matrix/diagonal), default to matrix
+            rec_with_indices = next(rec for rec in records if "indices" in rec)
+            mode = rec_with_indices.get("mode", "matrix")
+        # Next prefer sequential-style records with perturbation+realization
+        elif any(("perturbation" in rec and "realization" in rec) for rec in records):
             mode = "sequential"
         else:
             raise RuntimeError("Unrecognized manifest record format")
@@ -294,6 +318,14 @@ class TMCManager:
         # Persist the detected mode for downstream consumers
         with h5py.File(tmc_statepoint, "a") as h5f:
             h5f.attrs["tmc_mode"] = mode
+            # Record RNG provenance so results can be reproduced later.
+            try:
+                h5f.attrs["rng_scheme"] = "seedsequence"
+                if hasattr(self, "_rng_master_seed"):
+                    h5f.attrs["rng_master_seed"] = int(self._rng_master_seed)
+            except Exception:
+                # Best-effort metadata: ignore failures to write attrs
+                pass
         # Remember last produced TMC statepoint path for callers of get_tmc_statepoint()
         try:
             # Store resolved Path on the manager instance
@@ -303,6 +335,17 @@ class TMCManager:
             pass
 
         # ---- 2. Sort & index logic depending on mode ----
+        # Choose a stable reference record for extracting tally templates
+        # (do not assume records[0] is representative)
+        if mode == "pick-freeze":
+            reference_rec = next((rec for rec in records if rec.get("set") == "AB"), records[0])
+        elif mode in ("matrix", "diagonal"):
+            reference_rec = next((rec for rec in records if "indices" in rec), records[0])
+        elif mode == "sequential":
+            reference_rec = next((rec for rec in records if "perturbation" in rec and "realization" in rec), records[0])
+        else:
+            reference_rec = records[0]
+
         if mode == "sequential":
             # sort by (perturbation, realization)
             records.sort(key=lambda r: (r["perturbation"], r["realization"]))
@@ -341,7 +384,7 @@ class TMCManager:
             records.sort(key=lambda r: tuple(r["indices"]))
 
             # number of perturbations = length of indices
-            p = len(first_rec["indices"])
+            p = len(reference_rec["indices"])
 
             # Infer per-dimension sizes from the data:
             indices_array = np.array([rec["indices"] for rec in records], dtype=int)
@@ -396,8 +439,8 @@ class TMCManager:
             )
 
 
-        # ---- 3. Use first statepoint as reference for tallies ----
-        first_sp_path = resolve_statepoint_path(first_rec["statepoint"])
+        # ---- 3. Use reference record's statepoint as reference for tallies ----
+        first_sp_path = resolve_statepoint_path(reference_rec["statepoint"])
         tally_names = {}       # tid -> name
         tally_shapes = {}      # tid -> nd_shape (filters..., nuclide, score)
         tally_templates = {}   # tid -> xarray.Dataset template
@@ -874,6 +917,9 @@ class TMCStatePoint:
                             B_da=ds_B["mean"],
                             A_mc_std_da=ds_A.get("mc_std"),
                             B_mc_std_da=ds_B.get("mc_std"),
+                            A_parent_ds=ds_A,
+                            B_parent_ds=ds_B,
+                            AB_parent_ds=ds_AB,
                             mode=self.tmc_mode,
                         )
 
@@ -898,6 +944,7 @@ class TMCStatePoint:
                             da_mean,
                             da_mc_std,
                             parent_ds=ds,
+                            AB_parent_ds=ds,
                             mode=self.tmc_mode,
                         )
 
@@ -938,13 +985,21 @@ class TMCStatePoint:
         if self._tallies is None:
             return
         for tally in list(self._tallies.values()):
-            parent_ds = getattr(tally, "_parent_ds", None)
-            if parent_ds is not None:
-                try:
-                    parent_ds.close()
-                except Exception:
-                    # best-effort close; ignore any issues
-                    pass
+            try:
+                # Prefer tally-managed close if available
+                close_fn = getattr(tally, "close", None)
+                if callable(close_fn):
+                    close_fn()
+                else:
+                    parent_ds = getattr(tally, "_parent_ds", None)
+                    if parent_ds is not None:
+                        try:
+                            parent_ds.close()
+                        except Exception:
+                            pass
+            except Exception:
+                # best-effort close; ignore any issues
+                pass
         # Clear the cache
         self._tallies = None
 
@@ -995,6 +1050,9 @@ class TMCTally(BaseTally):
         A_mc_std_da=None,
         B_mc_std_da=None,
         mode=None,
+        A_parent_ds=None,
+        B_parent_ds=None,
+        AB_parent_ds=None,
     ):
         super().__init__(
             mean_da,
@@ -1007,6 +1065,13 @@ class TMCTally(BaseTally):
         self._A_mc_std_da = A_mc_std_da
         self._B_mc_std_da = B_mc_std_da
         self._mode = mode
+        # Keep references to parent datasets so their file handles remain
+        # open for as long as the TMCTally is in use. These are closed by
+        # `TMCStatePoint.close()` via `TMCTally.close()`.
+        self._A_parent_ds = A_parent_ds
+        self._B_parent_ds = B_parent_ds
+        # AB / main parent dataset - may also be present in _parent_ds
+        self._AB_parent_ds = AB_parent_ds
 
         self._tmc_dims = [
             d for d in self._da.dims
@@ -1033,13 +1098,14 @@ class TMCTally(BaseTally):
     def ensemble_views(self):
         """Return mode-specific ensemble views as a dictionary, if present."""
         views = {}
-        if self._A_da is not None:
-            views["A"] = self._A_da
-        if self._B_da is not None:
-            views["B"] = self._B_da
-        if self._da is not None:
-            views["AB"] = self._da
-        return views
+        if self.mode == "pick-freeze":
+            if self._A_da is not None:
+                views["A"] = self._A_da
+            if self._B_da is not None:
+                views["B"] = self._B_da
+            if self._da is not None:
+                views["AB"] = self._da
+            return views
 
     # --- Metadata & helpers ---
 
@@ -1300,3 +1366,13 @@ class TMCTally(BaseTally):
 
     def __repr__(self):
         return f"<TMCTally {self.id}: '{self.name}', shape={self.shape}>"
+
+    def close(self):
+        """Close any retained parent xarray Datasets to release file handles."""
+        for ds in (getattr(self, "_A_parent_ds", None), getattr(self, "_B_parent_ds", None), getattr(self, "_AB_parent_ds", None), getattr(self, "_parent_ds", None)):
+            if ds is None:
+                continue
+            try:
+                ds.close()
+            except Exception:
+                pass
