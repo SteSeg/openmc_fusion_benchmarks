@@ -372,11 +372,79 @@ class TMCManager:
         elif mode == "diagonal":
             # Diagonal matrix mode: indices are present but we treat them as a 1D TMC dim
             # e.g. idx_tuple = (k, k, ..., k) for k in range(realizations)
+            # Validate diagonal structure: each record's indices must be identical
+            # (k, k, ..., k) and the collected k values must form 0..n_points-1
             records.sort(key=lambda r: tuple(r["indices"]))
             n_points = len(records)
+
+            diag_values = []
+            for rec in records:
+                inds = tuple(rec["indices"])
+                if len(set(inds)) != 1:
+                    raise RuntimeError(f"Invalid diagonal TMC record: indices={inds}")
+                diag_values.append(int(inds[0]))
+
+            # Ensure diagonal indices are exactly 0..n_points-1 with no duplicates
+            if set(diag_values) != set(range(n_points)):
+                raise RuntimeError(
+                    f"Diagonal TMC indices are not a contiguous 0..{n_points-1} sequence: "
+                    f"found {sorted(set(diag_values))}"
+                )
+
             extra_shape = (n_points,)
             extra_dims = ("realization",)
             extra_coords = {"realization": np.arange(n_points)}
+
+        elif mode == "pick-freeze":
+            # Compute A/B/AB partitions and validate indices
+            A_records = [rec for rec in records if rec.get("set") == "A"]
+            B_records = [rec for rec in records if rec.get("set") == "B"]
+            AB_records = [rec for rec in records if rec.get("set") == "AB"]
+
+            if not A_records or not B_records or not AB_records:
+                raise RuntimeError("Pick-freeze manifest missing A/B/AB groups")
+
+            # Infer number of realizations from A/B
+            n_realizations = max(rec["index"] for rec in A_records + B_records) + 1
+
+            # Infer number of perturbations from AB
+            n_perturbations = max(rec["perturbation"] for rec in AB_records) + 1
+
+            # Validate counts
+            if len(A_records) != n_realizations:
+                raise RuntimeError("Incomplete A set")
+            if len(B_records) != n_realizations:
+                raise RuntimeError("Incomplete B set")
+
+            # Validate that A/B indices are exactly 0..n_realizations-1
+            expected_realizations = set(range(n_realizations))
+            actual_A = {rec["index"] for rec in A_records}
+            actual_B = {rec["index"] for rec in B_records}
+            if actual_A != expected_realizations:
+                raise RuntimeError(
+                    f"A set indices mismatch: expected {expected_realizations}, found {sorted(actual_A)}"
+                )
+            if actual_B != expected_realizations:
+                raise RuntimeError(
+                    f"B set indices mismatch: expected {expected_realizations}, found {sorted(actual_B)}"
+                )
+
+            expected_AB = n_perturbations * n_realizations
+            if len(AB_records) != expected_AB:
+                raise RuntimeError(
+                    f"Pick-freeze AB set has {len(AB_records)} runs, expected {expected_AB}"
+                )
+
+            # Validate that AB contains exactly all (perturbation, realization) pairs.
+            expected_pairs = {(p_idx, r_idx) for p_idx in range(n_perturbations) for r_idx in range(n_realizations)}
+            actual_pairs = {(rec["perturbation"], rec["index"]) for rec in AB_records}
+            if actual_pairs != expected_pairs:
+                missing = expected_pairs - actual_pairs
+                extra = actual_pairs - expected_pairs
+                raise RuntimeError(
+                    "Pick-freeze AB set does not contain exactly (perturbation, realization) combinations. "
+                    f"missing={sorted(missing)} extra={sorted(extra)}"
+                )
 
         elif mode == "matrix":
             # each record: {"indices": [i0, i1, ..., i_{p-1}], "statepoint": ...}
@@ -385,9 +453,16 @@ class TMCManager:
 
             # number of perturbations = length of indices
             p = len(reference_rec["indices"])
+            if any(len(rec["indices"]) != p for rec in records):
+                raise RuntimeError(
+                    "Matrix TMC manifest contains records with inconsistent "
+                    "numbers of perturbation indices."
+                )
 
             # Infer per-dimension sizes from the data:
             indices_array = np.array([rec["indices"] for rec in records], dtype=int)
+            if np.any(indices_array < 0):
+                raise RuntimeError("Matrix TMC manifest contains negative perturbation indices.")
             per_dim_sizes = indices_array.max(axis=0) + 1  # length per perturbation dim
 
             extra_shape = tuple(int(n) for n in per_dim_sizes)
@@ -401,43 +476,6 @@ class TMCManager:
                     f"Matrix TMC manifest has {n_combos} runs, but inferred grid shape "
                     f"{extra_shape} implies {expected_combos} combinations."
                 )
-            
-        elif mode == "pick-freeze":
-            # records: {"set": "A"|"B"|"AB", "index": int, "perturbation": int (for AB), "statepoint": ...}
-            A_records = [rec for rec in records if rec.get("set") == "A"]
-            B_records = [rec for rec in records if rec.get("set") == "B"]
-            AB_records = [rec for rec in records if rec.get("set") == "AB"]
-
-            # Infer number of realizations from A/B
-            n_realizations = max(
-                rec["index"] for rec in A_records + B_records
-            ) + 1
-
-            # Infer number of perturbations from AB
-            n_perturbations = max(
-                rec["perturbation"] for rec in AB_records
-            ) + 1
-
-            # Validate completeness
-            if len(A_records) != n_realizations:
-                raise RuntimeError("Incomplete A set")
-
-            if len(B_records) != n_realizations:
-                raise RuntimeError("Incomplete B set")
-
-            expected_AB = n_perturbations * n_realizations
-            if len(AB_records) != expected_AB:
-                raise RuntimeError(
-                    f"Pick-freeze AB set has {len(AB_records)} runs, "
-                    f"expected {expected_AB}"
-                )
-
-            A_records.sort(key=lambda rec: rec["index"])
-            B_records.sort(key=lambda rec: rec["index"])
-            AB_records.sort(
-                key=lambda rec: (rec["perturbation"], rec["index"])
-            )
-
 
         # ---- 3. Use reference record's statepoint as reference for tallies ----
         first_sp_path = resolve_statepoint_path(reference_rec["statepoint"])
@@ -533,35 +571,23 @@ class TMCManager:
                         tmc_mc_std[tid][i, ...] = std_nd
 
         elif mode == "matrix":
-            # Fill as flat (n_combos, ...) then reshape first axis into extra_shape
-            n_combos = len(records)
-            flat_data = {}
-            flat_mc_std = {}
-            for tid, nd_shape in tally_shapes.items():
-                flat_shape = (n_combos,) + nd_shape
-                flat_data[tid] = np.empty(flat_shape, dtype=float)
-                flat_mc_std[tid] = np.empty(flat_shape, dtype=float)
-
-            for i, rec in enumerate(records):
+            # Fill directly into the allocated multi-dimensional arrays using
+            # explicit manifest indices rather than relying on record ordering.
+            for rec in records:
                 sp_path = resolve_statepoint_path(rec["statepoint"])
+                index_tuple = tuple(int(i) for i in rec["indices"])
+
                 with openmc.StatePoint(str(sp_path)) as sp:
-                    for tid in flat_data.keys():
+                    for tid in tmc_data.keys():
                         tally = sp.tallies[tid]
                         mean_flat = tally.mean
                         std_flat = tally.std_dev
                         nd_shape = tally_shapes[tid]
                         mean_nd = mean_flat.reshape(nd_shape)
                         std_nd = std_flat.reshape(nd_shape)
-                        flat_data[tid][i, ...] = mean_nd
-                        flat_mc_std[tid][i, ...] = std_nd
 
-            # reshape into extra_shape + nd_shape
-            for tid, arr in flat_data.items():
-                arr.shape = extra_shape + tally_shapes[tid]
-                tmc_data[tid][...] = arr
-            for tid, arr in flat_mc_std.items():
-                arr.shape = extra_shape + tally_shapes[tid]
-                tmc_mc_std[tid][...] = arr
+                        tmc_data[tid][index_tuple + (Ellipsis,)] = mean_nd
+                        tmc_mc_std[tid][index_tuple + (Ellipsis,)] = std_nd
 
         elif mode == "pick-freeze":
             for rec in records:
@@ -1097,15 +1123,17 @@ class TMCTally(BaseTally):
     @property
     def ensemble_views(self):
         """Return mode-specific ensemble views as a dictionary, if present."""
+        if self.mode != "pick-freeze":
+            return {}
+
         views = {}
-        if self.mode == "pick-freeze":
-            if self._A_da is not None:
-                views["A"] = self._A_da
-            if self._B_da is not None:
-                views["B"] = self._B_da
-            if self._da is not None:
-                views["AB"] = self._da
-            return views
+        if self._A_da is not None:
+            views["A"] = self._A_da
+        if self._B_da is not None:
+            views["B"] = self._B_da
+        if self._da is not None:
+            views["AB"] = self._da
+        return views
 
     # --- Metadata & helpers ---
 
@@ -1185,6 +1213,8 @@ class TMCTally(BaseTally):
 
     @property
     def AB(self):
+        if self.mode != "pick-freeze":
+            return None
         return self._da.values
     
     # --- TMC statistics ---
@@ -1192,7 +1222,12 @@ class TMCTally(BaseTally):
     @property
     def mean(self):
         """
-        TMC mean across all TMC dimensions (realization / perturbation_*).
+        Global mean over the TMC sample space represented by the primary
+        DataArray.
+
+        This is the ensemble mean across all TMC dimensions, not the nominal
+        OpenMC tally value from a single base statepoint. For pick-freeze mode,
+        the primary DataArray is the AB ensemble.
         """
         if not self._tmc_dims:
             return self._da.values
