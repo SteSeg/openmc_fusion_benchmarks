@@ -365,3 +365,51 @@ def test_process_tmc_sequential(tmp_path, monkeypatch):
     assert tally.name == "tally"
     assert np.allclose(tally.mean, np.array([1.0, 2.0]))
     assert "TMC combinations" in repr(sp)
+
+
+def test_process_tmc_pick_freeze_manifest_order_independent(tmp_path, monkeypatch):
+    """Ensure pick-freeze processing does not depend on manifest ordering."""
+    manager = TMCManager(DummyModel(), [_make_factory("p0")], realizations=2, seed=123)
+
+    manifest = tmp_path / "tmc_manifest.jsonl"
+    records = []
+
+    # A set
+    for r in range(2):
+        name = f"A_{r}.h5"
+        (tmp_path / name).write_text("data")
+        records.append({"mode": "pick-freeze", "set": "A", "index": r, "statepoint": name})
+
+    # B set
+    for r in range(2):
+        name = f"B_{r}.h5"
+        (tmp_path / name).write_text("data")
+        records.append({"mode": "pick-freeze", "set": "B", "index": r, "statepoint": name})
+
+    # AB set (single perturbation p=0)
+    for p in range(1):
+        for r in range(2):
+            name = f"AB_{p}_{r}.h5"
+            (tmp_path / name).write_text("data")
+            records.append({"mode": "pick-freeze", "set": "AB", "perturbation": p, "index": r, "statepoint": name})
+
+    # Shuffle manifest lines to simulate arbitrary ordering
+    import random
+    random.shuffle(records)
+
+    manifest.write_text("\n".join(json.dumps(r) for r in records))
+
+    # Monkeypatch OpenMC/statepoint handling used by _process_tmc
+    _patch_tmc_processing(monkeypatch)
+
+    # Should not raise and should produce a statepoint file
+    manager._process_tmc(manifest_path=manifest)
+    assert manager.tmc_statepoint_path.exists()
+
+    sp = TMCStatePoint(manager.tmc_statepoint_path)
+    assert sp.tmc_mode == "pick-freeze"
+    tally = sp.get_tally(tally_id=1)
+    # pick-freeze should expose ensemble views
+    assert tally.mode == "pick-freeze"
+    assert isinstance(tally.ensemble_views, dict)
+    assert "A" in tally.ensemble_views and "B" in tally.ensemble_views and "AB" in tally.ensemble_views
