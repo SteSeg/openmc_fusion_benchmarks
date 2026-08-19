@@ -51,7 +51,7 @@ class TMCManager:
         p = len(self.perturbations)
         r = int(self.realizations)
 
-        # --- Sequential mode: one perturbation active at a time, old behaviour ---
+        # --- Sequential mode: one perturbation active at a time ---
         if mode == "sequential":
             with manifest.open("a") as f_manifest:
                 for p_idx, perturb in enumerate(self.perturbations):
@@ -72,8 +72,6 @@ class TMCManager:
                             "perturbation": int(p_idx),
                             "realization": int(r_idx),
                             "statepoint": str(sp_path.relative_to(cwd)),
-                            # you can optionally add "mode": "sequential" if you like,
-                            # but _process_tmc already detects this format
                         }
                         f_manifest.write(json.dumps(rec) + "\n")
                         f_manifest.flush()
@@ -208,7 +206,7 @@ class TMCManager:
         Wrap user perturbation factories into indexed perturb(model, idx, stream)
         functions.
 
-        stream="A" is the default and preserves existing behavior.
+        stream="A" is the default and preserves 'non pick-freeze' modes behavior.
         """
         # Use a SeedSequence hierarchy for robust, collision-resistant child
         # seeds. This produces deterministic, well-spaced child sequences and
@@ -783,7 +781,7 @@ class TMCManager:
 
         else:
             # ==============================================================
-            # Existing sequential / diagonal / matrix writing
+            # Modes sequential / diagonal / matrix writing
             # ==============================================================
             for tid, arr in tmc_data.items():
 
@@ -882,7 +880,7 @@ class TMCStatePoint:
 
     @property
     def tmc_mode(self):
-        """TMC mode recorded in the statepoint file (sequential, matrix, diagonal)."""
+        """TMC mode recorded in the statepoint file (sequential, matrix, diagonal, pick-freeze)."""
         if self._tmc_mode is None:
             with h5py.File(self.path, "r") as h5f:
                 raw = h5f.attrs.get("tmc_mode")
@@ -950,7 +948,7 @@ class TMCStatePoint:
                         )
 
                     # --------------------------------------------------
-                    # Existing modes: tally_<id>
+                    # Other modes: tally_<id>
                     # --------------------------------------------------
                     else:
 
