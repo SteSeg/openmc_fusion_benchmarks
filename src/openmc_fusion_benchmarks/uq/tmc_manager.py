@@ -69,6 +69,7 @@ class TMCManager:
                         sp_path = Path(sp_path).resolve()
 
                         rec = {
+                            "mode": "sequential",
                             "perturbation": int(p_idx),
                             "realization": int(r_idx),
                             "statepoint": str(sp_path.relative_to(cwd)),
