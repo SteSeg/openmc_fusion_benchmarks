@@ -1219,30 +1219,75 @@ class TMCTally(BaseTally):
     # --- TMC statistics ---
 
     @property
+    def primary_ensemble(self):
+        """
+        Primary TMC ensemble used for aggregate TMC statistics.
+
+        For pick-freeze mode, the A ensemble is the primary independent
+        sample of the input space. For all other modes, the primary
+        ensemble is the underlying TMC DataArray.
+        """
+        if self.mode == "pick-freeze":
+            if self._A_da is None:
+                raise RuntimeError("Pick-freeze tally missing A ensemble")
+            return self._A_da
+        
+        return self._da
+
+    def _primary_ensemble_dims(self):
+        """Return dimensions over which primary-ensemble statistics are computed."""
+        return tuple(
+            d for d in self.primary_ensemble.dims
+            if d == "realization"
+            or d == "perturbation"
+            or d.startswith("perturbation_")
+        )
+
+    @property
     def mean(self):
         """
-        Global mean over the TMC sample space represented by the primary
-        DataArray.
+        Global mean over the primary TMC ensemble.
 
-        This is the ensemble mean across all TMC dimensions, not the nominal
-        OpenMC tally value from a single base statepoint. For pick-freeze mode,
-        the primary DataArray is the AB ensemble.
+        For pick-freeze mode, the primary ensemble is A.
         """
-        if not self._tmc_dims:
-            return self._da.values
-        return self._da.mean(dim=self._tmc_dims).values
+        da = self.primary_ensemble
+        dims = self._primary_ensemble_dims()
+
+        if not dims:
+            return da.values
+
+        return da.mean(dim=dims).values
+
+    @property
+    def variance(self):
+        """
+        Variance across the primary TMC ensemble.
+
+        For pick-freeze mode, this is the variance of the A ensemble.
+        """
+        da = self.primary_ensemble
+        dims = self._primary_ensemble_dims()
+
+        if not dims:
+            return np.zeros_like(da.values)
+
+        return da.var(dim=dims).values
 
     @property
     def std_dev(self):
         """
-        TMC standard deviation across all TMC dimensions.
+        Standard deviation across the primary TMC ensemble.
 
-        This is the propagated parametric uncertainty from the ensemble,
-        not the MC sampling error within each run.
+        This is the propagated parametric uncertainty, not the
+        Monte Carlo sampling uncertainty within individual runs.
         """
-        if not self._tmc_dims:
-            return np.zeros_like(self._da.values)
-        return self._da.std(dim=self._tmc_dims).values
+        da = self.primary_ensemble
+        dims = self._primary_ensemble_dims()
+
+        if not dims:
+            return np.zeros_like(da.values)
+
+        return da.std(dim=dims).values
 
     @property
     def per_realization_mean(self):
