@@ -844,7 +844,7 @@ class TMCManager:
 
     def get_tmc_statepoint(self, path=None):
         """
-        Load and return a TMCStatePoint wrapper for the TMC results.
+        Load and return a TMCSFtatePoint wrapper for the TMC results.
         
         Parameters
         ----------
