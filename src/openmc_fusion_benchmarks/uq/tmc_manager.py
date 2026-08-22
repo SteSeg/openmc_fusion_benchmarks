@@ -132,8 +132,12 @@ class TMCManager:
                     for r_idx in range(r):
                         model_copy = copy.deepcopy(self.base_model)
 
+                        # Pick-freeze construction:
+                        # AB_i = (A_i, B_-i)
+                        # i.e. perturbation i is picked from A while all other
+                        # perturbations are taken from B.
                         for i_idx, perturb in enumerate(self.perturbations):
-                            stream = "B" if i_idx == p_idx else "A"
+                            stream = "A" if i_idx == p_idx else "B"
                             model_copy = perturb(
                                 model_copy,
                                 r_idx,
