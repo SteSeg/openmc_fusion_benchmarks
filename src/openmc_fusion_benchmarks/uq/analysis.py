@@ -131,62 +131,40 @@ class PickFreezeAnalysis:
 
     def first_order(self):
         """
-        Calculate the Saltelli first-order Sobol sensitivity indices.
+        Calculate the first-order Sobol sensitivity indices.
 
-        The estimator used here is the covariance form of the
-        Saltelli first-order Sobol estimator:
+        The estimator uses the covariance form of the Saltelli
+        first-order estimator for the pick-freeze construction
 
-            S_i = [E(Y_A * Y_AB_i) - mu_Y**2] / V_Y
+            AB_i = (A_i, B_-i).
 
-        where Y_A is the A ensemble, Y_AB_i is the pick-freeze
-        ensemble associated with perturbation i, mu_Y is the mean
-        of the primary output ensemble, and V_Y is its variance.
+        The first-order index is estimated as
 
-        The pick-freeze ensemble is constructed as
+            S_i = Cov(Y_A, Y_AB_i) / Var(Y_A)
 
-            AB_i = (A_i, B_-i),
-
-        i.e. perturbation i is taken from the A ensemble while all
-        other perturbations are taken from the B ensemble.
+        where the covariance is evaluated using the paired A and
+        AB_i realizations.
 
         Returns
         -------
         numpy.ndarray
             First-order Sobol indices. The first dimension corresponds
-            to perturbation, while all remaining dimensions correspond
-            to the output dimensions of the tally.
-
-        Raises
-        ------
-        ValueError
-            If the A and B ensembles have different shapes, if the
-            AB ensemble does not have the expected dimensions, if
-            the number of realizations in AB does not match A, or if
-            the output variance is zero.
+            to perturbation, while the remaining dimensions correspond
+            to the tally output dimensions.
         """
         A = self.tally.A
-        B = self.tally.B
         AB = self.tally.AB
 
-        # Validate A and B.
-        if A.shape != B.shape:
-            raise ValueError(
-                "Pick-freeze A and B ensembles must have the same shape."
-            )
-
-        # Expected structure:
-        # A  -> (realization, ...)
-        # AB -> (perturbation, realization, ...)
         if AB.ndim != A.ndim + 1:
             raise ValueError(
                 "The AB ensemble must have one additional leading "
                 "dimension for perturbations."
             )
 
-        if AB.shape[1] != A.shape[0]:
+        if AB.shape[1:] != A.shape:
             raise ValueError(
-                "The AB ensemble must have the same number of "
-                "realizations as the A ensemble."
+                "Each AB perturbation ensemble must have the same "
+                "shape as the A ensemble."
             )
 
         variance = self.variance
@@ -197,18 +175,27 @@ class PickFreezeAnalysis:
                 "output dimensions with zero variance."
             )
 
-        mean = self.mean
+        # Mean over realizations.
+        A_mean = np.mean(A, axis=0)
+        AB_mean = np.mean(AB, axis=1)
 
-        # A:       (N, ...)
-        # AB:      (P, N, ...)
-        # A[None]: (1, N, ...)
+        # Center A and AB_i independently.
+        A_centered = A - A_mean
+        AB_centered = AB - AB_mean[:, None, ...]
+
+        # Paired sample covariance:
+        #
+        # A_centered:
+        #     (N, ...)
+        #
+        # AB_centered:
+        #     (P, N, ...)
         #
         # Broadcasting gives:
-        # A[None, ...] * AB -> (P, N, ...)
-        product = A[None, ...] * AB
-
-        # Average over realizations.
-        # Result: (P, ...)
-        covariance = np.mean(product, axis=1) - mean**2
+        #     (P, N, ...)
+        covariance = np.mean(
+            A_centered[None, ...] * AB_centered,
+            axis=1,
+        )
 
         return covariance / variance
