@@ -53,109 +53,45 @@ class PickFreezeAnalysis:
     def n_perturbations(self):
         return self.tally.AB.shape[0]
 
-    def total_order(self):
+
+    def _compute_total_order(self, A, AB):
         """
-        Calculate the Jansen total-order Sobol sensitivity indices.
+        Compute total-order Sobol indices from pick-freeze ensembles.
 
-        The Jansen estimator is
+        The estimator is the Jansen total-order estimator for the
+        pick-freeze construction
 
-            S_Ti = [1 / (2N)] * sum_r
-                (Y_A[r] - Y_AB_i[r])**2 / V_Y
+            AB_i = (A_i, B_-i):
 
-        where Y_A is the A ensemble, Y_AB_i is the pick-freeze
-        ensemble associated with perturbation i, N is the number
-        of realizations, and V_Y is the variance of the primary
-        output ensemble.
+            S_Ti = E[(Y_A - Y_AB_i)^2] / (2 Var(Y_A)).
+
+        Parameters
+        ----------
+        A : numpy.ndarray
+            Primary A ensemble. Shape:
+
+                (n_realizations, ...)
+
+        AB : numpy.ndarray
+            Pick-freeze AB ensembles. Shape:
+
+                (n_inputs, n_realizations, ...)
 
         Returns
         -------
         numpy.ndarray
-            Total-order Sobol indices. The first dimension corresponds
-            to perturbation, while all remaining dimensions correspond
-            to the output dimensions of the tally.
+            Total-order Sobol indices with shape:
+
+                (n_inputs, ...)
 
         Raises
         ------
         ValueError
-            If the A and B ensembles have different shapes, if the
-            AB ensemble does not have the expected dimensions, or if
-            the number of realizations in AB does not match A.
+            If the A and AB arrays have incompatible shapes or if the
+            variance is zero for any output element.
         """
-        A = self.tally.A
-        B = self.tally.B
-        AB = self.tally.AB
-
-        # Validate A and B.
-        if A.shape != B.shape:
-            raise ValueError(
-                "Pick-freeze A and B ensembles must have the same shape."
-            )
-
-        # Expected structure:
-        # A  -> (realization, ...)
-        # AB -> (perturbation, realization, ...)
-        if AB.ndim != A.ndim + 1:
-            raise ValueError(
-                "The AB ensemble must have one additional leading "
-                "dimension for perturbations."
-            )
-
-        if AB.shape[1] != A.shape[0]:
-            raise ValueError(
-                "The AB ensemble must have the same number of "
-                "realizations as the A ensemble."
-            )
-
-        variance = self.variance
-
-        if np.any(variance == 0):
-            raise ValueError(
-                "Jansen total-order Sobol indices are undefined "
-                "for output dimensions with zero variance."
-            )
-
-        # A:  (N, ...)
-        # AB: (P, N, ...)
-        #     ↓ broadcasting
-        #     (P, N, ...)
-        squared_difference = (A[None, ...] - AB) ** 2
-
-        # Average over the realization dimension.
-        # Result: (P, ...)
-        numerator = 0.5 * np.mean(
-            squared_difference,
-            axis=1,
-        )
-
-        return numerator / variance
-
-    def first_order(self):
-        """
-        Calculate the first-order Sobol sensitivity indices.
-
-        The estimator uses the centered covariance form of the Saltelli
-        first-order estimator for the pick-freeze construction
-
-            AB_i = (A_i, B_-i).
-
-        The first-order index is estimated as
-
-            S_i = Cov(Y_A, Y_AB_i) / Var(Y_A)
-
-        where the covariance is evaluated using the paired A and
-        AB_i realizations.
-        It is centered and not the exact Saltelli estimator, for better
-        numerical stability at low sample sizes.
-
-        Returns
-        -------
-        numpy.ndarray
-            First-order Sobol indices. The first dimension corresponds
-            to perturbation, while the remaining dimensions correspond
-            to the tally output dimensions.
-        """
-        A = self.tally.A
-        AB = self.tally.AB
+        A = np.asarray(A)
+        AB = np.asarray(AB)
 
         if AB.ndim != A.ndim + 1:
             raise ValueError(
@@ -169,7 +105,94 @@ class PickFreezeAnalysis:
                 "shape as the A ensemble."
             )
 
-        variance = self.variance
+        # Output variance from the A ensemble.
+        variance = np.var(A, axis=0)
+
+        if np.any(variance == 0):
+            raise ValueError(
+                "Total-order Sobol indices are undefined for "
+                "output dimensions with zero variance."
+            )
+
+        # Jansen total-order numerator:
+        #
+        #     1/2 E[(Y_A - Y_AB_i)^2]
+        numerator = 0.5 * np.mean(
+            (A[None, ...] - AB) ** 2,
+            axis=1,
+        )
+
+        return numerator / variance
+
+
+    def _compute_first_order(self, A, AB):
+        """
+        Compute first-order Sobol indices from pick-freeze ensembles.
+
+        The pick-freeze construction is assumed to be
+
+            AB_i = (A_i, B_-i).
+
+        The estimator is the covariance-form first-order estimator:
+
+            S_i = Cov(Y_A, Y_AB_i) / Var(Y_A).
+
+        Parameters
+        ----------
+        A : numpy.ndarray
+            Primary A ensemble. Shape:
+
+                (n_realizations, ...)
+
+        AB : numpy.ndarray
+            Pick-freeze AB ensembles. Shape:
+
+                (n_inputs, n_realizations, ...)
+
+        Returns
+        -------
+        numpy.ndarray
+            First-order Sobol indices with shape:
+
+                (n_inputs, ...)
+
+        Raises
+        ------
+        ValueError
+            If the A and AB arrays have incompatible shapes or if the
+            variance is zero for any output element.
+        """
+        A = np.asarray(A)
+        AB = np.asarray(AB)
+
+        if AB.ndim != A.ndim + 1:
+            raise ValueError(
+                "The AB ensemble must have one additional leading "
+                "dimension for perturbations."
+            )
+
+        if AB.shape[1:] != A.shape:
+            raise ValueError(
+                "Each AB perturbation ensemble must have the same "
+                "shape as the A ensemble."
+            )
+
+        # Mean over realizations.
+        A_mean = np.mean(A, axis=0)
+        AB_mean = np.mean(AB, axis=1)
+
+        # Center each ensemble.
+        A_centered = A - A_mean
+        AB_centered = AB - AB_mean[:, None, ...]
+
+        # Paired covariance between A and each AB_i.
+        covariance = np.mean(
+            A_centered[None, ...] * AB_centered,
+            axis=1,
+        )
+
+        # Output variance from the A ensemble.
+        variance = np.var(A, axis=0)
 
         if np.any(variance == 0):
             raise ValueError(
@@ -177,30 +200,156 @@ class PickFreezeAnalysis:
                 "output dimensions with zero variance."
             )
 
-        # Mean over realizations.
-        A_mean = np.mean(A, axis=0)
-        AB_mean = np.mean(AB, axis=1)
-
-        # Center A and AB_i independently.
-        A_centered = A - A_mean
-        AB_centered = AB - AB_mean[:, None, ...]
-
-        # Paired sample covariance:
-        #
-        # A_centered:
-        #     (N, ...)
-        #
-        # AB_centered:
-        #     (P, N, ...)
-        #
-        # Broadcasting gives:
-        #     (P, N, ...)
-        covariance = np.mean(
-            A_centered[None, ...] * AB_centered,
-            axis=1,
-        )
-
         return covariance / variance
+
+    # def total_order(self):
+    #     """
+    #     Calculate the Jansen total-order Sobol sensitivity indices.
+
+    #     The Jansen estimator is
+
+    #         S_Ti = [1 / (2N)] * sum_r
+    #             (Y_A[r] - Y_AB_i[r])**2 / V_Y
+
+    #     where Y_A is the A ensemble, Y_AB_i is the pick-freeze
+    #     ensemble associated with perturbation i, N is the number
+    #     of realizations, and V_Y is the variance of the primary
+    #     output ensemble.
+
+    #     Returns
+    #     -------
+    #     numpy.ndarray
+    #         Total-order Sobol indices. The first dimension corresponds
+    #         to perturbation, while all remaining dimensions correspond
+    #         to the output dimensions of the tally.
+
+    #     Raises
+    #     ------
+    #     ValueError
+    #         If the A and B ensembles have different shapes, if the
+    #         AB ensemble does not have the expected dimensions, or if
+    #         the number of realizations in AB does not match A.
+    #     """
+    #     A = self.tally.A
+    #     B = self.tally.B
+    #     AB = self.tally.AB
+
+    #     # Validate A and B.
+    #     if A.shape != B.shape:
+    #         raise ValueError(
+    #             "Pick-freeze A and B ensembles must have the same shape."
+    #         )
+
+    #     # Expected structure:
+    #     # A  -> (realization, ...)
+    #     # AB -> (perturbation, realization, ...)
+    #     if AB.ndim != A.ndim + 1:
+    #         raise ValueError(
+    #             "The AB ensemble must have one additional leading "
+    #             "dimension for perturbations."
+    #         )
+
+    #     if AB.shape[1] != A.shape[0]:
+    #         raise ValueError(
+    #             "The AB ensemble must have the same number of "
+    #             "realizations as the A ensemble."
+    #         )
+
+    #     variance = self.variance
+
+    #     if np.any(variance == 0):
+    #         raise ValueError(
+    #             "Jansen total-order Sobol indices are undefined "
+    #             "for output dimensions with zero variance."
+    #         )
+
+    #     # A:  (N, ...)
+    #     # AB: (P, N, ...)
+    #     #     ↓ broadcasting
+    #     #     (P, N, ...)
+    #     squared_difference = (A[None, ...] - AB) ** 2
+
+    #     # Average over the realization dimension.
+    #     # Result: (P, ...)
+    #     numerator = 0.5 * np.mean(
+    #         squared_difference,
+    #         axis=1,
+    #     )
+
+    #     return numerator / variance
+
+    # def first_order(self):
+    #     """
+    #     Calculate the first-order Sobol sensitivity indices.
+
+    #     The estimator uses the centered covariance form of the Saltelli
+    #     first-order estimator for the pick-freeze construction
+
+    #         AB_i = (A_i, B_-i).
+
+    #     The first-order index is estimated as
+
+    #         S_i = Cov(Y_A, Y_AB_i) / Var(Y_A)
+
+    #     where the covariance is evaluated using the paired A and
+    #     AB_i realizations.
+    #     It is centered and not the exact Saltelli estimator, for better
+    #     numerical stability at low sample sizes.
+
+    #     Returns
+    #     -------
+    #     numpy.ndarray
+    #         First-order Sobol indices. The first dimension corresponds
+    #         to perturbation, while the remaining dimensions correspond
+    #         to the tally output dimensions.
+    #     """
+    #     A = self.tally.A
+    #     AB = self.tally.AB
+
+    #     if AB.ndim != A.ndim + 1:
+    #         raise ValueError(
+    #             "The AB ensemble must have one additional leading "
+    #             "dimension for perturbations."
+    #         )
+
+    #     if AB.shape[1:] != A.shape:
+    #         raise ValueError(
+    #             "Each AB perturbation ensemble must have the same "
+    #             "shape as the A ensemble."
+    #         )
+
+    #     variance = self.variance
+
+    #     if np.any(variance == 0):
+    #         raise ValueError(
+    #             "First-order Sobol indices are undefined for "
+    #             "output dimensions with zero variance."
+    #         )
+
+    #     # Mean over realizations.
+    #     A_mean = np.mean(A, axis=0)
+    #     AB_mean = np.mean(AB, axis=1)
+
+    #     # Center A and AB_i independently.
+    #     A_centered = A - A_mean
+    #     AB_centered = AB - AB_mean[:, None, ...]
+
+    #     # Paired sample covariance:
+    #     #
+    #     # A_centered:
+    #     #     (N, ...)
+    #     #
+    #     # AB_centered:
+    #     #     (P, N, ...)
+    #     #
+    #     # Broadcasting gives:
+    #     #     (P, N, ...)
+    #     covariance = np.mean(
+    #         A_centered[None, ...] * AB_centered,
+    #         axis=1,
+    #     )
+
+    #     return covariance / variance
 
 
     # def first_order_saltelli(self):
