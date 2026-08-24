@@ -567,48 +567,9 @@ class PickFreezeAnalysis:
             # Use the covariance-form estimator currently implemented
             # by first_order().
             # --------------------------------------------------------------
-            A_mean = np.mean(A_boot, axis=0)
-            AB_mean = np.mean(AB_boot, axis=1)
 
-            A_centered = A_boot - A_mean
-            AB_centered = AB_boot - AB_mean[:, None, ...]
-
-            covariance = np.mean(
-                A_centered[None, ...] * AB_centered,
-                axis=1,
-            )
-
-            variance = np.var(A_boot, axis=0)
-
-            first_order = np.divide(
-                covariance,
-                variance,
-                out=np.full_like(covariance, np.nan, dtype=float),
-                where=variance != 0,
-            )
-
-            # --------------------------------------------------------------
-            # Jansen total-order estimator
-            #
-            #     ST_i = E[(A - AB_i)^2] / (2 Var(Y))
-            # --------------------------------------------------------------
-            variance = np.var(A_boot, axis=0)
-
-            total_order_numerator = 0.5 * np.mean(
-                (A_boot[None, ...] - AB_boot) ** 2,
-                axis=1,
-            )
-
-            total_order = np.divide(
-                total_order_numerator,
-                variance,
-                out=np.full_like(
-                    total_order_numerator,
-                    np.nan,
-                    dtype=float,
-                ),
-                where=variance != 0,
-            )
+            first_order = self._compute_first_order(A_boot, AB_boot)
+            total_order = self._compute_total_order(A_boot, AB_boot)
 
             first_order_samples.append(first_order)
             total_order_samples.append(total_order)
