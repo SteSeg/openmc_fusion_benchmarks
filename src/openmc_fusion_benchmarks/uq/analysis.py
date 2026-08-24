@@ -286,3 +286,204 @@ class PickFreezeAnalysis:
         C_Ti = S_Ti * Var(Y)
         """
         return self.total_order() * self.variance
+
+
+    def bootstrap(
+        self,
+        n_resamples: int=1000,
+        confidence_level: float=0.95,
+        random_seed=None,
+    ):
+        """
+        Estimate bootstrap uncertainty of the Sobol sensitivity indices.
+
+        Bootstrap resampling is performed over the realization dimension.
+        The same resampled realization indices are applied to the A ensemble
+        and to every AB_i ensemble, preserving the pick-freeze pairing.
+
+        The bootstrap uses the same first-order and total-order estimators
+        implemented by `first_order` and `total_order`.
+
+        Parameters
+        ----------
+        n_resamples : int, default=1000
+            Number of bootstrap resamples.
+
+        confidence_level : float, default=0.95
+            Confidence level for the percentile confidence intervals.
+
+        random_seed : int or None, default=None
+            Seed for the bootstrap random-number generator.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+
+            ``first_order``
+                Bootstrap first-order Sobol indices with shape
+                ``(n_resamples, n_inputs, ...)``.
+
+            ``total_order``
+                Bootstrap total-order Sobol indices with shape
+                ``(n_resamples, n_inputs, ...)``.
+
+            ``first_order_mean``
+                Mean of the bootstrap first-order estimates.
+
+            ``total_order_mean``
+                Mean of the bootstrap total-order estimates.
+
+            ``first_order_ci``
+                Percentile confidence interval for the first-order indices.
+                Shape ``(2, n_inputs, ...)``.
+
+            ``total_order_ci``
+                Percentile confidence interval for the total-order indices.
+                Shape ``(2, n_inputs, ...)``.
+        """
+        if n_resamples < 1:
+            raise ValueError("n_resamples must be a positive integer.")
+
+        if not 0.0 < confidence_level < 1.0:
+            raise ValueError(
+                "confidence_level must be between 0 and 1."
+            )
+
+        A = self.tally.A
+        AB = self.tally.AB
+
+        if AB.ndim != A.ndim + 1:
+            raise ValueError(
+                "The AB ensemble must have one additional leading "
+                "dimension for perturbations."
+            )
+
+        if AB.shape[1:] != A.shape:
+            raise ValueError(
+                "Each AB perturbation ensemble must have the same "
+                "shape as the A ensemble."
+            )
+
+        n_realizations = A.shape[0]
+
+        if n_realizations < 2:
+            raise ValueError(
+                "At least two realizations are required for bootstrap analysis."
+            )
+
+        rng = np.random.default_rng(random_seed)
+
+        first_order_samples = []
+        total_order_samples = []
+
+        for _ in range(n_resamples):
+
+            # --------------------------------------------------------------
+            # Resample realization indices with replacement.
+            #
+            # The same indices must be used for A and AB to preserve
+            # the pick-freeze pairing.
+            # --------------------------------------------------------------
+            indices = rng.integers(
+                0,
+                n_realizations,
+                size=n_realizations,
+            )
+
+            A_boot = A[indices, ...]
+            AB_boot = AB[:, indices, ...]
+
+            # --------------------------------------------------------------
+            # First-order Sobol indices
+            #
+            # Use the covariance-form estimator currently implemented
+            # by first_order().
+            # --------------------------------------------------------------
+            A_mean = np.mean(A_boot, axis=0)
+            AB_mean = np.mean(AB_boot, axis=1)
+
+            A_centered = A_boot - A_mean
+            AB_centered = AB_boot - AB_mean[:, None, ...]
+
+            covariance = np.mean(
+                A_centered[None, ...] * AB_centered,
+                axis=1,
+            )
+
+            variance = np.var(A_boot, axis=0)
+
+            first_order = np.divide(
+                covariance,
+                variance,
+                out=np.full_like(covariance, np.nan, dtype=float),
+                where=variance != 0,
+            )
+
+            # --------------------------------------------------------------
+            # Jansen total-order estimator
+            #
+            #     ST_i = E[(A - AB_i)^2] / (2 Var(Y))
+            # --------------------------------------------------------------
+            variance = np.var(A_boot, axis=0)
+
+            total_order_numerator = 0.5 * np.mean(
+                (A_boot[None, ...] - AB_boot) ** 2,
+                axis=1,
+            )
+
+            total_order = np.divide(
+                total_order_numerator,
+                variance,
+                out=np.full_like(
+                    total_order_numerator,
+                    np.nan,
+                    dtype=float,
+                ),
+                where=variance != 0,
+            )
+
+            first_order_samples.append(first_order)
+            total_order_samples.append(total_order)
+
+        first_order_samples = np.stack(
+            first_order_samples,
+            axis=0,
+        )
+
+        total_order_samples = np.stack(
+            total_order_samples,
+            axis=0,
+        )
+
+        alpha = 1.0 - confidence_level
+
+        lower = 100.0 * alpha / 2.0
+        upper = 100.0 * (1.0 - alpha / 2.0)
+
+        first_order_ci = np.nanpercentile(
+            first_order_samples,
+            [lower, upper],
+            axis=0,
+        )
+
+        total_order_ci = np.nanpercentile(
+            total_order_samples,
+            [lower, upper],
+            axis=0,
+        )
+
+        return {
+            "first_order": first_order_samples,
+            "total_order": total_order_samples,
+            "first_order_mean": np.nanmean(
+                first_order_samples,
+                axis=0,
+            ),
+            "total_order_mean": np.nanmean(
+                total_order_samples,
+                axis=0,
+            ),
+            "first_order_ci": first_order_ci,
+            "total_order_ci": total_order_ci,
+        }
