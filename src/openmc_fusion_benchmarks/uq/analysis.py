@@ -202,6 +202,24 @@ class PickFreezeAnalysis:
 
         return covariance / variance
 
+    def total_order(self):
+        """
+        Calculate the Jansen total-order Sobol sensitivity indices.
+        """
+        return self._compute_total_order(
+            self.tally.A,
+            self.tally.AB,
+        )
+
+    def first_order(self):
+        """
+        Calculate the first-order Sobol sensitivity indices.
+        """
+        return self._compute_first_order(
+            self.tally.A,
+            self.tally.AB,
+        )
+
     # def total_order(self):
     #     """
     #     Calculate the Jansen total-order Sobol sensitivity indices.
