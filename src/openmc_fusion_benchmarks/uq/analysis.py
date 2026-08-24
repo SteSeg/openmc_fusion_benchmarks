@@ -615,3 +615,132 @@ class PickFreezeAnalysis:
             "first_order_ci": first_order_ci,
             "total_order_ci": total_order_ci,
         }
+
+    def convergence(self, sample_sizes=None):
+        """
+        Evaluate convergence of the Sobol sensitivity indices with
+        increasing numbers of TMC realizations.
+
+        The analysis uses the first ``n`` realizations of the A and AB
+        ensembles for each requested sample size. No additional OpenMC
+        simulations are performed.
+
+        Parameters
+        ----------
+        sample_sizes : array-like or None, optional
+            Numbers of realizations to use for each convergence estimate.
+            If None, automatically generate a sequence of sample sizes
+            between 2 and the total number of available realizations.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+
+            ``sample_sizes``
+                Array of realization counts.
+
+            ``first_order``
+                First-order Sobol indices for each sample size. Shape:
+
+                    (n_sample_sizes, n_inputs, ...)
+
+            ``total_order``
+                Total-order Sobol indices for each sample size. Shape:
+
+                    (n_sample_sizes, n_inputs, ...)
+        """
+        A = self.tally.A
+        AB = self.tally.AB
+
+        if AB.ndim != A.ndim + 1:
+            raise ValueError(
+                "The AB ensemble must have one additional leading "
+                "dimension for perturbations."
+            )
+
+        if AB.shape[1:] != A.shape:
+            raise ValueError(
+                "Each AB perturbation ensemble must have the same "
+                "shape as the A ensemble."
+            )
+
+        n_realizations = A.shape[0]
+
+        if n_realizations < 2:
+            raise ValueError(
+                "At least two realizations are required for convergence analysis."
+            )
+
+        # --------------------------------------------------------------
+        # Determine sample sizes.
+        # --------------------------------------------------------------
+        if sample_sizes is None:
+            sample_sizes = np.unique(
+                np.linspace(
+                    2,
+                    n_realizations,
+                    min(10, n_realizations - 1),
+                    dtype=int,
+                )
+            )
+        else:
+            sample_sizes = np.asarray(sample_sizes, dtype=int)
+
+            if sample_sizes.ndim != 1:
+                raise ValueError(
+                    "sample_sizes must be a one-dimensional sequence."
+                )
+
+            if np.any(sample_sizes < 2):
+                raise ValueError(
+                    "All sample sizes must be at least 2."
+                )
+
+            if np.any(sample_sizes > n_realizations):
+                raise ValueError(
+                    "sample_sizes cannot exceed the number of available "
+                    "TMC realizations."
+                )
+
+            sample_sizes = np.unique(sample_sizes)
+
+        first_order_results = []
+        total_order_results = []
+
+        # --------------------------------------------------------------
+        # Evaluate the Sobol estimators for each sample size.
+        #
+        # We use the first n realizations consistently across A and AB
+        # so that the pick-freeze pairing is preserved.
+        # --------------------------------------------------------------
+        for n in sample_sizes:
+
+            A_n = A[:n, ...]
+            AB_n = AB[:, :n, ...]
+
+            first_order_results.append(
+                self._compute_first_order(
+                    A_n,
+                    AB_n,
+                )
+            )
+
+            total_order_results.append(
+                self._compute_total_order(
+                    A_n,
+                    AB_n,
+                )
+            )
+
+        return {
+            "sample_sizes": sample_sizes,
+            "first_order": np.stack(
+                first_order_results,
+                axis=0,
+            ),
+            "total_order": np.stack(
+                total_order_results,
+                axis=0,
+            ),
+        }
