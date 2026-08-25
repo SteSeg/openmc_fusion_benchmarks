@@ -790,3 +790,20 @@ class PickFreezeAnalysis:
             S_Ti - S_i.
         """
         return self.total_order() - self.first_order()
+
+    def higher_order_variance(self):
+        """
+        Calculate the fraction of output variance not represented by
+        first-order Sobol effects.
+
+        This is
+
+            1 - sum(S_i).
+
+        It represents variance associated with interactions and should
+        not be interpreted as model or numerical error.
+        """
+        return 1.0 - np.sum(
+            self.first_order(),
+            axis=0,
+        )
