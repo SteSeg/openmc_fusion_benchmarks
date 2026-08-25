@@ -761,3 +761,21 @@ class PickFreezeAnalysis:
                 axis=0,
             ),
         }
+
+    def interaction_contribution(self):
+        """
+        Calculate the variance contribution associated with interactions
+        involving each input.
+
+        This is defined as
+
+            (S_Ti - S_i) * Var(Y).
+
+        Returns
+        -------
+        numpy.ndarray
+            Interaction contribution for each input and output dimension.
+        """
+        return (
+            self.total_order() - self.first_order()
+        ) * self.variance
