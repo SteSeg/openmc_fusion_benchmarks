@@ -779,3 +779,14 @@ class PickFreezeAnalysis:
         return (
             self.total_order() - self.first_order()
         ) * self.variance
+
+    def interaction_fraction(self):
+        """
+        Calculate the fraction of output variance associated with
+        interactions involving each input.
+
+        This is defined as
+
+            S_Ti - S_i.
+        """
+        return self.total_order() - self.first_order()
