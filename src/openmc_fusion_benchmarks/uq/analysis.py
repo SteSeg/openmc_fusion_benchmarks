@@ -457,8 +457,8 @@ class PickFreezeAnalysis:
 
     def bootstrap(
         self,
-        n_resamples: int=1000,
-        confidence_level: float=0.95,
+        n_resamples=1000,
+        confidence_level=0.95,
         random_seed=None,
     ):
         """
@@ -469,7 +469,8 @@ class PickFreezeAnalysis:
         and to every AB_i ensemble, preserving the pick-freeze pairing.
 
         The bootstrap uses the same first-order and total-order estimators
-        implemented by `first_order` and `total_order`.
+        implemented by :meth:`_compute_first_order` and
+        :meth:`_compute_total_order`.
 
         Parameters
         ----------
@@ -495,11 +496,13 @@ class PickFreezeAnalysis:
                 Bootstrap total-order Sobol indices with shape
                 ``(n_resamples, n_inputs, ...)``.
 
-            ``first_order_mean``
-                Mean of the bootstrap first-order estimates.
+            ``first_order_estimate``
+                First-order Sobol indices calculated from the original
+                TMC ensemble.
 
-            ``total_order_mean``
-                Mean of the bootstrap total-order estimates.
+            ``total_order_estimate``
+                Total-order Sobol indices calculated from the original
+                TMC ensemble.
 
             ``first_order_ci``
                 Percentile confidence interval for the first-order indices.
@@ -510,15 +513,17 @@ class PickFreezeAnalysis:
                 Shape ``(2, n_inputs, ...)``.
         """
         if n_resamples < 1:
-            raise ValueError("n_resamples must be a positive integer.")
+            raise ValueError(
+                "n_resamples must be a positive integer."
+            )
 
         if not 0.0 < confidence_level < 1.0:
             raise ValueError(
                 "confidence_level must be between 0 and 1."
             )
 
-        A = self.tally.A
-        AB = self.tally.AB
+        A = np.asarray(self.tally.A)
+        AB = np.asarray(self.tally.AB)
 
         if AB.ndim != A.ndim + 1:
             raise ValueError(
@@ -544,14 +549,15 @@ class PickFreezeAnalysis:
         first_order_samples = []
         total_order_samples = []
 
+        # ------------------------------------------------------------------
+        # Bootstrap resampling
+        # ------------------------------------------------------------------
         for _ in range(n_resamples):
 
-            # --------------------------------------------------------------
             # Resample realization indices with replacement.
             #
-            # The same indices must be used for A and AB to preserve
-            # the pick-freeze pairing.
-            # --------------------------------------------------------------
+            # The same indices are applied to A and AB so that the
+            # pick-freeze pairing is preserved.
             indices = rng.integers(
                 0,
                 n_realizations,
@@ -561,19 +567,27 @@ class PickFreezeAnalysis:
             A_boot = A[indices, ...]
             AB_boot = AB[:, indices, ...]
 
-            # --------------------------------------------------------------
-            # First-order Sobol indices
-            #
-            # Use the covariance-form estimator currently implemented
-            # by first_order().
-            # --------------------------------------------------------------
+            # Compute Sobol indices using the same estimators as the
+            # corresponding public analysis methods.
+            first_order = self._compute_first_order(
+                A_boot,
+                AB_boot,
+            )
 
-            first_order = self._compute_first_order(A_boot, AB_boot)
-            total_order = self._compute_total_order(A_boot, AB_boot)
+            total_order = self._compute_total_order(
+                A_boot,
+                AB_boot,
+            )
 
             first_order_samples.append(first_order)
             total_order_samples.append(total_order)
 
+        # ------------------------------------------------------------------
+        # Convert bootstrap samples to arrays.
+        #
+        # Shape:
+        #     (n_resamples, n_inputs, ...)
+        # ------------------------------------------------------------------
         first_order_samples = np.stack(
             first_order_samples,
             axis=0,
@@ -584,6 +598,9 @@ class PickFreezeAnalysis:
             axis=0,
         )
 
+        # ------------------------------------------------------------------
+        # Percentile confidence intervals
+        # ------------------------------------------------------------------
         alpha = 1.0 - confidence_level
 
         lower = 100.0 * alpha / 2.0
@@ -601,17 +618,17 @@ class PickFreezeAnalysis:
             axis=0,
         )
 
+        # ------------------------------------------------------------------
+        # Point estimates from the original TMC ensemble
+        # ------------------------------------------------------------------
+        first_order_estimate = self.first_order()
+        total_order_estimate = self.total_order()
+
         return {
             "first_order": first_order_samples,
             "total_order": total_order_samples,
-            "first_order_mean": np.nanmean(
-                first_order_samples,
-                axis=0,
-            ),
-            "total_order_mean": np.nanmean(
-                total_order_samples,
-                axis=0,
-            ),
+            "first_order_estimate": first_order_estimate,
+            "total_order_estimate": total_order_estimate,
             "first_order_ci": first_order_ci,
             "total_order_ci": total_order_ci,
         }
