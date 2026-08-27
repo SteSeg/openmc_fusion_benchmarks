@@ -1219,6 +1219,62 @@ class TMCTally(BaseTally):
         if self.mode != "pick-freeze":
             return None
         return self._da.values
+
+
+    @property
+    def A_mc_std(self):
+        """
+        Monte Carlo statistical standard deviation of the A ensemble.
+        """
+        if self.mode != "pick-freeze":
+            raise RuntimeError(
+                "A_mc_std is only available for pick-freeze mode."
+            )
+
+        if self._A_mc_std_da is None:
+            raise RuntimeError(
+                "Monte Carlo standard deviations for the A ensemble "
+                "are not available."
+            )
+
+        return self._A_mc_std_da.values
+
+
+    @property
+    def B_mc_std(self):
+        """
+        Monte Carlo statistical standard deviation of the B ensemble.
+        """
+        if self.mode != "pick-freeze":
+            raise RuntimeError(
+                "B_mc_std is only available for pick-freeze mode."
+            )
+
+        if self._B_mc_std_da is None:
+            raise RuntimeError(
+                "Monte Carlo standard deviations for the B ensemble "
+                "are not available."
+            )
+
+        return self._B_mc_std_da.values
+
+    @property
+    def AB_mc_std(self):
+        """
+        Monte Carlo statistical standard deviation of the AB ensembles.
+        """
+        if self.mode != "pick-freeze":
+            raise RuntimeError(
+                "AB_mc_std is only available for pick-freeze mode."
+            )
+
+        if self._mc_std_da is None:
+            raise RuntimeError(
+                "Monte Carlo standard deviations for the AB ensemble "
+                "are not available."
+            )
+
+        return self._mc_std_da.values
     
     # --- TMC statistics ---
 
