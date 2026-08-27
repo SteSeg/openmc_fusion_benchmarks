@@ -841,3 +841,75 @@ class PickFreezeAnalysis:
         A as the primary ensemble and AB_i = (A_i, B_-i).
         """
         return "Jansen"
+
+
+    def check_sampling(self):
+        """
+        Check the consistency of the pick-freeze sampling ensembles.
+
+        The analysis uses A as the primary ensemble and constructs each
+        AB_i ensemble according to
+
+            AB_i = (A_i, B_-i).
+
+        Returns
+        -------
+        dict
+            Dictionary containing the sampling dimensions and validation
+            results.
+
+        Raises
+        ------
+        ValueError
+            If the A, B, and AB ensembles have incompatible shapes.
+        """
+        A = np.asarray(self.tally.A)
+        B = np.asarray(self.tally.B)
+        AB = np.asarray(self.tally.AB)
+
+        if A.ndim < 1:
+            raise ValueError(
+                "The A ensemble must have at least one dimension."
+            )
+
+        if B.ndim != A.ndim:
+            raise ValueError(
+                "A and B ensembles must have the same number of dimensions."
+            )
+
+        if B.shape != A.shape:
+            raise ValueError(
+                "A and B ensembles must have identical shapes."
+            )
+
+        if AB.ndim != A.ndim + 1:
+            raise ValueError(
+                "The AB ensemble must have one additional leading "
+                "dimension for perturbations."
+            )
+
+        if AB.shape[1:] != A.shape:
+            raise ValueError(
+                "Each AB perturbation ensemble must have the same shape "
+                "as the A ensemble."
+            )
+
+        n_realizations = A.shape[0]
+        n_perturbations = AB.shape[0]
+
+        if n_realizations < 2:
+            raise ValueError(
+                "At least two realizations are required for variance "
+                "and Sobol estimates."
+            )
+
+        return {
+            "valid": True,
+            "sampling_method": self.sampling_method,
+            "primary_ensemble": self.primary_ensemble,
+            "n_realizations": n_realizations,
+            "n_perturbations": n_perturbations,
+            "A_shape": A.shape,
+            "B_shape": B.shape,
+            "AB_shape": AB.shape,
+        }
