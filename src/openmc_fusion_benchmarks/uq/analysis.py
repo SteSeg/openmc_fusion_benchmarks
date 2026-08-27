@@ -807,3 +807,37 @@ class PickFreezeAnalysis:
             self.first_order(),
             axis=0,
         )
+
+
+    @property
+    def sampling_method(self):
+        """Sampling method used by this analysis."""
+        return "pick-freeze"
+
+
+    @property
+    def primary_ensemble(self):
+        """Primary ensemble used to define the output distribution."""
+        return "A"
+
+
+    @property
+    def first_order_estimator(self):
+        """
+        First-order Sobol estimator used by this analysis.
+
+        The estimator is the covariance-form Saltelli estimator,
+        using A as the primary ensemble and AB_i = (A_i, B_-i).
+        """
+        return "Saltelli"
+
+
+    @property
+    def total_order_estimator(self):
+        """
+        Total-order Sobol estimator used by this analysis.
+
+        The estimator is the Jansen total-order estimator, using
+        A as the primary ensemble and AB_i = (A_i, B_-i).
+        """
+        return "Jansen"
