@@ -913,3 +913,41 @@ class PickFreezeAnalysis:
             "B_shape": B.shape,
             "AB_shape": AB.shape,
         }
+
+    def check_mc_noise(self):
+        """
+        Diagnose the magnitude of OpenMC Monte Carlo statistical noise
+        relative to the variance observed in the primary A ensemble.
+
+        The estimated Monte Carlo variance is the mean of the squared
+        per-realization OpenMC statistical standard deviations.
+
+        This is a diagnostic only. No noise correction is applied.
+        """
+        A = np.asarray(self.tally.A)
+        mc_std_A = np.asarray(self.tally.mc_std_A)
+
+        if A.shape != mc_std_A.shape:
+            raise ValueError(
+                "A and mc_std_A must have identical shapes."
+            )
+
+        observed_variance = np.var(
+            A,
+            axis=0,
+            ddof=1,
+        )
+
+        mc_variance = np.mean(
+            mc_std_A**2,
+            axis=0,
+        )
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            mc_fraction = mc_variance / observed_variance
+
+        return {
+            "observed_variance": observed_variance,
+            "mc_variance": mc_variance,
+            "mc_fraction": mc_fraction,
+        }  
