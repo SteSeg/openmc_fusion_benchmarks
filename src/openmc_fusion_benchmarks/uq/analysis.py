@@ -914,38 +914,38 @@ class PickFreezeAnalysis:
             "AB_shape": AB.shape,
         }
 
-def check_mc_noise(self):
-    """
-    Diagnose the magnitude of OpenMC Monte Carlo statistical noise
-    relative to the variance observed in the primary A ensemble.
+    def check_mc_noise(self):
+        """
+        Diagnose the magnitude of OpenMC Monte Carlo statistical noise
+        relative to the variance observed in the primary A ensemble.
 
-    This method is diagnostic only and does not modify any Sobol
-    estimator.
-    """
-    A = np.asarray(self.tally.A)
-    mc_std_A = np.asarray(self.tally.A_mc_std)
+        This method is diagnostic only and does not modify any Sobol
+        estimator.
+        """
+        A = np.asarray(self.tally.A)
+        mc_std_A = np.asarray(self.tally.A_mc_std)
 
-    if A.shape != mc_std_A.shape:
-        raise ValueError(
-            "A and A_mc_std must have identical shapes."
+        if A.shape != mc_std_A.shape:
+            raise ValueError(
+                "A and A_mc_std must have identical shapes."
+            )
+
+        observed_variance = np.var(
+            A,
+            axis=0,
+            ddof=1,
         )
 
-    observed_variance = np.var(
-        A,
-        axis=0,
-        ddof=1,
-    )
+        mc_variance = np.mean(
+            mc_std_A**2,
+            axis=0,
+        )
 
-    mc_variance = np.mean(
-        mc_std_A**2,
-        axis=0,
-    )
+        with np.errstate(divide="ignore", invalid="ignore"):
+            mc_fraction = mc_variance / observed_variance
 
-    with np.errstate(divide="ignore", invalid="ignore"):
-        mc_fraction = mc_variance / observed_variance
-
-    return {
-        "observed_variance": observed_variance,
-        "mc_variance": mc_variance,
-        "mc_fraction": mc_fraction,
-    }
+        return {
+            "observed_variance": observed_variance,
+            "mc_variance": mc_variance,
+            "mc_fraction": mc_fraction,
+        }
