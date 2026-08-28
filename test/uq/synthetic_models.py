@@ -56,15 +56,33 @@ def generate_pick_freeze_samples(
     """
     Generate synthetic A, B, and AB pick-freeze model outputs.
 
-    The construction follows the convention used by PickFreezeAnalysis:
+    The input samples are constructed as independent A and B matrices:
 
-        A  = (A_1, A_2, ..., A_P)
-        B  = (B_1, B_2, ..., B_P)
+        X_A : (N, P)
+        X_B : (N, P)
 
-        AB_i = (A_i, B_-i)
+    where N is the number of realizations and P is the number of
+    uncertain inputs.
 
-    where the i-th input is taken from A and all other inputs
-    are taken from B.
+    The corresponding model outputs are:
+
+        A  = Y(X_A)
+        B  = Y(X_B)
+
+    with shapes:
+
+        A  : (N, ...)
+        B  : (N, ...)
+
+    For input i, the pick-freeze ensemble is constructed as:
+
+        X_AB_i = (X_B[:, 0], ..., X_A[:, i], ..., X_B[:, P-1])
+
+    and therefore:
+
+        AB : (P, N, ...)
+
+    where ... denotes the model-output dimensions.
 
     Parameters
     ----------
