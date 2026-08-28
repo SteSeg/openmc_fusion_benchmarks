@@ -939,16 +939,22 @@ class TMCStatePoint:
                         )
 
                         self._tallies[tally_id] = TMCTally(
-                            mean_da=ds_AB["mean"],
-                            mc_std_da=ds_AB.get("mc_std"),
-                            parent_ds=ds_AB,
+                            mean_da=ds_A["mean"],
+                            mc_std_da=ds_A.get("mc_std"),
+                            parent_ds=ds_A,
+
                             A_da=ds_A["mean"],
                             B_da=ds_B["mean"],
+                            AB_da=ds_AB["mean"],
+
                             A_mc_std_da=ds_A.get("mc_std"),
                             B_mc_std_da=ds_B.get("mc_std"),
+                            AB_mc_std_da=ds_AB.get("mc_std"),
+
                             A_parent_ds=ds_A,
                             B_parent_ds=ds_B,
                             AB_parent_ds=ds_AB,
+
                             mode=self.tmc_mode,
                         )
 
@@ -1059,14 +1065,73 @@ class TMCTally(BaseTally):
     """
     Wrapper for a single TMC tally providing an OpenMC Tally-like interface.
 
+    For standard TMC modes (sequential, diagonal, matrix), ``mean_da`` is
+    the complete TMC mean ensemble and ``mc_std_da`` contains the corresponding
+    OpenMC Monte Carlo statistical uncertainties.
+
+    For pick-freeze mode, the A ensemble is the primary ensemble. Therefore:
+
+        mean_da     -> A ensemble
+        mc_std_da   -> A ensemble MC statistical uncertainty
+
+    while the B and AB ensembles are stored explicitly through ``B_da`` and
+    ``AB_da``.
+
+    This establishes the convention that the standard TMC statistics exposed
+    by this class (``mean``, ``std_dev``, ``per_realization_mean``, etc.)
+    refer to the primary ensemble A in pick-freeze mode.
+
     Parameters
     ----------
     mean_da : xarray.DataArray
-        The DataArray containing the TMC mean values for this tally.
+        Primary TMC mean DataArray.
+
+        For pick-freeze mode this is the A ensemble.
+
     mc_std_da : xarray.DataArray, optional
-        The DataArray containing the MC std dev per run/combo.
+        Monte Carlo standard deviation associated with ``mean_da``.
+
+        For pick-freeze mode this is the A ensemble MC statistical
+        uncertainty.
+
     parent_ds : xarray.Dataset, optional
-        Parent dataset (group) containing metadata attributes.
+        Parent dataset containing the primary ensemble and its metadata.
+
+        For pick-freeze mode this should be the A dataset.
+
+    A_da : xarray.DataArray, optional
+        A pick-freeze ensemble mean DataArray.
+
+    B_da : xarray.DataArray, optional
+        B pick-freeze ensemble mean DataArray.
+
+    AB_da : xarray.DataArray, optional
+        AB pick-freeze ensemble mean DataArray.
+
+        Shape is typically::
+
+            (perturbation, realization, ...)
+
+    A_mc_std_da : xarray.DataArray, optional
+        OpenMC Monte Carlo standard deviations for the A ensemble.
+
+    B_mc_std_da : xarray.DataArray, optional
+        OpenMC Monte Carlo standard deviations for the B ensemble.
+
+    AB_mc_std_da : xarray.DataArray, optional
+        OpenMC Monte Carlo standard deviations for the AB ensemble.
+
+    mode : str, optional
+        TMC execution mode.
+
+    A_parent_ds : xarray.Dataset, optional
+        Parent dataset for the A ensemble.
+
+    B_parent_ds : xarray.Dataset, optional
+        Parent dataset for the B ensemble.
+
+    AB_parent_ds : xarray.Dataset, optional
+        Parent dataset for the AB ensemble.
     """
 
     def __init__(
@@ -1076,37 +1141,63 @@ class TMCTally(BaseTally):
         parent_ds=None,
         A_da=None,
         B_da=None,
+        AB_da=None,
         A_mc_std_da=None,
         B_mc_std_da=None,
+        AB_mc_std_da=None,
         mode=None,
         A_parent_ds=None,
         B_parent_ds=None,
         AB_parent_ds=None,
     ):
+        # The BaseTally primary data are deliberately the primary ensemble.
+        # In pick-freeze mode this is A.
         super().__init__(
             mean_da,
             mc_std_da=mc_std_da,
             parent_ds=parent_ds,
         )
 
+        # Pick-freeze ensemble mean data.
         self._A_da = A_da
         self._B_da = B_da
+        self._AB_da = AB_da
+
+        # Pick-freeze ensemble Monte Carlo statistical uncertainties.
         self._A_mc_std_da = A_mc_std_da
         self._B_mc_std_da = B_mc_std_da
+        self._AB_mc_std_da = AB_mc_std_da
+
         self._mode = mode
+
         # Keep references to parent datasets so their file handles remain
         # open for as long as the TMCTally is in use. These are closed by
-        # `TMCStatePoint.close()` via `TMCTally.close()`.
+        # TMCTally.close().
         self._A_parent_ds = A_parent_ds
         self._B_parent_ds = B_parent_ds
-        # AB / main parent dataset - may also be present in _parent_ds
         self._AB_parent_ds = AB_parent_ds
 
+        # TMC dimensions of the PRIMARY ensemble.
+        #
+        # For pick-freeze this is the A ensemble:
+        #
+        #     ("realization",)
+        #
+        # whereas AB has its own dimensions:
+        #
+        #     ("perturbation", "realization")
+        #
+        # AB dimensions are therefore not included here.
         self._tmc_dims = [
-            d for d in self._da.dims
+            d
+            for d in self._da.dims
             if d in ("perturbation", "realization")
             or d.startswith("perturbation_")
         ]
+
+    # ------------------------------------------------------------------
+    # Basic properties
+    # ------------------------------------------------------------------
 
     @property
     def id(self):
@@ -1120,47 +1211,195 @@ class TMCTally(BaseTally):
 
     @property
     def mode(self):
-        """TMC execution mode for this tally (sequential, diagonal, matrix, pick-freeze)."""
+        """
+        TMC execution mode.
+
+        Returns
+        -------
+        str or None
+            One of ``"sequential"``, ``"diagonal"``, ``"matrix"``,
+            ``"pick-freeze"``, or ``None``.
+        """
         return self._mode
 
     @property
+    def data(self):
+        """
+        Primary TMC mean data.
+
+        For pick-freeze mode this is the A ensemble.
+        """
+        return self._da.values
+
+    @property
+    def shape(self):
+        """Shape of the primary TMC mean data array."""
+        return self._da.shape
+
+    @property
+    def dims(self):
+        """Dimension names of the primary TMC mean data array."""
+        return self._da.dims
+
+    @property
+    def tmc_dims(self):
+        """Names of TMC dimensions in the primary ensemble."""
+        return tuple(self._tmc_dims)
+
+    # ------------------------------------------------------------------
+    # Pick-freeze ensembles
+    # ------------------------------------------------------------------
+
+    @property
+    def A(self):
+        """
+        A pick-freeze ensemble.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            A ensemble mean values. Shape is typically
+            ``(realization, ...)``.
+        """
+        return None if self._A_da is None else self._A_da.values
+
+    @property
+    def B(self):
+        """
+        B pick-freeze ensemble.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            B ensemble mean values. Shape is typically
+            ``(realization, ...)``.
+        """
+        return None if self._B_da is None else self._B_da.values
+
+    @property
+    def AB(self):
+        """
+        AB pick-freeze ensembles.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            AB ensemble mean values. Shape is typically
+            ``(perturbation, realization, ...)``.
+        """
+        if self.mode != "pick-freeze":
+            return None
+
+        return None if self._AB_da is None else self._AB_da.values
+
+    @property
+    def A_mc_std(self):
+        """
+        OpenMC Monte Carlo statistical standard deviations for A.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Per-realization OpenMC statistical standard deviations for A.
+            If no MC uncertainty DataArray is available, an array of zeros
+            with the same shape as A is returned.
+        """
+        if self._A_da is None:
+            return None
+
+        if self._A_mc_std_da is not None:
+            return self._A_mc_std_da.values
+
+        return np.zeros_like(self._A_da.values)
+
+    @property
+    def B_mc_std(self):
+        """
+        OpenMC Monte Carlo statistical standard deviations for B.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Per-realization OpenMC statistical standard deviations for B.
+            If no MC uncertainty DataArray is available, an array of zeros
+            with the same shape as B is returned.
+        """
+        if self._B_da is None:
+            return None
+
+        if self._B_mc_std_da is not None:
+            return self._B_mc_std_da.values
+
+        return np.zeros_like(self._B_da.values)
+
+    @property
+    def AB_mc_std(self):
+        """
+        OpenMC Monte Carlo statistical standard deviations for AB.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Per-realization OpenMC statistical standard deviations for AB.
+            If no MC uncertainty DataArray is available, an array of zeros
+            with the same shape as AB is returned.
+        """
+        if self._AB_da is None:
+            return None
+
+        if self._AB_mc_std_da is not None:
+            return self._AB_mc_std_da.values
+
+        return np.zeros_like(self._AB_da.values)
+
+    @property
     def ensemble_views(self):
-        """Return mode-specific ensemble views as a dictionary, if present."""
+        """
+        Return pick-freeze ensemble DataArrays.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the available ``"A"``, ``"B"``, and
+            ``"AB"`` DataArrays.
+
+            For non-pick-freeze modes an empty dictionary is returned.
+        """
         if self.mode != "pick-freeze":
             return {}
 
         views = {}
+
         if self._A_da is not None:
             views["A"] = self._A_da
+
         if self._B_da is not None:
             views["B"] = self._B_da
-        if self._da is not None:
-            views["AB"] = self._da
+
+        if self._AB_da is not None:
+            views["AB"] = self._AB_da
+
         return views
 
-    # --- Metadata & helpers ---
-
-    @property
-    def data(self):
-        """Full TMC mean data array (all TMC entries)."""
-        return self._da.values
+    # ------------------------------------------------------------------
+    # Metadata helpers
+    # ------------------------------------------------------------------
 
     @property
     def scores(self):
         """List of score names."""
-        # Preferred: from 'score' coordinate, if present
         if "score" in self._da.coords:
             return [str(s) for s in self._da.coords["score"].values]
 
-        # Fallback: from parent_ds attrs "scores" (JSON)
         if self._parent_ds is not None:
             scores_json = self._parent_ds.attrs.get("scores")
             if scores_json:
                 return json.loads(scores_json)
-        # Last resort: from variable attrs (if you changed writer)
+
         scores_json = self._da.attrs.get("scores")
         if scores_json:
             return json.loads(scores_json)
+
         return []
 
     @property
@@ -1173,9 +1412,11 @@ class TMCTally(BaseTally):
             nuclides_json = self._parent_ds.attrs.get("nuclides")
             if nuclides_json:
                 return json.loads(nuclides_json)
+
         nuclides_json = self._da.attrs.get("nuclides")
         if nuclides_json:
             return json.loads(nuclides_json)
+
         return []
 
     @property
@@ -1185,274 +1426,277 @@ class TMCTally(BaseTally):
             filt_json = self._parent_ds.attrs.get("filter_axes")
             if filt_json:
                 return json.loads(filt_json)
+
         filt_json = self._da.attrs.get("filter_axes")
         if filt_json:
             return json.loads(filt_json)
+
         return []
 
-    @property
-    def tmc_dims(self):
-        """Names of TMC dimensions (realization / perturbation_*)."""
-        return tuple(self._tmc_dims)
-
-    @property
-    def shape(self):
-        """Shape of the underlying mean data array."""
-        return self._da.shape
-
-    @property
-    def dims(self):
-        """Dimension names of the underlying mean data array."""
-        return self._da.dims
-
-    # --- Pick-freeze ensembles ---
-    @property
-    def A(self):
-        return None if self._A_da is None else self._A_da.values
-
-    @property
-    def B(self):
-        return None if self._B_da is None else self._B_da.values
-
-    @property
-    def AB(self):
-        if self.mode != "pick-freeze":
-            return None
-        return self._da.values
-
-
-    @property
-    def A_mc_std(self):
-        """
-        Monte Carlo statistical standard deviation of the A ensemble.
-        """
-        if self.mode != "pick-freeze":
-            raise RuntimeError(
-                "A_mc_std is only available for pick-freeze mode."
-            )
-
-        if self._A_mc_std_da is None:
-            raise RuntimeError(
-                "Monte Carlo standard deviations for the A ensemble "
-                "are not available."
-            )
-
-        return self._A_mc_std_da.values
-
-
-    @property
-    def B_mc_std(self):
-        """
-        Monte Carlo statistical standard deviation of the B ensemble.
-        """
-        if self.mode != "pick-freeze":
-            raise RuntimeError(
-                "B_mc_std is only available for pick-freeze mode."
-            )
-
-        if self._B_mc_std_da is None:
-            raise RuntimeError(
-                "Monte Carlo standard deviations for the B ensemble "
-                "are not available."
-            )
-
-        return self._B_mc_std_da.values
-
-    @property
-    def AB_mc_std(self):
-        """
-        Monte Carlo statistical standard deviation of the AB ensembles.
-        """
-        if self.mode != "pick-freeze":
-            raise RuntimeError(
-                "AB_mc_std is only available for pick-freeze mode."
-            )
-
-        if self._mc_std_da is None:
-            raise RuntimeError(
-                "Monte Carlo standard deviations for the AB ensemble "
-                "are not available."
-            )
-
-        return self._mc_std_da.values
-    
-    # --- TMC statistics ---
-
-    @property
-    def primary_ensemble(self):
-        """
-        Primary TMC ensemble used for aggregate TMC statistics.
-
-        For pick-freeze mode, the A ensemble is the primary independent
-        sample of the input space. For all other modes, the primary
-        ensemble is the underlying TMC DataArray.
-        """
-        if self.mode == "pick-freeze":
-            if self._A_da is None:
-                raise RuntimeError("Pick-freeze tally missing A ensemble")
-            return self._A_da
-        
-        return self._da
-
-    def _primary_ensemble_dims(self):
-        """Return dimensions over which primary-ensemble statistics are computed."""
-        return tuple(
-            d for d in self.primary_ensemble.dims
-            if d == "realization"
-            or d == "perturbation"
-            or d.startswith("perturbation_")
-        )
+    # ------------------------------------------------------------------
+    # Primary TMC statistics
+    # ------------------------------------------------------------------
 
     @property
     def mean(self):
         """
-        Global mean over the primary TMC ensemble.
+        Global mean of the primary TMC ensemble.
 
         For pick-freeze mode, the primary ensemble is A.
+
+        This is the propagated mean over the TMC input uncertainty space,
+        not the nominal OpenMC tally value from a single statepoint.
         """
-        da = self.primary_ensemble
-        dims = self._primary_ensemble_dims()
+        if not self._tmc_dims:
+            return self._da.values
 
-        if not dims:
-            return da.values
-
-        return da.mean(dim=dims).values
-
-    @property
-    def variance(self):
-        """
-        Variance across the primary TMC ensemble.
-
-        For pick-freeze mode, this is the variance of the A ensemble.
-        """
-        da = self.primary_ensemble
-        dims = self._primary_ensemble_dims()
-
-        if not dims:
-            return np.zeros_like(da.values)
-
-        return da.var(dim=dims).values
+        return self._da.mean(dim=self._tmc_dims).values
 
     @property
     def std_dev(self):
         """
-        Standard deviation across the primary TMC ensemble.
+        Standard deviation of the primary TMC ensemble.
 
-        This is the propagated parametric uncertainty, not the
-        Monte Carlo sampling uncertainty within individual runs.
+        This is the propagated parametric uncertainty from the TMC
+        ensemble, not the Monte Carlo sampling uncertainty within each
+        individual OpenMC run.
+
+        For pick-freeze mode, this is the standard deviation of A.
         """
-        da = self.primary_ensemble
-        dims = self._primary_ensemble_dims()
+        if not self._tmc_dims:
+            return np.zeros_like(self._da.values)
 
-        if not dims:
-            return np.zeros_like(da.values)
+        return self._da.std(dim=self._tmc_dims).values
 
-        return da.std(dim=dims).values
+    @property
+    def variance(self):
+        """
+        Variance of the primary TMC ensemble.
+
+        For pick-freeze mode, this is Var(A).
+
+        Returns
+        -------
+        numpy.ndarray
+            Propagated parametric variance.
+        """
+        if not self._tmc_dims:
+            return np.zeros_like(self._da.values)
+
+        return self._da.var(dim=self._tmc_dims).values
 
     @property
     def per_realization_mean(self):
         """
-        Raw mean value for each TMC point (all TMC dims retained).
-        Shape: (TMC dims..., filters..., nuclide, score).
+        Raw primary-ensemble mean values for every TMC realization.
+
+        For pick-freeze mode, this is the A ensemble.
+
+        Returns
+        -------
+        numpy.ndarray
+            Shape is typically::
+
+                (realization, filters..., nuclide, score)
+
+            for pick-freeze mode.
         """
         return self._da.values
 
     @property
     def per_realization_std_dev(self):
         """
-        Monte Carlo standard deviation for each run/combo.
+        Monte Carlo statistical standard deviation for every primary
+        ensemble realization.
 
-        This is the statistical uncertainty from particle sampling within each
-        individual OpenMC run, shaped like self._da.
+        For pick-freeze mode, this is the MC statistical uncertainty of A.
+
+        Returns
+        -------
+        numpy.ndarray
+            Per-realization OpenMC statistical standard deviations.
         """
         if self._da_mc_std is not None:
             return self._da_mc_std.values
+
         return np.zeros_like(self._da.values)
+
+    # ------------------------------------------------------------------
+    # Perturbation-level statistics
+    # ------------------------------------------------------------------
 
     @property
     def per_perturbation_mean(self):
         """
-        Mean value for each perturbation type, with mode-aware marginalization.
+        Mean value for each perturbation type with mode-aware
+        marginalization.
 
-        - sequential: average over realizations, keeping separate perturbation entries
-        - diagonal: collapse the single realization axis
-        - matrix: marginalize each perturbation axis separately and stack the results
-        - pick-freeze: average the AB ensemble over realization for each perturbation
+        For pick-freeze mode, the perturbation dimension exists only in
+        the AB ensemble. Therefore this property intentionally operates
+        on AB rather than on the primary A ensemble.
+
+        Modes
+        -----
+        sequential
+            Average over realizations, retaining separate perturbation
+            entries.
+
+        diagonal
+            Collapse the single realization axis.
+
+        matrix
+            Marginalize each perturbation axis separately and stack the
+            results.
+
+        pick-freeze
+            Average the AB ensemble over realizations for each
+            perturbation.
         """
+        if self.mode == "pick-freeze":
+            if self._AB_da is None:
+                raise RuntimeError(
+                    "Pick-freeze tally does not contain an AB ensemble."
+                )
+
+            if "realization" in self._AB_da.dims:
+                result = self._AB_da.mean(dim="realization")
+            else:
+                result = self._AB_da
+
+            return result.values
+
         dims = tuple(self._da.dims)
         has_pert = "perturbation" in dims
         has_real = "realization" in dims
 
-        if self.mode == "pick-freeze":
-            result = self._da.mean(dim="realization") if "realization" in self._da.dims else self._da
-            return result.values
-
         if has_pert and has_real:
             result = self._da.mean(dim="realization")
             return result.values
+
         if has_pert:
             return self._da.values
 
-        pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+        pert_dims = [
+            d for d in self._tmc_dims
+            if d.startswith("perturbation_")
+        ]
+
         if pert_dims:
             marginal_values = []
+
             for dim in pert_dims:
                 kept = [d for d in pert_dims if d != dim]
+
                 if has_real:
                     kept.append("realization")
+
                 if kept:
                     result = self._da.mean(dim=kept)
                 else:
                     result = self._da
+
                 marginal_values.append(result.values)
+
             return np.stack(marginal_values, axis=0)
+
         return self.mean
 
     @property
     def per_perturbation_std_dev(self):
         """
-        Standard deviation for each perturbation type with mode-aware marginalization.
+        Standard deviation for each perturbation type with mode-aware
+        marginalization.
+
+        For pick-freeze mode, this is calculated from the AB ensemble,
+        since AB is explicitly indexed by perturbation.
         """
+        if self.mode == "pick-freeze":
+            if self._AB_da is None:
+                raise RuntimeError(
+                    "Pick-freeze tally does not contain an AB ensemble."
+                )
+
+            if "realization" in self._AB_da.dims:
+                result = self._AB_da.std(dim="realization")
+            else:
+                result = self._AB_da
+
+            return result.values
+
         dims = tuple(self._da.dims)
         has_pert = "perturbation" in dims
         has_real = "realization" in dims
 
-        if self.mode == "pick-freeze":
-            result = self._da.std(dim="realization") if "realization" in self._da.dims else self._da
-            return result.values
-
         if has_pert and has_real:
             result = self._da.std(dim="realization")
             return result.values
+
         if has_pert:
             return np.zeros_like(self._da.values)
 
-        pert_dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+        pert_dims = [
+            d for d in self._tmc_dims
+            if d.startswith("perturbation_")
+        ]
+
         if pert_dims:
             marginal_values = []
+
             for dim in pert_dims:
                 kept = [d for d in pert_dims if d != dim]
+
                 if has_real:
                     kept.append("realization")
+
                 if kept:
                     result = self._da.std(dim=kept)
                 else:
                     result = self._da
+
                 marginal_values.append(result.values)
+
             return np.stack(marginal_values, axis=0)
+
         return self.std_dev
 
-    
     @property
     def perturbation_dims(self):
         """Names of perturbation dimensions used by the current TMC mode."""
-        dims = [d for d in self._tmc_dims if d.startswith("perturbation_")]
+        if self.mode == "pick-freeze":
+            if self._AB_da is None:
+                return ()
+
+            if "perturbation" in self._AB_da.dims:
+                return ("perturbation",)
+
+            return tuple(
+                d for d in self._AB_da.dims
+                if d.startswith("perturbation_")
+            )
+
+        dims = [
+            d for d in self._tmc_dims
+            if d.startswith("perturbation_")
+        ]
+
         if not dims and "perturbation" in self._tmc_dims:
             dims = ["perturbation"]
+
         return tuple(dims)
 
+    # ------------------------------------------------------------------
+    # Mode diagnostics
+    # ------------------------------------------------------------------
+
     def mode_summary(self):
-        """Return a compact mode-aware summary that hides the internal manifest detail."""
+        """
+        Return a compact mode-aware summary.
+
+        Returns
+        -------
+        dict
+            Summary of the TMC mode and ensemble structure.
+        """
         summary = {
             "mode": self.mode,
             "tmc_dims": list(self.tmc_dims),
@@ -1460,31 +1704,44 @@ class TMCTally(BaseTally):
             "shape": self.shape,
             "has_pick_freeze_views": bool(self.ensemble_views),
         }
+
         if self.mode == "pick-freeze":
-            summary["ensemble_sets"] = sorted(self.ensemble_views.keys())
+            summary["ensemble_sets"] = sorted(
+                self.ensemble_views.keys()
+            )
+
         return summary
+
+    # ------------------------------------------------------------------
+    # Data slicing
+    # ------------------------------------------------------------------
 
     def get_slice(self, scores=None, nuclides=None, **filter_kwargs):
         """
-        Get a slice of the TMC data with optional filtering.
+        Get a slice of the primary TMC data with optional filtering.
+
+        For pick-freeze mode, the primary data are the A ensemble.
 
         Parameters
         ----------
         scores : list of str, optional
-            Score names to select
+            Score names to select.
+
         nuclides : list of str, optional
-            Nuclide names to select
-        **filter_kwargs : optional
-            Additional dimension filters (e.g., energy=slice(0, 10))
+            Nuclide names to select.
+
+        **filter_kwargs
+            Additional dimension filters, e.g.
+            ``energy=slice(0, 10)``.
 
         Returns
         -------
         xarray.DataArray
-            Filtered TMC mean data
+            Filtered primary TMC mean DataArray.
         """
         da = self._da
 
-        # Apply filter dimension selections (energy, cell, mesh, perturbation_x, etc.)
+        # Apply filter dimension selections
         if filter_kwargs:
             da = da.sel(**filter_kwargs)
 
@@ -1497,20 +1754,42 @@ class TMCTally(BaseTally):
         # Apply nuclide selection
         if nuclides is not None and "nuclide" in da.dims:
             all_nuclides = self.nuclides
-            nuclide_indices = [all_nuclides.index(n) for n in nuclides]
+            nuclide_indices = [
+                all_nuclides.index(n)
+                for n in nuclides
+            ]
             da = da.isel(nuclide=nuclide_indices)
 
         return da
 
+    # ------------------------------------------------------------------
+    # Representation and resource management
+    # ------------------------------------------------------------------
 
     def __repr__(self):
-        return f"<TMCTally {self.id}: '{self.name}', shape={self.shape}>"
+        return (
+            f"<TMCTally {self.id}: '{self.name}', "
+            f"shape={self.shape}>"
+        )
 
     def close(self):
-        """Close any retained parent xarray Datasets to release file handles."""
-        for ds in (getattr(self, "_A_parent_ds", None), getattr(self, "_B_parent_ds", None), getattr(self, "_AB_parent_ds", None), getattr(self, "_parent_ds", None)):
+        """
+        Close all retained parent xarray Datasets.
+
+        Dataset references may overlap in some construction paths, so
+        closing the same dataset more than once is tolerated.
+        """
+        datasets = (
+            getattr(self, "_A_parent_ds", None),
+            getattr(self, "_B_parent_ds", None),
+            getattr(self, "_AB_parent_ds", None),
+            getattr(self, "_parent_ds", None),
+        )
+
+        for ds in datasets:
             if ds is None:
                 continue
+
             try:
                 ds.close()
             except Exception:
