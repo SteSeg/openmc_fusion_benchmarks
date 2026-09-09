@@ -665,8 +665,7 @@ class PickFreezeAnalysis:
         """
         Check the consistency of the pick-freeze sampling ensembles.
 
-        The analysis uses A as the primary ensemble and constructs each
-        AB_i ensemble according to
+        The analysis assumes each AB_i ensemble is constructed according to
 
             AB_i = (B_i, A_-i).
 
