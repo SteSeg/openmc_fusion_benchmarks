@@ -58,12 +58,15 @@ class PickFreezeAnalysis:
         """
         Compute total-order Sobol indices from pick-freeze ensembles.
 
-        The estimator is the Jansen total-order estimator for the
-        pick-freeze construction
+        The pick-freeze construction is assumed to be
 
-            AB_i = (B_i, A_-i):
+            AB_i = (B_i, A_-i),
 
-            S_Ti = E[(Y_A - Y_AB_i)^2] / (2 Var(Y_A)).
+        where AB[i] corresponds to perturbation i.
+
+        The estimator is the Jansen total-order estimator:
+
+            S_T_i = E[(Y_A - Y_AB_i)^2] / (2 Var(Y_A)).
 
         Parameters
         ----------
@@ -127,7 +130,7 @@ class PickFreezeAnalysis:
 
     def _compute_first_order(self, A, B, AB):
         """
-        Compute first-order Sobol indices from pick-freeze ensembles.
+        Compute covariance-form first-order Sobol indices from pick-freeze ensembles.
 
         The pick-freeze construction is assumed to be
 
@@ -135,7 +138,7 @@ class PickFreezeAnalysis:
 
         The estimator is the covariance-form first-order estimator:
 
-            S_i = Cov(Y_A, Y_AB_i) / Var(Y_A).
+            S_i = Cov(Y_B, Y_AB_i) / Var(Y_A).
 
         Parameters
         ----------
@@ -144,10 +147,18 @@ class PickFreezeAnalysis:
 
                 (n_realizations, ...)
 
+        B : numpy.ndarray
+            Independent B ensemble. Shape:
+
+                (n_realizations, ...)
+
         AB : numpy.ndarray
             Pick-freeze AB ensembles. Shape:
 
                 (n_inputs, n_realizations, ...)
+
+            AB[i] corresponds to perturbation i and is constructed as
+            (B_i, A_-i).
 
         Returns
         -------
@@ -159,7 +170,7 @@ class PickFreezeAnalysis:
         Raises
         ------
         ValueError
-            If the A and AB arrays have incompatible shapes or if the
+            If the A, B, and AB arrays have incompatible shapes or if the
             variance is zero for any output element.
         """
         A = np.asarray(A)
@@ -191,7 +202,7 @@ class PickFreezeAnalysis:
         B_centered = B - B_mean
         AB_centered = AB - AB_mean[:, None, ...]
 
-        # Paired covariance between B and each AB_i  ->  V_i.
+        # Paired covariance between B and each AB_i -> V_i.
         covariance = np.mean(
             B_centered[None, ...] * AB_centered,
             axis=1,
