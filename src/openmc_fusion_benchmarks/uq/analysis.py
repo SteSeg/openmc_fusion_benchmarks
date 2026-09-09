@@ -265,12 +265,13 @@ class PickFreezeAnalysis:
         Estimate bootstrap uncertainty of the Sobol sensitivity indices.
 
         Bootstrap resampling is performed over the realization dimension.
-        The same resampled realization indices are applied to the A ensemble
-        and to every AB_i ensemble, preserving the pick-freeze pairing.
+        The same resampled realization indices are applied to the A and B
+        ensembles and to every AB_i ensemble, preserving the pick-freeze
+        pairing.
 
         The bootstrap uses the same first-order and total-order estimators
-        implemented by :meth:`_compute_first_order` and
-        :meth:`_compute_total_order`.
+        implemented by _compute_first_order and
+        _compute_total_order.
 
         Parameters
         ----------
@@ -323,7 +324,14 @@ class PickFreezeAnalysis:
             )
 
         A = np.asarray(self.tally.A)
+        B = np.asarray(self.tally.B)
         AB = np.asarray(self.tally.AB)
+
+
+        if B.shape != A.shape:
+            raise ValueError(
+                "The B ensemble must have the same shape as the A ensemble."
+    )
 
         if AB.ndim != A.ndim + 1:
             raise ValueError(
@@ -365,12 +373,14 @@ class PickFreezeAnalysis:
             )
 
             A_boot = A[indices, ...]
+            B_boot = B[indices, ...]
             AB_boot = AB[:, indices, ...]
 
             # Compute Sobol indices using the same estimators as the
             # corresponding public analysis methods.
             first_order = self._compute_first_order(
                 A_boot,
+                B_boot,
                 AB_boot,
             )
 
