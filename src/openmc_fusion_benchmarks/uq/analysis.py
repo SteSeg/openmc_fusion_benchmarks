@@ -478,7 +478,13 @@ class PickFreezeAnalysis:
                     (n_sample_sizes, n_inputs, ...)
         """
         A = self.tally.A
+        B = self.tally.B
         AB = self.tally.AB
+
+        if B.shape != A.shape:
+            raise ValueError(
+                "The B ensemble must have the same shape as the A ensemble."
+    )
 
         if AB.ndim != A.ndim + 1:
             raise ValueError(
@@ -544,11 +550,13 @@ class PickFreezeAnalysis:
         for n in sample_sizes:
 
             A_n = A[:n, ...]
+            B_n = B[:n, ...]
             AB_n = AB[:, :n, ...]
 
             first_order_results.append(
                 self._compute_first_order(
                     A_n,
+                    B_n,
                     AB_n,
                 )
             )
