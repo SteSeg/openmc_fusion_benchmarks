@@ -125,8 +125,15 @@ def _build_filter_axis_metadata(
             "name": type(flt).__name__,
             "axis": dim,
             "num_bins": int(flt.num_bins),
-            "bins": _serialize_filter_bins(flt),
         }
+
+        if isinstance(flt, openmc.EnergyFunctionFilter):
+            axis_meta["function"] = {
+                "energy": np.asarray(flt.energy).tolist(),
+                "y": np.asarray(flt.y).tolist(),
+            }
+        else:
+            axis_meta["bins"] = _serialize_filter_bins(flt)
 
         if isinstance(spec_filter, dict) and "units" in spec_filter:
             axis_meta["units"] = spec_filter.get("units")

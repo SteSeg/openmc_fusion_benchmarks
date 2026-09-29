@@ -241,6 +241,31 @@ def test_openmc_tally_to_dataset_with_spec_consistency_attrs():
     assert energy_axes[0]["kind"] == "edges"
 
 
+def test_openmc_tally_to_dataset_with_energy_function_filter():
+    energy = np.array([1.0, 2.0, 3.0])
+    response = np.array([4.0, 5.0, 6.0])
+    energy_function_filter = openmc.EnergyFunctionFilter(energy, response)
+    num_bins = energy_function_filter.num_bins
+    tally = DummyTally(
+        tally_id=11,
+        name="energy_response",
+        filters=[energy_function_filter],
+        nuclides=["total"],
+        scores=["flux"],
+        mean_nd=np.ones((num_bins, 1, 1)),
+        std_nd=np.full((num_bins, 1, 1), 0.1),
+    )
+
+    ds = backend.openmc_tally_to_dataset(tally=tally)
+
+    filter_axes = __import__("json").loads(ds.attrs["filter_axes"])
+    assert filter_axes[0]["function"] == {
+        "energy": energy.tolist(),
+        "y": response.tolist(),
+    }
+    assert "bins" not in filter_axes[0]
+
+
 def test_openmc_tally_to_dataset_with_spec_mismatch_sets_issues():
     filters = [
         _make_filter(openmc.ParticleFilter, ["neutron"], num_bins=1),
