@@ -312,6 +312,20 @@ class PickFreezeAnalysis:
             ``total_order_ci``
                 Percentile confidence interval for the total-order indices.
                 Shape ``(2, n_inputs, ...)``.
+
+            ``first_order_se``
+                Standard error of the first-order indices from the bootstrap
+                resamples. Shape ``(n_inputs, ...)``.
+            
+            ``total_order_se``
+                Standard error of the total-order indices from the bootstrap
+                resamples. Shape ``(n_inputs, ...)``.
+            
+            ``confidence_level``
+                Confidence level used for the percentile confidence intervals.
+
+            ``n_resamples``
+                Number of bootstrap resamples used to estimate uncertainty.
         """
         if n_resamples < 1:
             raise ValueError(
@@ -428,6 +442,9 @@ class PickFreezeAnalysis:
             axis=0,
         )
 
+        first_order_se = np.nanstd(first_order_samples, axis=0, ddof=1)
+        total_order_se = np.nanstd(total_order_samples, axis=0, ddof=1)
+
         # ------------------------------------------------------------------
         # Point estimates from the original TMC ensemble
         # ------------------------------------------------------------------
@@ -441,6 +458,10 @@ class PickFreezeAnalysis:
             "total_order_estimate": total_order_estimate,
             "first_order_ci": first_order_ci,
             "total_order_ci": total_order_ci,
+            "first_order_se": first_order_se,
+            "total_order_se": total_order_se,
+            "confidence_level": confidence_level,
+            "n_resamples": n_resamples,
         }
 
     def convergence(self, sample_sizes=None):
