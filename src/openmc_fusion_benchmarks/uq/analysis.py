@@ -28,19 +28,6 @@ class PickFreezeAnalysis:
                 "of realizations as A and B."
             )
 
-    def _pooled_base_ensemble(self):
-        """
-        Return the pooled A and B base ensembles.
-
-        Shape
-        -----
-        (2 * n_realizations, *tally_shape)
-        """
-        A = np.asarray(self.tally.A)
-        B = np.asarray(self.tally.B)
-
-        return np.concatenate((A, B), axis=0)
-
     @property
     def mean(self):
         """Mean of the primary pick-freeze output ensemble."""
@@ -61,15 +48,15 @@ class PickFreezeAnalysis:
         pooled = np.concatenate((np.asarray(A), np.asarray(B)), axis=0)
         return np.var(pooled, axis=0, ddof=1)
 
+    def _compute_global_mean(self, A, B):
+        """Pooled A+B sample mean along the realization axis."""
+        pooled = np.concatenate((np.asarray(A), np.asarray(B)), axis=0)
+        return np.mean(pooled, axis=0)
+
     @property
     def global_mean(self):
-        """
-        Global response mean estimated from the pooled A and B ensembles.
-
-        The realization dimension is reduced while all OpenMC tally
-        dimensions (filters, nuclides, scores, etc.) are retained.
-        """
-        return np.mean(self._pooled_base_ensemble(), axis=0)
+        """Global response mean estimated from the pooled A and B ensembles."""
+        return self._compute_global_mean(self.tally.A, self.tally.B)
 
     @property
     def global_variance(self):
@@ -320,6 +307,7 @@ class PickFreezeAnalysis:
         return self._compute_total_order(
             self.tally.A,
             self.tally.AB,
+            variance=self.global_variance,
         )
 
     def first_order(self):
@@ -330,6 +318,7 @@ class PickFreezeAnalysis:
             self.tally.A,
             self.tally.B,
             self.tally.AB,
+            variance=self.global_variance,
         )
 
     def total_order_contribution(self):
