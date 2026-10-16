@@ -28,22 +28,64 @@ class PickFreezeAnalysis:
                 "of realizations as A and B."
             )
 
+    def _pooled_base_ensemble(self):
+        """
+        Return the pooled A and B base ensembles.
+
+        Shape
+        -----
+        (2 * n_realizations, *tally_shape)
+        """
+        A = np.asarray(self.tally.A)
+        B = np.asarray(self.tally.B)
+
+        return np.concatenate((A, B), axis=0)
+
     @property
     def mean(self):
         """Mean of the primary pick-freeze output ensemble."""
         return self.tally.mean
-
 
     @property
     def variance(self):
         """Variance of the primary pick-freeze output ensemble."""
         return self.tally.variance
 
-
     @property
     def std_dev(self):
         """Standard deviation of the primary pick-freeze output ensemble."""
         return self.tally.std_dev
+
+    def _compute_global_variance(self, A, B):
+        """Pooled A+B sample variance (ddof=1) along the realization axis."""
+        pooled = np.concatenate((np.asarray(A), np.asarray(B)), axis=0)
+        return np.var(pooled, axis=0, ddof=1)
+
+    @property
+    def global_mean(self):
+        """
+        Global response mean estimated from the pooled A and B ensembles.
+
+        The realization dimension is reduced while all OpenMC tally
+        dimensions (filters, nuclides, scores, etc.) are retained.
+        """
+        return np.mean(self._pooled_base_ensemble(), axis=0)
+
+    @property
+    def global_variance(self):
+        """
+        Global response variance estimated from the pooled A and B ensembles.
+
+        Uses ddof=1, i.e. the unbiased sample-variance estimator.
+        """
+        return self._compute_global_variance(self.tally.A, self.tally.B)
+
+    @property
+    def global_std_dev(self):
+        """
+        Global response standard deviation estimated from pooled A and B.
+        """
+        return np.sqrt(self.global_variance)
 
     @property
     def n_realizations(self):
@@ -54,7 +96,7 @@ class PickFreezeAnalysis:
         return self.tally.AB.shape[0]
 
 
-    def _compute_total_order(self, A, AB):
+    def _compute_total_order(self, A, AB, B=None, variance=None):
         """
         Compute total-order Sobol indices from pick-freeze ensembles.
 
@@ -66,7 +108,10 @@ class PickFreezeAnalysis:
 
         The estimator is the Jansen total-order estimator:
 
-            S_T_i = E[(Y_A - Y_AB_i)^2] / (2 Var(Y_A)).
+            S_T_i = E[(Y_A - Y_AB_i)^2] / (2 Var(Y)),
+
+        where Var(Y) is the global output variance estimated from the
+        pooled A and B ensembles (ddof=1).
 
         Parameters
         ----------
@@ -80,6 +125,14 @@ class PickFreezeAnalysis:
 
                 (n_inputs, n_realizations, ...)
 
+        B : numpy.ndarray, optional
+            Independent B ensemble, shape (n_realizations, ...). Used to
+            compute the pooled global variance if ``variance`` is not given.
+
+        variance : numpy.ndarray, optional
+            Precomputed global output variance, shape ``A.shape[1:]``.
+            If given, it is used directly.
+
         Returns
         -------
         numpy.ndarray
@@ -90,8 +143,9 @@ class PickFreezeAnalysis:
         Raises
         ------
         ValueError
-            If the A and AB arrays have incompatible shapes or if the
-            variance is zero for any output element.
+            If array shapes are incompatible, if neither ``B`` nor
+            ``variance`` is provided, or if the variance is non-positive
+            for any output element.
         """
         A = np.asarray(A)
         AB = np.asarray(AB)
@@ -108,16 +162,29 @@ class PickFreezeAnalysis:
                 "shape as the A ensemble."
             )
 
-        # Output variance from the A ensemble.
-        variance = np.var(A, axis=0)
+        # Global output variance from the pooled A+B ensembles.
+        if variance is None:
+            if B is None:
+                raise ValueError(
+                    "Either the B ensemble or a precomputed global "
+                    "variance must be provided."
+                )
+            variance = self._compute_global_variance(A, B)
+        else:
+            variance = np.asarray(variance)
+            if variance.shape != A.shape[1:]:
+                raise ValueError(
+                    "The variance must have the same shape as a single "
+                    "A realization."
+                )
 
-        if np.any(variance == 0):
+        if np.any(variance <= 0):
             raise ValueError(
                 "Total-order Sobol indices are undefined for "
-                "output dimensions with zero variance."
+                "output dimensions with non-positive variance."
             )
 
-        # Jansen total-order numerator:
+        # Jansen total-order numerator (unbiased, no mean estimate needed):
         #
         #     1/2 E[(Y_A - Y_AB_i)^2]
         numerator = 0.5 * np.mean(
@@ -128,7 +195,7 @@ class PickFreezeAnalysis:
         return numerator / variance
 
 
-    def _compute_first_order(self, A, B, AB):
+    def _compute_first_order(self, A, B, AB, variance=None):
         """
         Compute covariance-form first-order Sobol indices from pick-freeze ensembles.
 
@@ -138,7 +205,11 @@ class PickFreezeAnalysis:
 
         The estimator is the covariance-form first-order estimator:
 
-            S_i = Cov(Y_B, Y_AB_i) / Var(Y_A).
+            S_i = Cov(Y_B, Y_AB_i) / Var(Y),
+
+        where the covariance uses the unbiased 1/(n-1) normalization and
+        Var(Y) is the global output variance estimated from the pooled
+        A and B ensembles (ddof=1).
 
         Parameters
         ----------
@@ -160,6 +231,10 @@ class PickFreezeAnalysis:
             AB[i] corresponds to perturbation i and is constructed as
             (B_i, A_-i).
 
+        variance : numpy.ndarray, optional
+            Precomputed global output variance, shape ``A.shape[1:]``.
+            If None, it is computed from the pooled A and B ensembles.
+
         Returns
         -------
         numpy.ndarray
@@ -170,8 +245,9 @@ class PickFreezeAnalysis:
         Raises
         ------
         ValueError
-            If the A, B, and AB arrays have incompatible shapes or if the
-            variance is zero for any output element.
+            If the A, B, and AB arrays have incompatible shapes, if fewer
+            than two realizations are available, or if the variance is
+            non-positive for any output element.
         """
         A = np.asarray(A)
         B = np.asarray(B)
@@ -194,6 +270,14 @@ class PickFreezeAnalysis:
                 "The B ensemble must have the same shape as the A ensemble."
             )
 
+        n_realizations = B.shape[0]
+
+        if n_realizations < 2:
+            raise ValueError(
+                "At least two realizations are required to estimate "
+                "first-order Sobol indices."
+            )
+
         # Means over realizations.
         B_mean = np.mean(B, axis=0)
         AB_mean = np.mean(AB, axis=1)
@@ -203,18 +287,28 @@ class PickFreezeAnalysis:
         AB_centered = AB - AB_mean[:, None, ...]
 
         # Paired covariance between B and each AB_i -> V_i.
-        covariance = np.mean(
+        # Unbiased 1/(n-1) normalization, consistent with ddof=1 variance.
+        covariance = np.sum(
             B_centered[None, ...] * AB_centered,
             axis=1,
-        )
+        ) / (n_realizations - 1)
 
-        # Output variance from the A ensemble (same normalizer as total_order).
-        variance = np.var(A, axis=0)
+        # Global output variance from the pooled A+B ensembles
+        # (same normalizer as total_order).
+        if variance is None:
+            variance = self._compute_global_variance(A, B)
+        else:
+            variance = np.asarray(variance)
+            if variance.shape != A.shape[1:]:
+                raise ValueError(
+                    "The variance must have the same shape as a single "
+                    "A realization."
+                )
 
-        if np.any(variance == 0):
+        if np.any(variance <= 0):
             raise ValueError(
                 "First-order Sobol indices are undefined for "
-                "output dimensions with zero variance."
+                "output dimensions with non-positive variance."
             )
 
         return covariance / variance
@@ -244,7 +338,7 @@ class PickFreezeAnalysis:
 
         C_Ti = S_Ti * Var(Y)
         """
-        return self.total_order() * self.variance
+        return self.total_order() * self.global_variance
 
     def total_order_contribution(self):
         """
@@ -252,7 +346,7 @@ class PickFreezeAnalysis:
 
         C_Ti = S_Ti * Var(Y)
         """
-        return self.total_order() * self.variance
+        return self.total_order() * self.global_variance
 
 
     def bootstrap(
@@ -262,15 +356,18 @@ class PickFreezeAnalysis:
         random_seed=None,
     ):
         """
-        Estimate bootstrap uncertainty of the Sobol sensitivity indices.
+        Estimate bootstrap uncertainty of the global response moments and
+        of the Sobol sensitivity indices.
 
         Bootstrap resampling is performed over the realization dimension.
         The same resampled realization indices are applied to the A and B
         ensembles and to every AB_i ensemble, preserving the pick-freeze
         pairing.
 
-        The bootstrap uses the same first-order and total-order estimators
-        implemented by _compute_first_order and
+        Global moments are computed from the pooled A and B ensembles
+        (ddof=1 for the variance). The same pooled variance is used as the
+        normalizer of the first-order and total-order estimators in every
+        resample, consistently with _compute_first_order and
         _compute_total_order.
 
         Parameters
@@ -288,6 +385,19 @@ class PickFreezeAnalysis:
         -------
         dict
             Dictionary containing:
+
+            ``global_mean``, ``global_variance``, ``global_std_dev``
+                Bootstrap global moments with shape ``(n_resamples, ...)``.
+
+            ``global_mean_estimate``, ``global_variance_estimate``,
+            ``global_std_dev_estimate``
+                Global moments calculated from the original TMC ensemble.
+
+            ``global_mean_ci``, ``global_variance_ci``, ``global_std_dev_ci``
+                Percentile confidence intervals. Shape ``(2, ...)``.
+
+            ``global_mean_se``, ``global_variance_se``, ``global_std_dev_se``
+                Bootstrap standard errors. Shape ``(...)``.
 
             ``first_order``
                 Bootstrap first-order Sobol indices with shape
@@ -316,11 +426,11 @@ class PickFreezeAnalysis:
             ``first_order_se``
                 Standard error of the first-order indices from the bootstrap
                 resamples. Shape ``(n_inputs, ...)``.
-            
+
             ``total_order_se``
                 Standard error of the total-order indices from the bootstrap
                 resamples. Shape ``(n_inputs, ...)``.
-            
+
             ``confidence_level``
                 Confidence level used for the percentile confidence intervals.
 
@@ -341,11 +451,10 @@ class PickFreezeAnalysis:
         B = np.asarray(self.tally.B)
         AB = np.asarray(self.tally.AB)
 
-
         if B.shape != A.shape:
             raise ValueError(
                 "The B ensemble must have the same shape as the A ensemble."
-    )
+            )
 
         if AB.ndim != A.ndim + 1:
             raise ValueError(
@@ -368,6 +477,9 @@ class PickFreezeAnalysis:
 
         rng = np.random.default_rng(random_seed)
 
+        global_mean_samples = []
+        global_variance_samples = []
+
         first_order_samples = []
         total_order_samples = []
 
@@ -378,7 +490,7 @@ class PickFreezeAnalysis:
 
             # Resample realization indices with replacement.
             #
-            # The same indices are applied to A and AB so that the
+            # The same indices are applied to A, B and AB so that the
             # pick-freeze pairing is preserved.
             indices = rng.integers(
                 0,
@@ -390,17 +502,26 @@ class PickFreezeAnalysis:
             B_boot = B[indices, ...]
             AB_boot = AB[:, indices, ...]
 
-            # Compute Sobol indices using the same estimators as the
-            # corresponding public analysis methods.
+            # Global moments from the pooled resampled A+B ensembles.
+            mean_boot = self._compute_global_mean(A_boot, B_boot)
+            variance_boot = self._compute_global_variance(A_boot, B_boot)
+
+            global_mean_samples.append(mean_boot)
+            global_variance_samples.append(variance_boot)
+
+            # Compute Sobol indices using the same estimators and the same
+            # pooled variance normalizer as the public analysis methods.
             first_order = self._compute_first_order(
                 A_boot,
                 B_boot,
                 AB_boot,
+                variance=variance_boot,
             )
 
             total_order = self._compute_total_order(
                 A_boot,
                 AB_boot,
+                variance=variance_boot,
             )
 
             first_order_samples.append(first_order)
@@ -409,9 +530,14 @@ class PickFreezeAnalysis:
         # ------------------------------------------------------------------
         # Convert bootstrap samples to arrays.
         #
-        # Shape:
-        #     (n_resamples, n_inputs, ...)
+        # Shapes:
+        #     global moments: (n_resamples, ...)
+        #     Sobol indices:  (n_resamples, n_inputs, ...)
         # ------------------------------------------------------------------
+        global_mean_samples = np.stack(global_mean_samples, axis=0)
+        global_variance_samples = np.stack(global_variance_samples, axis=0)
+        global_std_dev_samples = np.sqrt(global_variance_samples)
+
         first_order_samples = np.stack(
             first_order_samples,
             axis=0,
@@ -430,6 +556,16 @@ class PickFreezeAnalysis:
         lower = 100.0 * alpha / 2.0
         upper = 100.0 * (1.0 - alpha / 2.0)
 
+        global_mean_ci = np.nanpercentile(
+            global_mean_samples, [lower, upper], axis=0
+        )
+        global_variance_ci = np.nanpercentile(
+            global_variance_samples, [lower, upper], axis=0
+        )
+        global_std_dev_ci = np.nanpercentile(
+            global_std_dev_samples, [lower, upper], axis=0
+        )
+
         first_order_ci = np.nanpercentile(
             first_order_samples,
             [lower, upper],
@@ -442,16 +578,36 @@ class PickFreezeAnalysis:
             axis=0,
         )
 
+        global_mean_se = np.nanstd(global_mean_samples, axis=0, ddof=1)
+        global_variance_se = np.nanstd(global_variance_samples, axis=0, ddof=1)
+        global_std_dev_se = np.nanstd(global_std_dev_samples, axis=0, ddof=1)
+
         first_order_se = np.nanstd(first_order_samples, axis=0, ddof=1)
         total_order_se = np.nanstd(total_order_samples, axis=0, ddof=1)
 
         # ------------------------------------------------------------------
         # Point estimates from the original TMC ensemble
         # ------------------------------------------------------------------
+        global_mean_estimate = self.global_mean
+        global_variance_estimate = self.global_variance
+        global_std_dev_estimate = self.global_std_dev
+
         first_order_estimate = self.first_order()
         total_order_estimate = self.total_order()
 
         return {
+            "global_mean": global_mean_samples,
+            "global_variance": global_variance_samples,
+            "global_std_dev": global_std_dev_samples,
+            "global_mean_estimate": global_mean_estimate,
+            "global_variance_estimate": global_variance_estimate,
+            "global_std_dev_estimate": global_std_dev_estimate,
+            "global_mean_ci": global_mean_ci,
+            "global_variance_ci": global_variance_ci,
+            "global_std_dev_ci": global_std_dev_ci,
+            "global_mean_se": global_mean_se,
+            "global_variance_se": global_variance_se,
+            "global_std_dev_se": global_std_dev_se,
             "first_order": first_order_samples,
             "total_order": total_order_samples,
             "first_order_estimate": first_order_estimate,
@@ -466,12 +622,16 @@ class PickFreezeAnalysis:
 
     def convergence(self, sample_sizes=None):
         """
-        Evaluate convergence of the Sobol sensitivity indices with
-        increasing numbers of TMC realizations.
+        Evaluate convergence of the global response moments and of the
+        Sobol sensitivity indices with increasing numbers of TMC
+        realizations.
 
-        The analysis uses the first ``n`` realizations of the A and AB
+        The analysis uses the first ``n`` realizations of the A, B and AB
         ensembles for each requested sample size. No additional OpenMC
-        simulations are performed.
+        simulations are performed. For each sample size, global moments
+        are computed from the pooled first ``n`` realizations of A and B
+        (ddof=1 for the variance), and the same pooled variance is used
+        as the normalizer of the first-order and total-order estimators.
 
         Parameters
         ----------
@@ -488,6 +648,11 @@ class PickFreezeAnalysis:
             ``sample_sizes``
                 Array of realization counts.
 
+            ``global_mean``, ``global_variance``, ``global_std_dev``
+                Global moments for each sample size. Shape:
+
+                    (n_sample_sizes, ...)
+
             ``first_order``
                 First-order Sobol indices for each sample size. Shape:
 
@@ -498,14 +663,14 @@ class PickFreezeAnalysis:
 
                     (n_sample_sizes, n_inputs, ...)
         """
-        A = self.tally.A
-        B = self.tally.B
-        AB = self.tally.AB
+        A = np.asarray(self.tally.A)
+        B = np.asarray(self.tally.B)
+        AB = np.asarray(self.tally.AB)
 
         if B.shape != A.shape:
             raise ValueError(
                 "The B ensemble must have the same shape as the A ensemble."
-    )
+            )
 
         if AB.ndim != A.ndim + 1:
             raise ValueError(
@@ -559,14 +724,18 @@ class PickFreezeAnalysis:
 
             sample_sizes = np.unique(sample_sizes)
 
+        global_mean_results = []
+        global_variance_results = []
+
         first_order_results = []
         total_order_results = []
 
         # --------------------------------------------------------------
-        # Evaluate the Sobol estimators for each sample size.
+        # Evaluate global moments and Sobol estimators for each sample
+        # size.
         #
-        # We use the first n realizations consistently across A and AB
-        # so that the pick-freeze pairing is preserved.
+        # We use the first n realizations consistently across A, B and
+        # AB so that the pick-freeze pairing is preserved.
         # --------------------------------------------------------------
         for n in sample_sizes:
 
@@ -574,11 +743,19 @@ class PickFreezeAnalysis:
             B_n = B[:n, ...]
             AB_n = AB[:, :n, ...]
 
+            # Pooled A+B global moments for this sample size.
+            mean_n = self._compute_global_mean(A_n, B_n)
+            variance_n = self._compute_global_variance(A_n, B_n)
+
+            global_mean_results.append(mean_n)
+            global_variance_results.append(variance_n)
+
             first_order_results.append(
                 self._compute_first_order(
                     A_n,
                     B_n,
                     AB_n,
+                    variance=variance_n,
                 )
             )
 
@@ -586,11 +763,17 @@ class PickFreezeAnalysis:
                 self._compute_total_order(
                     A_n,
                     AB_n,
+                    variance=variance_n,
                 )
             )
 
+        global_variance_results = np.stack(global_variance_results, axis=0)
+
         return {
             "sample_sizes": sample_sizes,
+            "global_mean": np.stack(global_mean_results, axis=0),
+            "global_variance": global_variance_results,
+            "global_std_dev": np.sqrt(global_variance_results),
             "first_order": np.stack(
                 first_order_results,
                 axis=0,
@@ -617,7 +800,7 @@ class PickFreezeAnalysis:
         """
         return (
             self.total_order() - self.first_order()
-        ) * self.variance
+        ) * self.global_variance
 
     def interaction_fraction(self):
         """
