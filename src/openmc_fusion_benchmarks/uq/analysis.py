@@ -472,6 +472,9 @@ class PickFreezeAnalysis:
         first_order_samples = []
         total_order_samples = []
 
+        interaction_remainder_samples = []
+        higher_order_contribution_samples = []
+
         # ------------------------------------------------------------------
         # Bootstrap resampling
         # ------------------------------------------------------------------
@@ -516,6 +519,14 @@ class PickFreezeAnalysis:
             first_order_samples.append(first_order)
             total_order_samples.append(total_order)
 
+            interaction_remainder_samples.append(total_order - first_order)
+
+            # Aggregate variance contribution from all orders >= 2.
+            # Shape: (tally dimensions...)
+            higher_order_contribution_samples.append(
+                1.0 - np.sum(first_order, axis=0)
+)
+
         # ------------------------------------------------------------------
         # Convert bootstrap samples to arrays.
         #
@@ -535,6 +546,13 @@ class PickFreezeAnalysis:
         total_order_samples = np.stack(
             total_order_samples,
             axis=0,
+        )
+
+        interaction_remainder_samples = np.stack(
+        interaction_remainder_samples, axis=0
+        )
+        higher_order_contribution_samples = np.stack(
+        higher_order_contribution_samples, axis=0
         )
 
         # ------------------------------------------------------------------
@@ -580,9 +598,28 @@ class PickFreezeAnalysis:
         global_mean_estimate = self.global_mean
         global_variance_estimate = self.global_variance
         global_std_dev_estimate = self.global_std_dev
-
+        
         first_order_estimate = self.first_order()
         total_order_estimate = self.total_order()
+
+        interaction_remainder_estimate = total_order_estimate - first_order_estimate
+        higher_order_contribution_estimate = (
+            1.0 - np.sum(first_order_estimate, axis=0)
+        )
+
+        interaction_remainder_ci = np.nanpercentile(
+            interaction_remainder_samples, [lower, upper], axis=0
+        )
+        higher_order_contribution_ci = np.nanpercentile(
+            higher_order_contribution_samples, [lower, upper], axis=0
+        )
+
+        interaction_remainder_se = np.nanstd(
+            interaction_remainder_samples, axis=0, ddof=1
+        )
+        higher_order_contribution_se = np.nanstd(
+            higher_order_contribution_samples, axis=0, ddof=1
+        )
 
         return {
             "global_mean": global_mean_samples,
@@ -605,6 +642,14 @@ class PickFreezeAnalysis:
             "total_order_ci": total_order_ci,
             "first_order_se": first_order_se,
             "total_order_se": total_order_se,
+            "interaction_remainder": interaction_remainder_samples,
+            "interaction_remainder_estimate": interaction_remainder_estimate,
+            "interaction_remainder_ci": interaction_remainder_ci,
+            "interaction_remainder_se": interaction_remainder_se,
+            "higher_order_contribution": higher_order_contribution_samples,
+            "higher_order_contribution_estimate": higher_order_contribution_estimate,
+            "higher_order_contribution_ci": higher_order_contribution_ci,
+            "higher_order_contribution_se": higher_order_contribution_se,
             "confidence_level": confidence_level,
             "n_resamples": n_resamples,
         }
