@@ -969,38 +969,103 @@ class PickFreezeAnalysis:
             "AB_shape": AB.shape,
         }
 
-    def check_mc_noise(self):
+    def transport_noise_diagnostic(self):
         """
-        Diagnose the magnitude of OpenMC Monte Carlo statistical noise
-        relative to the variance observed in the primary A ensemble.
+        Compare average per-run OpenMC tally variance with observed
+        pick-freeze response variance.
 
-        This method is diagnostic only and does not modify any Sobol
-        estimator.
+        The per-run OpenMC variance is estimated as ``mc_std**2``. The
+        pooled transport variance averages this quantity over all A, B,
+        and AB calculations. The denominator is the observed response
+        variance estimated from pooled A and B response ensembles.
+
+        Returns
+        -------
+        dict
+            Arrays with the tally dimensions retained:
+
+            ``A_mc_variance``, ``B_mc_variance``, ``AB_mc_variance``
+                Mean per-run transport variance within each ensemble.
+
+            ``mean_mc_variance``
+                Mean per-run transport variance pooled over A, B, and all
+                AB ensembles.
+
+            ``global_variance``
+                Observed response variance from pooled A and B ensembles.
+
+            ``noise_ratio``
+                ``mean_mc_variance / global_variance`` as a fraction.
+
+            ``noise_ratio_percent``
+                The same ratio expressed as a percentage.
+
+        Notes
+        -----
+        This is a screening diagnostic, not a correction to the Sobol'
+        indices. The observed A+B variance includes transport noise.
         """
-        A = np.asarray(self.tally.A)
-        mc_std_A = np.asarray(self.tally.A_mc_std)
+        A_mc_std = self.tally.A_mc_std
+        B_mc_std = self.tally.B_mc_std
+        AB_mc_std = self.tally.AB_mc_std
 
-        if A.shape != mc_std_A.shape:
+        if A_mc_std is None or B_mc_std is None or AB_mc_std is None:
             raise ValueError(
-                "A and A_mc_std must have identical shapes."
+                "Transport-noise diagnostic requires mc_std data for "
+                "the A, B, and AB ensembles."
             )
 
-        observed_variance = np.var(
-            A,
-            axis=0,
-            ddof=1,
-        )
+        A_mc_std = np.asarray(A_mc_std, dtype=float)
+        B_mc_std = np.asarray(B_mc_std, dtype=float)
+        AB_mc_std = np.asarray(AB_mc_std, dtype=float)
 
-        mc_variance = np.mean(
-            mc_std_A**2,
-            axis=0,
-        )
+        if A_mc_std.ndim < 1:
+            raise ValueError("A mc_std data must have a realization dimension.")
 
-        with np.errstate(divide="ignore", invalid="ignore"):
-            mc_fraction = mc_variance / observed_variance
+        if B_mc_std.shape != A_mc_std.shape:
+            raise ValueError(
+                "A and B mc_std ensembles must have the same shape."
+            )
+
+        if AB_mc_std.ndim != A_mc_std.ndim + 1:
+            raise ValueError(
+                "AB mc_std must have one additional leading dimension "
+                "for perturbations."
+            )
+
+        if AB_mc_std.shape[1:] != A_mc_std.shape:
+            raise ValueError(
+                "Each AB mc_std ensemble must match the A/B ensemble shape."
+            )
+
+        # Average squared per-run transport uncertainty, retaining tally dims.
+        A_mc_variance = np.mean(A_mc_std**2, axis=0)
+        B_mc_variance = np.mean(B_mc_std**2, axis=0)
+        AB_mc_variance = np.mean(AB_mc_std**2, axis=(0, 1))
+
+        n_inputs = AB_mc_std.shape[0]
+
+        # All ensembles contain the same number of runs, so each contributes
+        # equally to the pooled mean over (p + 2) * r calculations.
+        mean_mc_variance = (
+            A_mc_variance + B_mc_variance + n_inputs * AB_mc_variance
+        ) / (n_inputs + 2)
+
+        global_variance = np.asarray(self.global_variance, dtype=float)
+
+        noise_ratio = np.divide(
+            mean_mc_variance,
+            global_variance,
+            out=np.full_like(global_variance, np.nan, dtype=float),
+            where=global_variance > 0,
+        )
 
         return {
-            "observed_variance": observed_variance,
-            "mc_variance": mc_variance,
-            "mc_fraction": mc_fraction,
+            "A_mc_variance": A_mc_variance,
+            "B_mc_variance": B_mc_variance,
+            "AB_mc_variance": AB_mc_variance,
+            "mean_mc_variance": mean_mc_variance,
+            "global_variance": global_variance,
+            "noise_ratio": noise_ratio,
+            "noise_ratio_percent": 100.0 * noise_ratio,
         }
