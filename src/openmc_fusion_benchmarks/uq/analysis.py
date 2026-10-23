@@ -899,9 +899,9 @@ class PickFreezeAnalysis:
         return "Jansen"
 
 
-    def check_sampling(self):
+    def sampling_summary(self):
         """
-        Check the consistency of the pick-freeze sampling ensembles.
+        Summary on checks the consistency of the pick-freeze sampling ensembles.
 
         The analysis assumes each AB_i ensemble is constructed according to
 
