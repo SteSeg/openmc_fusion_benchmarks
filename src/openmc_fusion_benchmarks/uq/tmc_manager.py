@@ -18,7 +18,8 @@ from ..backends.openmc.tallies import openmc_tally_to_dataset
 class TMCManager:
     def __init__(self, base_model: openmc.Model, perturbations: List[Callable],
                 realizations:int, seed: int | None = None, 
-                rng: np.random.Generator | None = None):
+                rng: np.random.Generator | None = None,
+                perturb_model_seed: bool = False):
 
         if rng is not None and seed is not None:
             raise ValueError("Pass either seed or rng, not both.")
@@ -29,6 +30,15 @@ class TMCManager:
             self.master_rng = np.random.default_rng(seed)
         else:
             self.master_rng = rng
+
+        # Manage seed of the openmc.Model.Settings.seed object
+        self.perturb_model_seed = perturb_model_seed
+        self._model_seed_rng = None
+
+        if self.perturb_model_seed:
+            # Independent of the RNGs used by perturbation callbacks.
+            model_seed_root = int(self.master_rng.integers(0, 2**32))
+            self._model_seed_rng = np.random.default_rng(model_seed_root)
 
         self.base_model = base_model
         self.realizations = realizations
@@ -62,9 +72,14 @@ class TMCManager:
                         # our current perturbations take (model, idx)
                         perturbed_model = perturb(model_copy, r_idx, stream="A")
 
+                        # specify random seed number in the openmc model
+                        perturbed_model = self._set_model_seed(perturbed_model)
+                        openmc_seed = perturbed_model.settings.seed
+
                         run_dir = cwd / "tmc" / f"perturbation_{p_idx}" / f"realization_{r_idx}"
                         run_dir.mkdir(parents=True, exist_ok=True)
 
+                        # run simulation
                         sp_path = perturbed_model.run(cwd=run_dir, *args, **kwargs)
                         sp_path = Path(sp_path).resolve()
 
@@ -73,6 +88,7 @@ class TMCManager:
                             "perturbation": int(p_idx),
                             "realization": int(r_idx),
                             "statepoint": str(sp_path.relative_to(cwd)),
+                            "openmc_seed": openmc_seed,
                         }
                         f_manifest.write(json.dumps(rec) + "\n")
                         f_manifest.flush()
@@ -90,6 +106,10 @@ class TMCManager:
                     for perturb in self.perturbations:
                         model_copy = perturb(model_copy, r_idx, stream="A")
 
+                    # specify random seed number in the openmc model
+                    model_copy = self._set_model_seed(model_copy)
+                    openmc_seed = model_copy.settings.seed
+
                     run_dir = cwd / "tmc" / f"A_{r_idx}"
                     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -101,6 +121,7 @@ class TMCManager:
                         "set": "A",
                         "index": int(r_idx),
                         "statepoint": str(sp_path.relative_to(cwd)),
+                        "openmc_seed": openmc_seed,
                     }
                     f_manifest.write(json.dumps(rec) + "\n")
                     f_manifest.flush()
@@ -111,6 +132,10 @@ class TMCManager:
 
                     for perturb in self.perturbations:
                         model_copy = perturb(model_copy, r_idx, stream="B")
+
+                    # specify random seed number in the openmc model
+                    model_copy = self._set_model_seed(model_copy)
+                    openmc_seed = model_copy.settings.seed
 
                     run_dir = cwd / "tmc" / f"B_{r_idx}"
                     run_dir.mkdir(parents=True, exist_ok=True)
@@ -123,6 +148,7 @@ class TMCManager:
                         "set": "B",
                         "index": int(r_idx),
                         "statepoint": str(sp_path.relative_to(cwd)),
+                        "openmc_seed": openmc_seed,
                     }
                     f_manifest.write(json.dumps(rec) + "\n")
                     f_manifest.flush()
@@ -144,6 +170,10 @@ class TMCManager:
                                 stream=stream
                             )
 
+                        # specify random seed number in the openmc model
+                        model_copy = self._set_model_seed(model_copy)
+                        openmc_seed = model_copy.settings.seed
+
                         run_dir = cwd / "tmc" / f"AB_{p_idx}_{r_idx}"
                         run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -158,6 +188,7 @@ class TMCManager:
                             "perturbation": int(p_idx),
                             "index": int(r_idx),
                             "statepoint": str(sp_path.relative_to(cwd)),
+                            "openmc_seed": openmc_seed,
                         }
                         f_manifest.write(json.dumps(rec) + "\n")
                         f_manifest.flush()
@@ -185,6 +216,10 @@ class TMCManager:
                 for perturb, ridx in zip(self.perturbations, idx_tuple):
                     perturbed_model = perturb(perturbed_model, ridx, stream="A")
 
+                # specify random seed number in the openmc model
+                perturbed_model = self._set_model_seed(perturbed_model)
+                openmc_seed = perturbed_model.settings.seed
+
                 # Directory name encoding the index tuple
                 s = ".".join(map(str, idx_tuple))
                 run_dir = cwd / "tmc" / f"perturbation_{s}"
@@ -199,6 +234,7 @@ class TMCManager:
                     "mode": mode,                  # "matrix" or "diagonal"
                     "indices": list(idx_tuple),    # [i0, i1, ..., i_{p-1}]
                     "statepoint": str(sp_path.relative_to(cwd)),
+                    "openmc_seed": openmc_seed,
                 }
                 f_manifest.write(json.dumps(rec) + "\n")
                 f_manifest.flush()
@@ -260,6 +296,13 @@ class TMCManager:
             )
 
         return indexed
+
+    def _set_model_seed(self, model):
+        """Apply an independent and reprodubile random seed number to the openmc model"""
+        if self._model_seed_rng is not None:
+            # OpenMC's settings.seed must be in its supported integer range.
+            model.settings.seed = int(self._model_seed_rng.integers(1, 2**31))
+        return model
 
     def _process_tmc(self, manifest_path="tmc_manifest.jsonl"):
         manifest_path = Path(manifest_path).resolve()
