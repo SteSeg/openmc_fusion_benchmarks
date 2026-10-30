@@ -329,13 +329,187 @@ class PickFreezeAnalysis:
         """
         return self.total_order() * self.global_variance
 
-    def total_order_contribution(self):
+    def _get_vard_mc_std(self):
         """
-        Return the total-order contribution of each input to output variance.
+        Return stored per-run OpenMC standard deviations for A and B.
 
-        C_Ti = S_Ti * Var(Y)
+        VarD requires actual OpenMC mc_std data. Do not silently use the
+        zero arrays returned by TMCTally when these data are unavailable.
         """
-        return self.total_order() * self.global_variance
+        if getattr(self.tally, "_A_mc_std_da", None) is None:
+            raise ValueError("VarD requires stored A mc_std data.")
+        if getattr(self.tally, "_B_mc_std_da", None) is None:
+            raise ValueError("VarD requires stored B mc_std data.")
+
+        return (
+            np.asarray(self.tally.A_mc_std, dtype=float),
+            np.asarray(self.tally.B_mc_std, dtype=float),
+        )
+
+    def _compute_vard_variance_components(self, A, B, mc_std_A, mc_std_B):
+        """
+        Compute observed, transport-noise, and VarD-corrected variances.
+
+        The observed variance uses pooled A+B responses. The transport-noise
+        variance is the corresponding mean of the per-run mc_std**2 values.
+        """
+        A = np.asarray(A, dtype=float)
+        B = np.asarray(B, dtype=float)
+        mc_std_A = np.asarray(mc_std_A, dtype=float)
+        mc_std_B = np.asarray(mc_std_B, dtype=float)
+
+        if A.shape != B.shape:
+            raise ValueError("A and B must have identical shapes.")
+        if mc_std_A.shape != A.shape or mc_std_B.shape != B.shape:
+            raise ValueError("A/B mc_std arrays must match their response arrays.")
+        if A.shape[0] < 2:
+            raise ValueError("At least two realizations are required.")
+
+        observed_variance = self._compute_global_variance(A, B)
+
+        # Mean transport variance over the pooled A+B runs.
+        transport_noise_variance = 0.5 * (
+            np.mean(mc_std_A**2, axis=0)
+            + np.mean(mc_std_B**2, axis=0)
+        )
+
+        parametric_variance = observed_variance - transport_noise_variance
+
+        return (
+            observed_variance,
+            transport_noise_variance,
+            parametric_variance,
+        )
+
+    @property
+    def global_transport_noise_variance(self):
+        """Mean per-run transport variance over the pooled A and B ensembles."""
+        mc_std_A, mc_std_B = self._get_vard_mc_std()
+        _, transport_noise_variance, _ = self._compute_vard_variance_components(
+            self.tally.A,
+            self.tally.B,
+            mc_std_A,
+            mc_std_B,
+        )
+        return transport_noise_variance
+
+    @property
+    def global_parametric_variance(self):
+        """VarD estimate of response variance after removing transport noise."""
+        mc_std_A, mc_std_B = self._get_vard_mc_std()
+        _, _, parametric_variance = self._compute_vard_variance_components(
+            self.tally.A,
+            self.tally.B,
+            mc_std_A,
+            mc_std_B,
+        )
+        return parametric_variance
+
+    def _compute_first_order_vard(
+        self, A, B, AB, observed_variance, parametric_variance
+    ):
+        """
+        Compute the VarD first-order index for AB_i = (B_i, A_-i).
+
+        The conditional-variance estimate uses paired B and AB_i responses;
+        these share input group i.
+        """
+        A = np.asarray(A, dtype=float)
+        B = np.asarray(B, dtype=float)
+        AB = np.asarray(AB, dtype=float)
+
+        if B.shape != A.shape:
+            raise ValueError("A and B must have identical shapes.")
+        if AB.ndim != A.ndim + 1 or AB.shape[1:] != A.shape:
+            raise ValueError("AB must have shape (n_inputs, n_realizations, ...).")
+
+        # For each i, this estimates the conditional variance over X_-i.
+        conditional_variance = 0.5 * np.mean(
+            (B[None, ...] - AB) ** 2,
+            axis=1,
+        )
+
+        numerator = observed_variance[None, ...] - conditional_variance
+        denominator = parametric_variance[None, ...]
+
+        return np.divide(
+            numerator,
+            denominator,
+            out=np.full_like(numerator, np.nan, dtype=float),
+            where=denominator > 0,
+        )
+
+    def _compute_total_order_vard(
+        self, A, AB, observed_variance, parametric_variance
+    ):
+        """
+        Compute the VarD total-order index for AB_i = (B_i, A_-i).
+
+        The conditional-variance estimate uses paired A and AB_i responses;
+        these share all input groups except i.
+        """
+        A = np.asarray(A, dtype=float)
+        AB = np.asarray(AB, dtype=float)
+
+        if AB.ndim != A.ndim + 1 or AB.shape[1:] != A.shape:
+            raise ValueError("AB must have shape (n_inputs, n_realizations, ...).")
+
+        # For each i, this estimates the conditional variance over X_i.
+        conditional_variance = 0.5 * np.mean(
+            (A[None, ...] - AB) ** 2,
+            axis=1,
+        )
+
+        numerator = observed_variance[None, ...] - conditional_variance
+        denominator = parametric_variance[None, ...]
+
+        complement = np.divide(
+            numerator,
+            denominator,
+            out=np.full_like(numerator, np.nan, dtype=float),
+            where=denominator > 0,
+        )
+
+        return 1.0 - complement
+
+    def first_order_vard(self):
+        """Calculate first-order Sobol' indices using variance deconvolution."""
+        A = np.asarray(self.tally.A, dtype=float)
+        B = np.asarray(self.tally.B, dtype=float)
+        AB = np.asarray(self.tally.AB, dtype=float)
+        mc_std_A, mc_std_B = self._get_vard_mc_std()
+
+        observed_variance, _, parametric_variance = (
+            self._compute_vard_variance_components(A, B, mc_std_A, mc_std_B)
+        )
+
+        return self._compute_first_order_vard(
+            A, B, AB, observed_variance, parametric_variance
+        )
+
+    def total_order_vard(self):
+        """Calculate total-order Sobol' indices using variance deconvolution."""
+        A = np.asarray(self.tally.A, dtype=float)
+        B = np.asarray(self.tally.B, dtype=float)
+        AB = np.asarray(self.tally.AB, dtype=float)
+        mc_std_A, mc_std_B = self._get_vard_mc_std()
+
+        observed_variance, _, parametric_variance = (
+            self._compute_vard_variance_components(A, B, mc_std_A, mc_std_B)
+        )
+
+        return self._compute_total_order_vard(
+            A, AB, observed_variance, parametric_variance
+        )
+
+    def interaction_remainder_vard(self):
+        """
+        Return total-order minus first-order VarD indices for each input.
+
+        For p > 2, each result is the aggregate of all interactions involving
+        that input; it is not an individual pairwise interaction index.
+        """
+        return self.total_order_vard() - self.first_order_vard()
 
 
     def bootstrap(
